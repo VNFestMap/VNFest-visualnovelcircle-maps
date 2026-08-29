@@ -1,0 +1,368 @@
+/* Shared first-party page header. Keep page-specific content and actions intact. */
+:root {
+  --vn-header-bg: var(--vn-surface, var(--seed-header-bg, var(--surface, #ffffff)));
+  --vn-header-text: var(--vn-text-strong, var(--seed-text-bright, var(--text-strong, #111111)));
+  --vn-header-muted: var(--vn-text-muted, var(--seed-muted, var(--text-muted, #666666)));
+  --vn-header-border: var(--vn-border, var(--seed-border, var(--border, rgba(0, 0, 0, 0.12))));
+  --vn-header-border-strong: var(--vn-border-strong, var(--seed-border-strong, var(--border-strong, rgba(0, 0, 0, 0.2))));
+  --vn-header-hover: var(--vn-surface-hover, var(--seed-surface-2, var(--surface-2, rgba(0, 0, 0, 0.055))));
+  --vn-header-focus: var(--vn-primary, var(--seed-primary, var(--primary, #2563eb)));
+  --vn-header-action: var(--vn-text, var(--seed-text, var(--text, #222222)));
+}
+
+html[data-theme='dark'],
+html.dark,
+body.dark,
+[data-theme='dark'] {
+  --vn-header-text: var(--vn-text-strong, var(--seed-text-bright, var(--text-strong, #ffffff)));
+  --vn-header-muted: var(--vn-text-muted, var(--seed-muted, var(--text-muted, #b6b6b6)));
+  --vn-header-action: var(--vn-text, var(--seed-text, var(--text, #f2f2f2)));
+}
+
+.vn-topbar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px clamp(14px, 3vw, 24px);
+  color: var(--vn-header-action);
+  background: var(--vn-header-bg);
+  border-bottom: 1px solid var(--vn-header-border);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  position: relative;
+  z-index: 20;
+}
+
+.vn-topbar-leading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 42px;
+  flex: 1 1 auto;
+}
+
+.vn-topbar-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 42px;
+  color: var(--vn-header-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vn-topbar-brand:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--vn-header-focus) 42%, transparent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.vn-topbar-name {
+  color: var(--vn-header-text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.vn-topbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 12px;
+  background: var(--vn-header-border-strong);
+  flex: 0 0 auto;
+}
+
+.vn-topbar-sub {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--vn-header-muted);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vn-topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+
+.vn-topbar-action,
+.vn-topbar-actions > a,
+.vn-topbar-actions > button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--vn-header-action);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.vn-topbar-action:hover,
+.vn-topbar-actions > a:hover,
+.vn-topbar-actions > button:hover {
+  color: var(--vn-header-text);
+  background: var(--vn-header-hover);
+  border-color: var(--vn-header-border);
+}
+
+.vn-topbar-action:active,
+.vn-topbar-actions > a:active,
+.vn-topbar-actions > button:active {
+  transform: translateY(1px);
+}
+
+.vn-topbar-action:focus-visible,
+.vn-topbar-actions > a:focus-visible,
+.vn-topbar-actions > button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--vn-header-focus) 42%, transparent);
+  outline-offset: 2px;
+  border-color: var(--vn-header-focus);
+}
+
+.vn-topbar-action:disabled,
+.vn-topbar-actions > button:disabled,
+.vn-topbar-actions > a[aria-disabled='true'] {
+  opacity: 0.52;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.vn-topbar-action.is-primary,
+.vn-topbar-actions > .primary,
+.vn-topbar-actions > a[data-variant='primary'],
+.vn-topbar-actions > button[data-variant='primary'] {
+  color: var(--vn-primary-contrast, #ffffff);
+  background: var(--vn-header-focus);
+  border-color: var(--vn-header-focus);
+}
+
+.vn-topbar-action.is-primary:hover,
+.vn-topbar-actions > .primary:hover,
+.vn-topbar-actions > a[data-variant='primary']:hover,
+.vn-topbar-actions > button[data-variant='primary']:hover {
+  color: var(--vn-primary-contrast, #ffffff);
+  filter: brightness(0.94);
+}
+
+.vn-topbar-action.is-icon {
+  width: 40px;
+  padding: 0;
+}
+
+.vn-topbar--overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: color-mix(in srgb, var(--vn-header-bg) 88%, transparent);
+}
+
+/* Compatibility styling for retained page-specific header hooks. */
+.wiki-header.vn-topbar,
+.guide-header.vn-topbar,
+.poster-header.vn-topbar,
+.admin-topbar.vn-topbar,
+.top-header.vn-topbar {
+  color: var(--vn-header-action);
+}
+
+/* Page-specific shells keep their existing sidebar, breadcrumb and controls,
+   while the shared brand remains the only primary header identity. */
+.admin-topbar.admin-topbar--manual {
+  height: auto;
+  min-height: 58px;
+  padding: 8px clamp(14px, 3vw, 24px);
+  gap: 16px;
+}
+.admin-topbar.admin-topbar--manual .admin-topbar-leading,
+.galonly-top-header.galonly-top-header.vn-topbar .galonly-topbar-leading {
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 16px;
+}
+.admin-topbar.admin-topbar--manual .topbar-breadcrumb,
+.galonly-top-header.galonly-top-header.vn-topbar .breadcrumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-topbar.admin-topbar--manual .topbar-actions,
+.galonly-top-header.galonly-top-header.vn-topbar .header-actions {
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-topbar.admin-topbar--manual .topbar-theme-btn,
+.galonly-top-header.galonly-top-header.vn-topbar .theme-toggle {
+  min-width: 40px;
+  min-height: 40px;
+}
+.admin-topbar.admin-topbar--manual .mobile-menu-btn,
+.galonly-top-header.galonly-top-header.vn-topbar .mobile-menu-btn {
+  flex: 0 0 auto;
+}
+
+.galonly-top-header.galonly-top-header.vn-topbar {
+  height: auto;
+  min-height: 58px;
+  padding: 8px clamp(14px, 3vw, 24px);
+  gap: 16px;
+}
+.galonly-top-header.galonly-top-header.vn-topbar .header-link,
+.galonly-top-header.galonly-top-header.vn-topbar .btn-export,
+.galonly-top-header.galonly-top-header.vn-topbar .theme-toggle {
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.wiki-header.vn-topbar .vn-topbar-brand,
+.guide-header.vn-topbar .vn-topbar-brand {
+  color: var(--vn-header-text);
+}
+.wiki-header.vn-topbar .vn-topbar-brand:hover,
+.guide-header.vn-topbar .vn-topbar-brand:hover {
+  text-decoration: none;
+}
+.wiki-header.vn-topbar .vn-topbar-actions,
+.guide-header.vn-topbar .guide-header-tools {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.wiki-header.vn-topbar .vn-topbar-actions .wiki-guide-entry {
+  margin-left: 0;
+}
+.guide-header.vn-topbar .guide-header-tools {
+  gap: 6px;
+}
+
+@media (max-width: 680px) {
+  .admin-topbar.admin-topbar--manual,
+  .galonly-top-header.galonly-top-header.vn-topbar {
+    align-items: flex-start;
+    min-height: 60px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+
+  .admin-topbar.admin-topbar--manual .admin-topbar-leading,
+  .admin-topbar.admin-topbar--manual .topbar-actions,
+  .galonly-top-header.galonly-top-header.vn-topbar .galonly-topbar-leading,
+  .galonly-top-header.galonly-top-header.vn-topbar .header-actions {
+    box-sizing: border-box;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .admin-topbar.admin-topbar--manual .topbar-actions,
+  .galonly-top-header.galonly-top-header.vn-topbar .header-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+  .admin-topbar.admin-topbar--manual .mobile-menu-btn,
+  .galonly-top-header.galonly-top-header.vn-topbar .mobile-menu-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .admin-topbar.admin-topbar--manual .topbar-btn span {
+    display: none;
+  }
+  .admin-topbar.admin-topbar--manual .topbar-theme-btn,
+  .galonly-top-header.galonly-top-header.vn-topbar .theme-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .galonly-top-header.galonly-top-header.vn-topbar .header-link:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .vn-topbar {
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 60px;
+    padding: 8px 14px;
+  }
+
+  .vn-topbar-leading {
+    min-height: 44px;
+  }
+
+  .vn-topbar-brand {
+    min-height: 44px;
+  }
+
+  .vn-topbar-actions {
+    align-items: stretch;
+    gap: 4px;
+    flex: 0 1 auto;
+  }
+
+  .vn-topbar-action,
+  .vn-topbar-actions > a,
+  .vn-topbar-actions > button {
+    min-height: 44px;
+    padding: 0 10px;
+  }
+
+  .vn-topbar-action.is-icon {
+    width: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .vn-topbar {
+    flex-wrap: wrap;
+  }
+
+  .vn-topbar-leading,
+  .vn-topbar-actions {
+    flex-basis: 100%;
+  }
+
+  .vn-topbar-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vn-topbar-action,
+  .vn-topbar-actions > a,
+  .vn-topbar-actions > button {
+    transition: none;
+  }
+
+  .vn-topbar-action:active,
+  .vn-topbar-actions > a:active,
+  .vn-topbar-actions > button:active {
+    transform: none;
+  }
+}

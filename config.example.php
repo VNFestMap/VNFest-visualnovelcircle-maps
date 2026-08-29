@@ -30,6 +30,12 @@ define('QUIZ_LINK_SECRET', 'change-to-a-random-64-char-string');
 // makoquiz 服务端回传战绩时的 Bearer 密钥（与 makoquiz 的 VNFEST_API_KEY 一致）
 define('QUIZ_API_KEY', 'change-to-another-random-64-char-string');
 
+// ===== 同好会试炼（Recognition） =====
+// 外部 Connector 请求的 HMAC 签名校验密钥（时间戳防重放窗口用）
+define('RECOGNITION_HMAC_SECRET', 'change-to-a-random-64-char-string');
+// 公开凭证编号的前缀（展示用，不参与安全）
+define('RECOGNITION_CRED_PREFIX', 'VNF-CRED-');
+
 // 邮件发送配置
 // 方式一: 使用 PHP mail()（需服务器支持 sendmail/postfix）
 define('MAIL_DRIVER', 'mail');       // 'mail' 或 'smtp'

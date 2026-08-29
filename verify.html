@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>凭证验证 - Galgame 同好会地图</title>
+  <link rel="stylesheet" href="css/site-header.css?v=20260829-recognition" />
+  <script defer src="js/site-header.js?v=20260829-recognition"></script>
+  <link rel="stylesheet" href="trial/trial.css?v=20260829-recognition" />
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <a class="brand" href="index.html">Galgame 同好会地图</a>
+      <nav>
+        <a href="index.html">地图</a>
+        <a href="trial/index.html">同好会试炼</a>
+        <a href="achievements.html">认可图鉴</a>
+        <a href="verify.html">凭证验证</a>
+      </nav>
+    </div>
+
+    <header class="hero">
+      <div>
+        <p class="kicker">Credential Verification</p>
+        <h1 class="page-title">凭证验证</h1>
+        <p class="lead">输入凭证编号，核验徽章的签发同好会、签发时间与当前状态。验证页只展示必要信息，不暴露证据原文。</p>
+      </div>
+    </header>
+
+    <section class="view">
+      <div class="panel">
+        <div class="row">
+          <input id="verify-uid" placeholder="输入凭证编号，如 VNF-CRED-20260829-XXXXXXXX"
+                 style="flex:1;min-width:240px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace">
+          <button class="btn btn-primary" id="verify-btn">验证</button>
+        </div>
+        <div id="verify-result" style="margin-top:18px"></div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      凭证状态：有效 / 已过期 / 历史凭证（当前已撤销）/ 已被替代。撤销记录永久保留审计。
+    </footer>
+  </main>
+  <script src="js/verify.js?v=20260829-recognition"></script>
+</body>
+</html>

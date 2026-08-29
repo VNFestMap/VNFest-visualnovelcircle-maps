@@ -483,6 +483,47 @@ if ($isMysql) {
     $tryAlter("ALTER TABLE galonly_applications ADD COLUMN display_image VARCHAR(500) DEFAULT NULL AFTER image_path");
     echo "[OK] galonly_applications.display_image 列已添加\n";
 
+    // ===== GalOnly 摊位两阶段审核 v2 =====
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN booth_type VARCHAR(50) NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN expected_members INT NOT NULL DEFAULT 0");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN layout_notes TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN needs_power VARCHAR(10) NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN attachment_paths TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase TINYINT(1) NOT NULL DEFAULT 1");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN rejected_at DATETIME NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN revision_at DATETIME NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase1_feedback TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase2_feedback TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_items TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_attachments TEXT NULL");
+    echo "[OK] galonly_applications 两阶段审核列已添加\n";
+
+    // ===== GalOnly 北京 2.0：联系方式 QQ+手机号、参展经历 =====
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN qq_number VARCHAR(64) NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phone_number VARCHAR(32) NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN exhibition_experience TEXT NULL");
+    echo "[OK] galonly_applications 北京 2.0 列已添加 (qq_number, phone_number, exhibition_experience)\n";
+
+    $tryAlter("ALTER TABLE galonly_votes ADD COLUMN comment TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_votes ADD COLUMN phase TINYINT(1) NOT NULL DEFAULT 1");
+    echo "[OK] galonly_votes 意见/阶段列已添加\n";
+    // 2026-08 陪审分阶段审核：唯一约束需包含 phase，否则同一陪审无法在两个阶段分别发表意见。
+    // 旧库唯一索引名为首列名 application_id（未命名 UNIQUE）；此处 phase 列已确保存在后重建索引。
+    $tryAlter("ALTER TABLE galonly_votes DROP INDEX application_id");
+    $tryAlter("ALTER TABLE galonly_votes ADD UNIQUE KEY uk_galonly_votes_app_phase (application_id, auditer_id, phase)");
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galonly_reviewers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_id INT NOT NULL DEFAULT 0,
+            user_id INT NOT NULL,
+            role VARCHAR(10) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_galonly_reviewer (event_id, user_id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "[OK] galonly_reviewers 表已创建\n";
+
     $tryAlter("ALTER TABLE galonly_events ADD COLUMN image_url VARCHAR(500) NOT NULL DEFAULT '' AFTER description");
     echo "[OK] galonly_events.image_url 列已添加\n";
 
@@ -507,6 +548,302 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_quiz_results_user ON quiz_results(vnfest_user_id)");
     echo "[OK] quiz_results 表已创建\n";
+
+    // ===== 同好会试炼（Recognition）核心模型 =====
+    // 统一核心对象：RecognitionProgram / ProgramVersion / Event / RuleSet / Credential
+    // RuleSet 以版本快照 JSON（content_snapshot）承载，已发布版本不可变。
+    // 注意：clubs 主数据在 JSON 文件中按 (id, country) 标识，故相关表均携带 country。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_programs (
+            id                 INT AUTO_INCREMENT PRIMARY KEY,
+            club_id            INT NOT NULL,
+            country            VARCHAR(50) NOT NULL DEFAULT 'china',
+            type               VARCHAR(30) NOT NULL DEFAULT 'assessment',
+            title              VARCHAR(255) NOT NULL,
+            intro              TEXT,
+            participant_difficulty VARCHAR(20) NOT NULL DEFAULT 'normal',
+            visibility         VARCHAR(20) NOT NULL DEFAULT 'public',
+            status             VARCHAR(20) NOT NULL DEFAULT 'draft',
+            capabilities       TEXT NOT NULL,
+            participation_rules TEXT,
+            max_attempts       INT NOT NULL DEFAULT 0,
+            cooldown_minutes   INT NOT NULL DEFAULT 0,
+            open_at            DATETIME NULL,
+            close_at           DATETIME NULL,
+            max_issuance       INT NOT NULL DEFAULT 0,
+            credential_ttl_days INT NOT NULL DEFAULT 0,
+            security_level     VARCHAR(20) NOT NULL DEFAULT 'normal',
+            created_by         INT NOT NULL,
+            created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_prog_club ON recognition_programs(club_id, country, status)");
+    $tryIndex("CREATE INDEX idx_recog_prog_status ON recognition_programs(status)");
+    echo "[OK] recognition_programs 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_program_versions (
+            id               INT AUTO_INCREMENT PRIMARY KEY,
+            program_id       INT NOT NULL,
+            version_no       VARCHAR(20) NOT NULL,
+            status           VARCHAR(20) NOT NULL DEFAULT 'draft',
+            content_snapshot TEXT NOT NULL,
+            published_by     INT NULL,
+            published_at     DATETIME NULL,
+            created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_ver (program_id, version_no),
+            FOREIGN KEY (program_id) REFERENCES recognition_programs(id),
+            FOREIGN KEY (published_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_ver_prog ON recognition_program_versions(program_id, status)");
+    echo "[OK] recognition_program_versions 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_badges (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            club_id     INT NOT NULL,
+            country     VARCHAR(50) NOT NULL DEFAULT 'china',
+            name        VARCHAR(255) NOT NULL,
+            category    VARCHAR(30) NOT NULL DEFAULT 'participation',
+            description TEXT,
+            image_url   VARCHAR(500) NOT NULL DEFAULT '',
+            version     INT NOT NULL DEFAULT 1,
+            created_by  INT NOT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_badge_club ON recognition_badges(club_id, country)");
+    echo "[OK] recognition_badges 表已创建\n";
+
+    // 统一事件 Event：event_id / idempotency_key 唯一，重复提交在数据库层去重（对齐架构文档 9.4）
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_events (
+            id                  INT AUTO_INCREMENT PRIMARY KEY,
+            event_id            VARCHAR(64) NOT NULL,
+            idempotency_key     VARCHAR(128) NOT NULL DEFAULT '',
+            schema_version      VARCHAR(10) NOT NULL DEFAULT '1.0',
+            type                VARCHAR(128) NOT NULL,
+            club_id             INT NULL,
+            country             VARCHAR(50) NOT NULL DEFAULT 'china',
+            user_id             INT NULL,
+            program_id          INT NULL,
+            program_version_id  INT NULL,
+            badge_id            INT NULL,
+            connector_id        INT NULL,
+            occurred_at         DATETIME NOT NULL,
+            data                TEXT,
+            evidence_refs       TEXT,
+            source_verified     TINYINT(1) NOT NULL DEFAULT 0,
+            status              VARCHAR(20) NOT NULL DEFAULT 'processed',
+            error_message       VARCHAR(500) NOT NULL DEFAULT '',
+            created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_evt_event (event_id),
+            UNIQUE KEY uq_recog_evt_idem (idempotency_key),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (program_version_id) REFERENCES recognition_program_versions(id),
+            FOREIGN KEY (connector_id) REFERENCES recognition_connectors(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_evt_user ON recognition_events(user_id)");
+    $tryIndex("CREATE INDEX idx_recog_evt_prog ON recognition_events(program_version_id)");
+    $tryIndex("CREATE INDEX idx_recog_evt_type ON recognition_events(type)");
+    echo "[OK] recognition_events 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_attempts (
+            id                 INT AUTO_INCREMENT PRIMARY KEY,
+            program_version_id INT NOT NULL,
+            user_id            INT NOT NULL,
+            status             VARCHAR(20) NOT NULL DEFAULT 'created',
+            score              INT NULL,
+            answers            TEXT,
+            attempt_no         INT NOT NULL DEFAULT 1,
+            started_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            finished_at        DATETIME NULL,
+            UNIQUE KEY uq_recog_att_sess (program_version_id, user_id, attempt_no),
+            FOREIGN KEY (program_version_id) REFERENCES recognition_program_versions(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_att_user ON recognition_attempts(user_id)");
+    $tryIndex("CREATE INDEX idx_recog_att_status ON recognition_attempts(program_version_id, status)");
+    echo "[OK] recognition_attempts 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_submissions (
+            id                 INT AUTO_INCREMENT PRIMARY KEY,
+            program_version_id INT NOT NULL,
+            user_id            INT NOT NULL,
+            content            TEXT,
+            file_path          VARCHAR(500) NOT NULL DEFAULT '',
+            status             VARCHAR(20) NOT NULL DEFAULT 'pending',
+            reviewed_at        DATETIME NULL,
+            created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (program_version_id) REFERENCES recognition_program_versions(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_sub_prog_user ON recognition_submissions(program_version_id, user_id)");
+    $tryIndex("CREATE INDEX idx_recog_sub_status ON recognition_submissions(status)");
+    echo "[OK] recognition_submissions 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_reviews (
+            id            INT AUTO_INCREMENT PRIMARY KEY,
+            submission_id INT NOT NULL,
+            reviewer_id   INT NOT NULL,
+            decision      VARCHAR(20) NOT NULL,
+            comment       TEXT,
+            created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_rev (submission_id, reviewer_id),
+            FOREIGN KEY (submission_id) REFERENCES recognition_submissions(id),
+            FOREIGN KEY (reviewer_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_rev_sub ON recognition_reviews(submission_id)");
+    echo "[OK] recognition_reviews 表已创建\n";
+
+    // 凭证 Credential：签发唯一性——同一版本同一用户同一徽章只保留一份 active；
+    // revoked/expired/superseded 历史保留，撤销不物理删除（对齐架构文档 14.4）。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_credentials (
+            id                   INT AUTO_INCREMENT PRIMARY KEY,
+            credential_uid       VARCHAR(64) NOT NULL,
+            holder_user_id       INT NOT NULL,
+            badge_id             INT NOT NULL,
+            badge_version        INT NOT NULL DEFAULT 1,
+            issuer_club_id       INT NOT NULL,
+            issuer_country       VARCHAR(50) NOT NULL DEFAULT 'china',
+            program_id           INT NOT NULL,
+            program_version_id   INT NOT NULL,
+            credential_type      VARCHAR(30) NOT NULL DEFAULT 'participation',
+            verification_level   VARCHAR(30) NOT NULL DEFAULT 'auto',
+            status               VARCHAR(20) NOT NULL DEFAULT 'active',
+            condition_snapshot   TEXT,
+            evidence_refs        TEXT,
+            public_visibility    TINYINT(1) NOT NULL DEFAULT 1,
+            issued_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at           DATETIME NULL,
+            revocation_reason    VARCHAR(255) NULL,
+            revoked_at           DATETIME NULL,
+            revoked_by           INT NULL,
+            superseded_by        INT NULL,
+            active_key           VARCHAR(191) GENERATED ALWAYS AS (
+                CASE WHEN status = 'active' THEN CONCAT(program_version_id, ':', holder_user_id, ':', badge_id) ELSE NULL END
+            ) STORED,
+            UNIQUE KEY uq_recog_cred_uid (credential_uid),
+            UNIQUE KEY uq_recog_cred_active (active_key),
+            FOREIGN KEY (holder_user_id) REFERENCES users(id),
+            FOREIGN KEY (badge_id) REFERENCES recognition_badges(id),
+            FOREIGN KEY (program_version_id) REFERENCES recognition_program_versions(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_cred_holder ON recognition_credentials(holder_user_id, status)");
+    $tryIndex("CREATE INDEX idx_recog_cred_club ON recognition_credentials(issuer_club_id, issuer_country)");
+    $tryIndex("CREATE INDEX idx_recog_cred_expires ON recognition_credentials(status, expires_at)");
+    echo "[OK] recognition_credentials 表已创建\n";
+
+    // 事务 Outbox：签发成功后的异步动作（通知、过期扫描补偿），由 scripts/recognition_worker.php 消费
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_outbox (
+            id           INT AUTO_INCREMENT PRIMARY KEY,
+            task_type    VARCHAR(40) NOT NULL,
+            payload      TEXT,
+            status       VARCHAR(20) NOT NULL DEFAULT 'pending',
+            attempts     INT NOT NULL DEFAULT 0,
+            last_error   VARCHAR(500) NOT NULL DEFAULT '',
+            created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            processed_at DATETIME NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_outbox_status ON recognition_outbox(status)");
+    echo "[OK] recognition_outbox 表已创建\n";
+
+    // Connector 接入器：只做 identify / verify_source / receive_event / normalize_event，
+    // 禁止直接写凭证；secret 仅存哈希，scope 限定可提交的事件类型与项目。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_connectors (
+            id             INT AUTO_INCREMENT PRIMARY KEY,
+            club_id        INT NOT NULL,
+            country        VARCHAR(50) NOT NULL DEFAULT 'china',
+            name           VARCHAR(128) NOT NULL,
+            type           VARCHAR(40) NOT NULL DEFAULT 'webhook',
+            token_prefix   VARCHAR(16) NOT NULL,
+            token_hash     VARCHAR(128) NOT NULL,
+            hmac_secret    VARCHAR(255) NOT NULL DEFAULT '',
+            scope          TEXT NOT NULL,
+            status         VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_by     INT NOT NULL,
+            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_used_at   DATETIME NULL,
+            revoked_at     DATETIME NULL,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_conn_club ON recognition_connectors(club_id, country)");
+    $tryIndex("CREATE INDEX idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
+    echo "[OK] recognition_connectors 表已创建\n";
+
+    // 外部身份绑定 IdentityLink：新外部身份一律走此表；users.qq_openid / discord_id 为历史只读字段。
+    // 一个外部主体同一时间只能绑定一个 VNFMap 用户（revoked 历史保留）。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_identity_links (
+            id                  INT AUTO_INCREMENT PRIMARY KEY,
+            external_provider   VARCHAR(40) NOT NULL,
+            external_subject_id VARCHAR(191) NOT NULL,
+            vnfmap_user_id      INT NULL,
+            verification_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            linked_at           DATETIME NULL,
+            revoked_at          DATETIME NULL,
+            created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_idl_active (external_provider, external_subject_id),
+            FOREIGN KEY (vnfmap_user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_idl_user ON recognition_identity_links(vnfmap_user_id)");
+    echo "[OK] recognition_identity_links 表已创建\n";
+
+    // 先参与、后领取：现场发放一次性兑换码，事后登录兑换绑定凭证。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_claim_codes (
+            id                 INT AUTO_INCREMENT PRIMARY KEY,
+            code               VARCHAR(32) NOT NULL,
+            program_id         INT NOT NULL,
+            program_version_id INT NOT NULL,
+            badge_id           INT NOT NULL,
+            redeemed_by        INT NULL,
+            redeemed_at        DATETIME NULL,
+            expires_at         DATETIME NULL,
+            created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_claim_code (code),
+            FOREIGN KEY (program_version_id) REFERENCES recognition_program_versions(id),
+            FOREIGN KEY (redeemed_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_claim_prog ON recognition_claim_codes(program_version_id)");
+    echo "[OK] recognition_claim_codes 表已创建\n";
+
+    // 同好会侧认可角色（文档 16.1 的 8 角色），MVP 阶段由 club_memberships 角色隐式映射，本表承载显式细分。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_club_roles (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            club_id    INT NOT NULL,
+            country    VARCHAR(50) NOT NULL DEFAULT 'china',
+            user_id    INT NOT NULL,
+            role       VARCHAR(30) NOT NULL,
+            granted_by INT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_recog_role (club_id, country, user_id, role),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (granted_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_role_user ON recognition_club_roles(user_id)");
+    echo "[OK] recognition_club_roles 表已创建\n";
 
 } else {
     // ==================== SQLite 建表 ====================
@@ -827,12 +1164,38 @@ if ($isMysql) {
             application_id  INTEGER NOT NULL REFERENCES galonly_applications(id),
             auditer_id      INTEGER NOT NULL REFERENCES users(id),
             vote            TEXT NOT NULL CHECK(vote IN ('approve','reject')),
+            comment         TEXT NULL,
+            phase           INTEGER NOT NULL DEFAULT 1,
             created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE(application_id, auditer_id)
+            UNIQUE(application_id, auditer_id, phase)
         )
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_votes_app ON galonly_votes(application_id)");
     echo "[OK] galonly_votes 表已创建\n";
+    // 2026-08 陪审分阶段审核：旧 SQLite 库唯一约束不含 phase，需重建表升级
+    try {
+        $oldUnique = $db->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='galonly_votes'")->fetchColumn();
+        if (is_string($oldUnique) && strpos($oldUnique, 'UNIQUE(application_id, auditer_id)') !== false
+            && strpos($oldUnique, 'phase') === false) {
+            $db->exec("ALTER TABLE galonly_votes RENAME TO galonly_votes_old");
+            $db->exec("CREATE TABLE galonly_votes (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                application_id  INTEGER NOT NULL REFERENCES galonly_applications(id),
+                auditer_id      INTEGER NOT NULL REFERENCES users(id),
+                vote            TEXT NOT NULL CHECK(vote IN ('approve','reject')),
+                comment         TEXT NULL,
+                phase           INTEGER NOT NULL DEFAULT 1,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(application_id, auditer_id, phase)
+            )");
+            $db->exec("INSERT INTO galonly_votes (id, application_id, auditer_id, vote, created_at) SELECT id, application_id, auditer_id, vote, created_at FROM galonly_votes_old");
+            $db->exec("DROP TABLE galonly_votes_old");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_votes_app ON galonly_votes(application_id)");
+            echo "[OK] galonly_votes 唯一约束已升级为 (application_id, auditer_id, phase)\n";
+        }
+    } catch (Exception $e) {
+        // best-effort：旧库升级失败不阻断后续建表
+    }
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS galonly_public_votes (
@@ -964,6 +1327,42 @@ if ($isMysql) {
     $tryAlter("ALTER TABLE galonly_applications ADD COLUMN display_image TEXT DEFAULT NULL");
     echo "[OK] galonly_applications.display_image 列已添加\n";
 
+    // ===== GalOnly 摊位两阶段审核 v2 =====
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN booth_type TEXT NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN expected_members INTEGER NOT NULL DEFAULT 0");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN layout_notes TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN needs_power TEXT NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN attachment_paths TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase INTEGER NOT NULL DEFAULT 1");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN rejected_at TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN revision_at TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase1_feedback TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase2_feedback TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_items TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_attachments TEXT NULL");
+    echo "[OK] galonly_applications 两阶段审核列已添加\n";
+
+    // ===== GalOnly 北京 2.0：联系方式 QQ+手机号、参展经历 =====
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN qq_number TEXT NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phone_number TEXT NOT NULL DEFAULT ''");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN exhibition_experience TEXT NULL");
+    echo "[OK] galonly_applications 北京 2.0 列已添加 (qq_number, phone_number, exhibition_experience)\n";
+
+    $tryAlter("ALTER TABLE galonly_votes ADD COLUMN comment TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_votes ADD COLUMN phase INTEGER NOT NULL DEFAULT 1");
+    echo "[OK] galonly_votes 意见/阶段列已添加\n";
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galonly_reviewers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id INTEGER NOT NULL DEFAULT 0,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            role TEXT NOT NULL CHECK(role IN ('chief','jury')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(event_id, user_id)
+        )
+    ");
+    echo "[OK] galonly_reviewers 表已创建\n";
+
     $tryAlter("ALTER TABLE galonly_events ADD COLUMN image_url TEXT NOT NULL DEFAULT ''");
     echo "[OK] galonly_events.image_url 列已添加\n";
 
@@ -985,6 +1384,261 @@ if ($isMysql) {
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(vnfest_user_id)");
     echo "[OK] quiz_results 表已创建\n";
+
+    // ===== 同好会试炼（Recognition）核心模型（SQLite 方言，与 MySQL 分支保持一致）=====
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_programs (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id            INTEGER NOT NULL,
+            country            TEXT NOT NULL DEFAULT 'china',
+            type               TEXT NOT NULL DEFAULT 'assessment',
+            title              TEXT NOT NULL,
+            intro              TEXT,
+            participant_difficulty TEXT NOT NULL DEFAULT 'normal',
+            visibility         TEXT NOT NULL DEFAULT 'public',
+            status             TEXT NOT NULL DEFAULT 'draft',
+            capabilities       TEXT NOT NULL,
+            participation_rules TEXT,
+            max_attempts       INTEGER NOT NULL DEFAULT 0,
+            cooldown_minutes   INTEGER NOT NULL DEFAULT 0,
+            open_at            TEXT,
+            close_at           TEXT,
+            max_issuance       INTEGER NOT NULL DEFAULT 0,
+            credential_ttl_days INTEGER NOT NULL DEFAULT 0,
+            security_level     TEXT NOT NULL DEFAULT 'normal',
+            created_by         INTEGER NOT NULL REFERENCES users(id),
+            created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at         TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_prog_club ON recognition_programs(club_id, country, status)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_prog_status ON recognition_programs(status)");
+    echo "[OK] recognition_programs 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_program_versions (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            program_id       INTEGER NOT NULL REFERENCES recognition_programs(id),
+            version_no       TEXT NOT NULL,
+            status           TEXT NOT NULL DEFAULT 'draft',
+            content_snapshot TEXT NOT NULL,
+            published_by     INTEGER REFERENCES users(id),
+            published_at     TEXT,
+            created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(program_id, version_no)
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_ver_prog ON recognition_program_versions(program_id, status)");
+    echo "[OK] recognition_program_versions 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_badges (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id     INTEGER NOT NULL,
+            country     TEXT NOT NULL DEFAULT 'china',
+            name        TEXT NOT NULL,
+            category    TEXT NOT NULL DEFAULT 'participation',
+            description TEXT,
+            image_url   TEXT NOT NULL DEFAULT '',
+            version     INTEGER NOT NULL DEFAULT 1,
+            created_by  INTEGER NOT NULL REFERENCES users(id),
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_badge_club ON recognition_badges(club_id, country)");
+    echo "[OK] recognition_badges 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_events (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id            TEXT NOT NULL UNIQUE,
+            idempotency_key     TEXT NOT NULL DEFAULT '' UNIQUE,
+            schema_version      TEXT NOT NULL DEFAULT '1.0',
+            type                TEXT NOT NULL,
+            club_id             INTEGER,
+            country             TEXT NOT NULL DEFAULT 'china',
+            user_id             INTEGER REFERENCES users(id),
+            program_id          INTEGER,
+            program_version_id  INTEGER REFERENCES recognition_program_versions(id),
+            badge_id            INTEGER,
+            connector_id        INTEGER REFERENCES recognition_connectors(id),
+            occurred_at         TEXT NOT NULL,
+            data                TEXT,
+            evidence_refs       TEXT,
+            source_verified     INTEGER NOT NULL DEFAULT 0,
+            status              TEXT NOT NULL DEFAULT 'processed',
+            error_message       TEXT NOT NULL DEFAULT '',
+            created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_evt_user ON recognition_events(user_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_evt_prog ON recognition_events(program_version_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_evt_type ON recognition_events(type)");
+    echo "[OK] recognition_events 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_attempts (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            program_version_id INTEGER NOT NULL REFERENCES recognition_program_versions(id),
+            user_id            INTEGER NOT NULL REFERENCES users(id),
+            status             TEXT NOT NULL DEFAULT 'created',
+            score              INTEGER,
+            answers            TEXT,
+            attempt_no         INTEGER NOT NULL DEFAULT 1,
+            started_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            finished_at        TEXT,
+            UNIQUE(program_version_id, user_id, attempt_no)
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_att_user ON recognition_attempts(user_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_att_status ON recognition_attempts(program_version_id, status)");
+    echo "[OK] recognition_attempts 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_submissions (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            program_version_id INTEGER NOT NULL REFERENCES recognition_program_versions(id),
+            user_id            INTEGER NOT NULL REFERENCES users(id),
+            content            TEXT,
+            file_path          TEXT NOT NULL DEFAULT '',
+            status             TEXT NOT NULL DEFAULT 'pending',
+            reviewed_at        TEXT,
+            created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_sub_prog_user ON recognition_submissions(program_version_id, user_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_sub_status ON recognition_submissions(status)");
+    echo "[OK] recognition_submissions 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_reviews (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            submission_id INTEGER NOT NULL REFERENCES recognition_submissions(id),
+            reviewer_id   INTEGER NOT NULL REFERENCES users(id),
+            decision      TEXT NOT NULL,
+            comment       TEXT,
+            created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(submission_id, reviewer_id)
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_rev_sub ON recognition_reviews(submission_id)");
+    echo "[OK] recognition_reviews 表已创建\n";
+
+    // 签发唯一性：SQLite 用部分唯一索引（仅 active）替代 MySQL 生成列方案，语义一致。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_credentials (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            credential_uid       TEXT NOT NULL UNIQUE,
+            holder_user_id       INTEGER NOT NULL REFERENCES users(id),
+            badge_id             INTEGER NOT NULL REFERENCES recognition_badges(id),
+            badge_version        INTEGER NOT NULL DEFAULT 1,
+            issuer_club_id       INTEGER NOT NULL,
+            issuer_country       TEXT NOT NULL DEFAULT 'china',
+            program_id           INTEGER NOT NULL,
+            program_version_id   INTEGER NOT NULL REFERENCES recognition_program_versions(id),
+            credential_type      TEXT NOT NULL DEFAULT 'participation',
+            verification_level   TEXT NOT NULL DEFAULT 'auto',
+            status               TEXT NOT NULL DEFAULT 'active',
+            condition_snapshot   TEXT,
+            evidence_refs        TEXT,
+            public_visibility    INTEGER NOT NULL DEFAULT 1,
+            issued_at            TEXT NOT NULL DEFAULT (datetime('now')),
+            expires_at           TEXT,
+            revocation_reason    TEXT,
+            revoked_at           TEXT,
+            revoked_by           INTEGER,
+            superseded_by        INTEGER
+        )
+    ");
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_recog_cred_active ON recognition_credentials(program_version_id, holder_user_id, badge_id) WHERE status = 'active'");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_cred_holder ON recognition_credentials(holder_user_id, status)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_cred_club ON recognition_credentials(issuer_club_id, issuer_country)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_cred_expires ON recognition_credentials(status, expires_at)");
+    echo "[OK] recognition_credentials 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_outbox (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_type    TEXT NOT NULL,
+            payload      TEXT,
+            status       TEXT NOT NULL DEFAULT 'pending',
+            attempts     INTEGER NOT NULL DEFAULT 0,
+            last_error   TEXT NOT NULL DEFAULT '',
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            processed_at TEXT
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_outbox_status ON recognition_outbox(status)");
+    echo "[OK] recognition_outbox 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_connectors (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id        INTEGER NOT NULL,
+            country        TEXT NOT NULL DEFAULT 'china',
+            name           TEXT NOT NULL,
+            type           TEXT NOT NULL DEFAULT 'webhook',
+            token_prefix   TEXT NOT NULL,
+            token_hash     TEXT NOT NULL,
+            hmac_secret    TEXT NOT NULL DEFAULT '',
+            scope          TEXT NOT NULL,
+            status         TEXT NOT NULL DEFAULT 'active',
+            created_by     INTEGER NOT NULL REFERENCES users(id),
+            created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            last_used_at   TEXT,
+            revoked_at     TEXT
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_club ON recognition_connectors(club_id, country)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
+    echo "[OK] recognition_connectors 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_identity_links (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            external_provider   TEXT NOT NULL,
+            external_subject_id TEXT NOT NULL,
+            vnfmap_user_id      INTEGER REFERENCES users(id),
+            verification_status TEXT NOT NULL DEFAULT 'pending',
+            linked_at           TEXT,
+            revoked_at          TEXT,
+            created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_recog_idl_active ON recognition_identity_links(external_provider, external_subject_id) WHERE revoked_at IS NULL");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_idl_user ON recognition_identity_links(vnfmap_user_id)");
+    echo "[OK] recognition_identity_links 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_claim_codes (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            code               TEXT NOT NULL UNIQUE,
+            program_id         INTEGER NOT NULL,
+            program_version_id INTEGER NOT NULL REFERENCES recognition_program_versions(id),
+            badge_id           INTEGER NOT NULL,
+            redeemed_by        INTEGER REFERENCES users(id),
+            redeemed_at        TEXT,
+            expires_at         TEXT,
+            created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_claim_prog ON recognition_claim_codes(program_version_id)");
+    echo "[OK] recognition_claim_codes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_club_roles (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id    INTEGER NOT NULL,
+            country    TEXT NOT NULL DEFAULT 'china',
+            user_id    INTEGER NOT NULL REFERENCES users(id),
+            role       TEXT NOT NULL,
+            granted_by INTEGER REFERENCES users(id),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(club_id, country, user_id, role)
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_role_user ON recognition_club_roles(user_id)");
+    echo "[OK] recognition_club_roles 表已创建\n";
 }
 
 moeEnsureSchema($db);

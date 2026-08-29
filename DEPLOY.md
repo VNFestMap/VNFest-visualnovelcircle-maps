@@ -190,8 +190,9 @@ chore     杂项          chore: bump version to 1.7.1
 ### 4.6 数据库变更
 
 1. 修改 `scripts/migrate.php` 添加 `CREATE TABLE IF NOT EXISTS`
-2. PR 中注明有数据库变更
+2. PR 中注明有数据库变更（同好会试炼相关表均以 `recognition_` 前缀命名，需同时维护 MySQL 与 SQLite 两个分支）
 3. 合并后第一次构建的镜像运行时会自动执行（首次启动后手动跑）
+4. 发布顺序固定为：合并 → 容器更新 → `docker exec vnfest-app php scripts/migrate.php` → 访问 `api/health.php` 验证，顺序颠倒会导致新代码访问不到新表而 500
 
 ---
 
@@ -242,6 +243,18 @@ docker exec vnfest-app php scripts/migrate.php
 rsync -avz root@旧IP:/www/wwwroot/旧目录/data/ ./data/
 rsync -avz root@旧IP:/www/wwwroot/旧目录/uploads/ ./uploads/
 ```
+
+---
+
+## 六之二、同好会试炼（Recognition）运维事项
+
+- **配置**：`config.php` 需新增 `RECOGNITION_HMAC_SECRET`（外部 Connector 签名校验）与 `RECOGNITION_CRED_PREFIX`（凭证编号前缀，见 `config.example.php`）。
+- **cron 补偿任务**：凭证过期扫描与通知重试由 `scripts/recognition_worker.php` 消费 `recognition_outbox`，需在宿主机配置：
+  ```bash
+  */5 * * * * docker exec vnfest-app php scripts/recognition_worker.php >> /tmp/recog_worker.log 2>&1
+  ```
+  未配置 cron 时，签发通知会滞留在 outbox 中（不丢失，配置后自动补发）。
+- **验证**：访问 `api/recognition_programs.php?action=list` 应返回 `{"success":true,...}`。
 
 ---
 

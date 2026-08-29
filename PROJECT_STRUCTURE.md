@@ -21,6 +21,7 @@ This repository is the public web root for the VNFest Galgame club map. Root-lev
 - `club-operation-portrait/` - standalone club operation portrait tool.
 - `Game/galgame_club_sim/` - standalone Galgame club simulator.
 - `tools/` - small public utility pages.
+- `trial/` - club recognition trial pages (list, detail, quiz, claim code redeem) and their assets; backed by the `recognition_*` tables and `includes/recognition/` modules.
 - `user-v2-assets/` - built assets used by the root `user.html` entry.
 
 ## Public Root Entries
@@ -39,6 +40,8 @@ The following files intentionally stay at the web root so existing links keep wo
 - `submit_event.html`
 - `submit_publication.html`
 - `feedback.html`
+- `achievements.html` - user achievement archive (recognition credentials)
+- `verify.html` - public credential verification page
 
 ## Development And Operations
 
@@ -54,3 +57,4 @@ The following files intentionally stay at the web root so existing links keep wo
 - Keep PHP endpoints in `api/`; do not place API copies under `js/`.
 - Keep browser scripts in `js/`; do not nest a second `js/` folder inside it.
 - Keep logs, compressed backups, exported archives, and raw source materials under `_local/` or another ignored operations directory.
+- Recognition/trial backend lives in `includes/recognition/` (one responsibility per file: capability / roles / events / rules / credential / outbox / pipeline / signature); only `credential.php` may create or change credential state. All `recognition_*` tables must be maintained in both dialect branches of `scripts/migrate.php`.
