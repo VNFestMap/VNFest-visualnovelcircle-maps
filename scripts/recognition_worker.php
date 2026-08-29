@@ -1,5 +1,5 @@
 <?php
-// scripts/recognition_worker.php - 试炼系统补偿任务（CLI，cron 调用）
+// scripts/recognition_worker.php - 考核系统补偿任务（CLI，cron 调用）
 // 职责：
 //   1. 消费 recognition_outbox（签发/撤销/过期通知等失败补偿与重试）
 //   2. 扫描到期凭证并置为 expired（凭证过期不物理删除）

@@ -33,19 +33,19 @@ function recogOpenVersion(int $programId): array {
     $stmt = $db->prepare('SELECT * FROM recognition_programs WHERE id = ?');
     $stmt->execute([$programId]);
     $program = $stmt->fetch();
-    if (!$program) return ['error' => '试炼不存在'];
-    if ($program['status'] !== 'published') return ['error' => '试炼当前不可参与'];
+    if (!$program) return ['error' => '考核不存在'];
+    if ($program['status'] !== 'published') return ['error' => '考核当前不可参与'];
 
     $now = time();
     if (!empty($program['open_at']) && $now < strtotime($program['open_at'])) {
-        return ['error' => '试炼尚未开放（' . $program['open_at'] . ' 开始）'];
+        return ['error' => '考核尚未开放（' . $program['open_at'] . ' 开始）'];
     }
     if (!empty($program['close_at']) && $now > strtotime($program['close_at'])) {
-        return ['error' => '试炼已截止'];
+        return ['error' => '考核已截止'];
     }
 
     $version = recogPublishedVersion($db, $programId);
-    if (!$version) return ['error' => '试炼暂无已发布版本'];
+    if (!$version) return ['error' => '考核暂无已发布版本'];
     return ['program' => $program, 'version' => $version, 'error' => null];
 }
 
@@ -100,7 +100,7 @@ switch ($action) {
         $version = $open['version'];
         $content = $version['content'];
         $questions = $content['quiz']['questions'] ?? [];
-        if (!$questions) recogRespond(['success' => false, 'message' => '该项目不是答题类试炼']);
+        if (!$questions) recogRespond(['success' => false, 'message' => '该项目不是答题类考核']);
 
         $versionId = (int)$version['id'];
 
@@ -269,7 +269,7 @@ switch ($action) {
             'already_held' => $award['duplicate'],
             'credential' => $award['credential'],
             'reasons' => $award['reasons'],
-            'message' => $award['error'] ?: ($passed ? '恭喜，试炼通过' : '未满足通过条件，可再次尝试'),
+            'message' => $award['error'] ?: ($passed ? '恭喜，考核通过' : '未满足通过条件，可再次尝试'),
         ]);
     }
 
@@ -363,7 +363,7 @@ switch ($action) {
         $stmt->execute([(int)$version['program_id']]);
         $program = $stmt->fetch();
         if (!$program || $program['status'] !== 'published') {
-            recogRespond(['success' => false, 'message' => '试炼当前不可参与']);
+            recogRespond(['success' => false, 'message' => '考核当前不可参与']);
         }
 
         // 同一版本同一用户只保留一份待审提交；已有有效凭证则不再重复提交
@@ -373,7 +373,7 @@ switch ($action) {
         );
         $stmt->execute([$versionId, (int)$user['id']]);
         if ($stmt->fetch()) {
-            recogRespond(['success' => false, 'message' => '你已获得该试炼的凭证']);
+            recogRespond(['success' => false, 'message' => '你已获得该考核的凭证']);
         }
         $stmt = $db->prepare(
             "SELECT id FROM recognition_submissions WHERE program_version_id = ? AND user_id = ? AND status = 'pending'"
@@ -403,7 +403,7 @@ switch ($action) {
         recogRespond(['success' => true, 'submission_id' => $submissionId, 'message' => '已提交，等待同好会审核']);
     }
 
-    // ---- 查询我对某试炼的参与状态 ----
+    // ---- 查询我对某考核的参与状态 ----
     case 'status': {
         $user = requireLogin();
         $programId = (int)($_GET['program_id'] ?? 0);

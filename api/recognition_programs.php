@@ -1,7 +1,7 @@
 <?php
-// api/recognition_programs.php - 同好会试炼（认可项目）创建与管理
+// api/recognition_programs.php - 同好会考核（认可项目）创建与管理
 // 动作: list / detail / create / update / publish / set_status / manage
-//       badge_create / badge_list
+//       badge_create / badge_update / badge_list / caps_reference
 // 权限: 读公开；写要求该同好会 Program Designer 角色（见 includes/recognition/roles.php）
 
 header('Content-Type: application/json; charset=utf-8');
@@ -140,7 +140,7 @@ $db = getDB();
 
 switch ($action) {
 
-    // ---- 公开：已发布试炼列表 ----
+    // ---- 公开：已发布考核列表 ----
     case 'list': {
         $clubId = (int)($_GET['club_id'] ?? 0);
         $country = displayClubCountry((string)($_GET['country'] ?? 'china')) ?? 'china';
@@ -172,14 +172,14 @@ switch ($action) {
         recogRespond(['success' => true, 'programs' => $programs]);
     }
 
-    // ---- 公开：试炼详情（不含答案） ----
+    // ---- 公开：考核详情（不含答案） ----
     case 'detail': {
         $programId = (int)($_GET['id'] ?? 0);
         $stmt = $db->prepare('SELECT * FROM recognition_programs WHERE id = ?');
         $stmt->execute([$programId]);
         $program = $stmt->fetch();
         if (!$program) {
-            recogRespond(['success' => false, 'message' => '试炼不存在'], 404);
+            recogRespond(['success' => false, 'message' => '考核不存在'], 404);
         }
 
         $isManager = false;
@@ -188,7 +188,7 @@ switch ($action) {
             $isManager = recogCanDesign($viewer, (int)$program['club_id'], (string)$program['country']);
         }
         if ($program['status'] === 'draft' && !$isManager) {
-            recogRespond(['success' => false, 'message' => '试炼不存在'], 404);
+            recogRespond(['success' => false, 'message' => '考核不存在'], 404);
         }
 
         $version = recogPublishedVersion($db, $programId);
@@ -257,7 +257,7 @@ switch ($action) {
         $clubId = (int)($input['club_id'] ?? 0);
         $country = displayClubCountry((string)($input['country'] ?? 'china')) ?? 'china';
         if (!recogCanDesign($user, $clubId, $country)) {
-            recogRespond(['success' => false, 'message' => '无权为该同好会创建试炼'], 403);
+            recogRespond(['success' => false, 'message' => '无权为该同好会创建考核'], 403);
         }
         if (!displayClubRecord($clubId, $country)) {
             recogRespond(['success' => false, 'message' => '同好会不存在']);
@@ -324,9 +324,9 @@ switch ($action) {
         $stmt = $db->prepare('SELECT * FROM recognition_programs WHERE id = ?');
         $stmt->execute([$programId]);
         $program = $stmt->fetch();
-        if (!$program) recogRespond(['success' => false, 'message' => '试炼不存在'], 404);
+        if (!$program) recogRespond(['success' => false, 'message' => '考核不存在'], 404);
         if (!recogCanDesign($user, (int)$program['club_id'], (string)$program['country'])) {
-            recogRespond(['success' => false, 'message' => '无权修改该试炼'], 403);
+            recogRespond(['success' => false, 'message' => '无权修改该考核'], 403);
         }
 
         $type = isset($input['type']) && in_array($input['type'], RECOG_PROGRAM_TYPES, true) ? $input['type'] : $program['type'];
@@ -405,9 +405,9 @@ switch ($action) {
         $stmt = $db->prepare('SELECT * FROM recognition_programs WHERE id = ?');
         $stmt->execute([$programId]);
         $program = $stmt->fetch();
-        if (!$program) recogRespond(['success' => false, 'message' => '试炼不存在'], 404);
+        if (!$program) recogRespond(['success' => false, 'message' => '考核不存在'], 404);
         if (!recogCanDesign($user, (int)$program['club_id'], (string)$program['country'])) {
-            recogRespond(['success' => false, 'message' => '无权发布该试炼'], 403);
+            recogRespond(['success' => false, 'message' => '无权发布该考核'], 403);
         }
 
         $stmt = $db->prepare(
@@ -459,7 +459,7 @@ switch ($action) {
         $stmt = $db->prepare('SELECT * FROM recognition_programs WHERE id = ?');
         $stmt->execute([$programId]);
         $program = $stmt->fetch();
-        if (!$program) recogRespond(['success' => false, 'message' => '试炼不存在'], 404);
+        if (!$program) recogRespond(['success' => false, 'message' => '考核不存在'], 404);
         if (!recogCanDesign($user, (int)$program['club_id'], (string)$program['country'])) {
             recogRespond(['success' => false, 'message' => '无权操作'], 403);
         }
@@ -526,6 +526,56 @@ switch ($action) {
         recogRespond(['success' => true, 'badge_id' => $badgeId]);
     }
 
+    // ---- 徽章定义：更新 ----
+    case 'badge_update': {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') recogRespond(['success' => false, 'message' => '仅支持 POST']);
+        $user = requireLogin();
+        $input = recogInput();
+        $badgeId = (int)($input['badge_id'] ?? 0);
+        $clubId = (int)($input['club_id'] ?? 0);
+        $country = displayClubCountry((string)($input['country'] ?? 'china')) ?? 'china';
+        if (!recogHasRole($user, $clubId, $country, 'badge_manager') && $user['role'] !== 'super_admin' && !canManageClub($user, $clubId)) {
+            recogRespond(['success' => false, 'message' => '无权管理该同好会徽章'], 403);
+        }
+        $stmt = $db->prepare('SELECT * FROM recognition_badges WHERE id = ?');
+        $stmt->execute([$badgeId]);
+        $badge = $stmt->fetch();
+        if (!$badge || (int)$badge['club_id'] !== $clubId || (string)$badge['country'] !== $country) {
+            recogRespond(['success' => false, 'message' => '徽章不存在或不属于该同好会'], 404);
+        }
+
+        $sets = [];
+        $params = [];
+        if (array_key_exists('name', $input)) {
+            $name = trim((string)$input['name']);
+            if ($name === '' || recogSafeStrlen($name) > 60) {
+                recogRespond(['success' => false, 'message' => '徽章名称必填且不超过 60 字']);
+            }
+            $sets[] = 'name = ?';
+            $params[] = $name;
+        }
+        if (array_key_exists('category', $input)) {
+            $categories = ['knowledge', 'skill', 'participation', 'contribution', 'competition', 'honor', 'memorial', 'joint'];
+            $sets[] = 'category = ?';
+            $params[] = in_array($input['category'], $categories, true) ? $input['category'] : 'participation';
+        }
+        if (array_key_exists('description', $input)) {
+            $sets[] = 'description = ?';
+            $params[] = trim((string)$input['description']);
+        }
+        if (array_key_exists('image_url', $input)) {
+            $sets[] = 'image_url = ?';
+            $params[] = trim((string)$input['image_url']);
+        }
+        if (!$sets) recogRespond(['success' => false, 'message' => '没有需要更新的字段']);
+
+        $sets[] = 'version = version + 1';
+        $params[] = $badgeId;
+        $db->prepare('UPDATE recognition_badges SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+        logAction('recog_badge_updated', 'recognition_badge', $badgeId, ['club_id' => $clubId]);
+        recogRespond(['success' => true, 'version' => (int)$badge['version'] + 1]);
+    }
+
     // ---- 徽章定义：同好会列表 ----
     case 'badge_list': {
         $clubId = (int)($_GET['club_id'] ?? 0);
@@ -536,6 +586,21 @@ switch ($action) {
         );
         $stmt->execute([$clubId, $country]);
         recogRespond(['success' => true, 'badges' => $stmt->fetchAll()]);
+    }
+
+    // ---- 档位能力参考（公开）：标准/进阶/专家三档能力清单与标签 ----
+    case 'caps_reference': {
+        recogRespond([
+            'success' => true,
+            'tiers' => [
+                ['key' => 'standard', 'label' => '标准', 'caps' => array_values(RECOGNITION_STANDARD_CAPS)],
+                ['key' => 'advanced', 'label' => '进阶', 'caps' => array_values(RECOGNITION_ADVANCED_CAPS)],
+                ['key' => 'expert', 'label' => '专家', 'caps' => array_values(RECOGNITION_EXPERT_CAPS)],
+            ],
+            'cap_labels' => RECOGNITION_CAP_LABELS,
+            'implemented' => array_values(RECOGNITION_IMPLEMENTED_CAPS),
+            'note' => '层级不落库：保存时按实际使用能力自动判定，档位选择器仅控制编辑器可见范围。',
+        ]);
     }
 
     default:

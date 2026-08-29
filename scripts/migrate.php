@@ -549,7 +549,7 @@ if ($isMysql) {
     $tryIndex("CREATE INDEX idx_quiz_results_user ON quiz_results(vnfest_user_id)");
     echo "[OK] quiz_results 表已创建\n";
 
-    // ===== 同好会试炼（Recognition）核心模型 =====
+    // ===== 同好会考核（Recognition）核心模型 =====
     // 统一核心对象：RecognitionProgram / ProgramVersion / Event / RuleSet / Credential
     // RuleSet 以版本快照 JSON（content_snapshot）承载，已发布版本不可变。
     // 注意：clubs 主数据在 JSON 文件中按 (id, country) 标识，故相关表均携带 country。
@@ -1386,7 +1386,7 @@ if ($isMysql) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_quiz_results_user ON quiz_results(vnfest_user_id)");
     echo "[OK] quiz_results 表已创建\n";
 
-    // ===== 同好会试炼（Recognition）核心模型（SQLite 方言，与 MySQL 分支保持一致）=====
+    // ===== 同好会考核（Recognition）核心模型（SQLite 方言，与 MySQL 分支保持一致）=====
     $db->exec("
         CREATE TABLE IF NOT EXISTS recognition_programs (
             id                 INTEGER PRIMARY KEY AUTOINCREMENT,

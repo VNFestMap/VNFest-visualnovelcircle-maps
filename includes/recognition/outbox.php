@@ -88,7 +88,7 @@ function recogHandleOutboxTask(PDO $db, string $taskType, array $payload): void 
                 'recognition_revoked',
                 '凭证状态变更：' . ($payload['badge_name'] ?? ''),
                 '你的凭证已被签发方撤销（' . ($payload['reason'] ?? '未说明原因') . '）。该记录仍保留在你的履历中。',
-                '/achievements.html',
+                '/user.html?tab=achievements',
                 'recognition_credential',
                 (int)($payload['credential_id'] ?? 0)
             );
@@ -99,7 +99,7 @@ function recogHandleOutboxTask(PDO $db, string $taskType, array $payload): void 
                 'recognition_expired',
                 '凭证已过期：' . ($payload['badge_name'] ?? ''),
                 '你在「' . ($payload['program_title'] ?? '') . '」获得的凭证已过有效期，历史记录仍可在成就库查看。',
-                '/achievements.html',
+                '/user.html?tab=achievements',
                 'recognition_credential',
                 (int)($payload['credential_id'] ?? 0)
             );
