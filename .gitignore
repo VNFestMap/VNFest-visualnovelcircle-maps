@@ -93,6 +93,8 @@ data/club_avatars/*
 !data/club_avatars/.gitkeep
 data/publication_images/*
 !data/publication_images/.gitkeep
+data/badge_images/*
+!data/badge_images/.gitkeep
 data/event_images/*
 data/manuscripts/*
 !data/manuscripts/.htaccess

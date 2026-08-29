@@ -1,4 +1,4 @@
-/* trial/trial.js - 同好会试炼前端（列表 / 详情 / 答题 / 兑换 / 管理） */
+/* trial/trial.js - 同好会试炼前端（列表 / 详情 / 答题 / 兑换） */
 (function () {
   'use strict';
 
@@ -40,7 +40,7 @@
     }).then(function (r) { return r.json(); });
   }
   function showView(name) {
-    ['list', 'detail', 'quiz', 'manage'].forEach(function (v) {
+    ['list', 'detail', 'quiz'].forEach(function (v) {
       $('#view-' + v).hidden = v !== name;
     });
     window.scrollTo(0, 0);
@@ -269,239 +269,11 @@
     }).catch(function () { btn.disabled = false; toast('网络错误'); });
   }
 
-  // ---------- 管理面板（标准模式创建） ----------
-  function renderManage() {
-    if (!state.user) { location.href = '../login.html'; return; }
-    showView('manage');
-    var body = $('#manage-body');
-    body.innerHTML = '<div class="panel"><h2>同好会试炼管理</h2>' +
-      '<p class="muted">当前为标准设置：基础题型、固定及格线、尝试次数、单枚徽章。更复杂的流程将随进阶/专家阶段开放。</p>' +
-      '<div class="row">' +
-        '<div class="field" style="flex:1;min-width:140px"><label>同好会 ID</label><input id="mg-club-id" type="number" placeholder="俱乐部编号"></div>' +
-        '<div class="field" style="width:130px"><label>地区</label><select id="mg-country"><option value="china">中国</option><option value="japan">日本</option></select></div>' +
-        '<button class="btn" id="mg-load" style="margin-top:20px">载入</button>' +
-      '</div>' +
-      '<div id="mg-content"></div></div>';
-    $('#mg-load').addEventListener('click', loadManageClub);
-  }
-
-  function loadManageClub() {
-    var clubId = parseInt($('#mg-club-id').value, 10), country = $('#mg-country').value;
-    if (!clubId) { toast('请填写同好会 ID'); return; }
-    var box = $('#mg-content');
-    box.innerHTML = '<p class="empty">加载中…</p>';
-    Promise.all([
-      api('recognition_programs.php?action=manage&club_id=' + clubId + '&country=' + country),
-      api('recognition_programs.php?action=badge_list&club_id=' + clubId + '&country=' + country)
-    ]).then(function (results) {
-      var progs = results[0], badges = results[1];
-      if (!progs.success) { box.innerHTML = '<p class="empty">' + esc(progs.message) + '</p>'; return; }
-      var badgeOptions = ((badges.badges) || []).map(function (b) {
-        return '<option value="' + b.id + '">' + esc(b.name) + '</option>';
-      }).join('');
-
-      var html = '<h3>已创建的项目</h3>';
-      if (!progs.programs.length) html += '<p class="muted">暂无</p>';
-      html += '<table class="simple"><tr><th>标题</th><th>类型</th><th>层级</th><th>状态</th><th>已签发</th><th>操作</th></tr>' +
-        progs.programs.map(function (p) {
-          return '<tr><td><a href="#/program/' + p.id + '">' + esc(p.title) + '</a></td>' +
-            '<td>' + esc(TYPE_LABEL[p.type] || p.type) + '</td><td>' + esc(p.tier) + '</td>' +
-            '<td>' + esc(STATUS_LABEL[p.status] || p.status) + '</td><td>' + p.issued_total + '</td>' +
-            '<td>' + (p.status === 'draft' ? '<button class="btn" data-publish="' + p.id + '">发布</button>' : '') +
-            ' <button class="btn" data-codes="' + p.id + '">生成兑换码</button>' +
-            (p.type === 'assessment' ? ' <button class="btn" data-sync="' + p.id + '">同步答题战绩</button>' : '') + '</td></tr>';
-        }).join('') + '</table>';
-
-      html += '<h3>创建徽章</h3>' +
-        '<div class="row">' +
-          '<input id="mg-badge-name" placeholder="徽章名称" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:8px">' +
-          '<button class="btn" id="mg-badge-create">创建徽章</button>' +
-        '</div>';
-
-      html += '<h3>创建试炼（标准设置）</h3>' +
-        '<div class="field"><label>标题</label><input id="np-title"></div>' +
-        '<div class="field"><label>介绍</label><textarea id="np-intro" rows="2"></textarea></div>' +
-        '<div class="row">' +
-          '<div class="field" style="flex:1"><label>类型</label><select id="np-type">' +
-            '<option value="assessment">知识试炼（答题）</option>' +
-            '<option value="activity">活动（兑换码/签到）</option>' +
-            '<option value="award">人工授予</option>' +
-          '</select></div>' +
-          '<div class="field" style="width:120px"><label>及格分</label><input id="np-pass" type="number" value="60" min="0" max="100"></div>' +
-          '<div class="field" style="flex:1"><label>奖励徽章</label><select id="np-badge">' + badgeOptions + '</select></div>' +
-        '</div>' +
-        '<div class="row">' +
-          '<div class="field" style="width:140px"><label>尝试次数（0=不限）</label><input id="np-attempts" type="number" value="3" min="0"></div>' +
-          '<div class="field" style="width:160px"><label>冷却分钟（0=无）</label><input id="np-cooldown" type="number" value="30" min="0"></div>' +
-        '</div>' +
-        '<div id="np-questions"></div>' +
-        '<div class="row">' +
-          '<button class="btn" id="np-add-q">+ 添加题目</button>' +
-          '<button class="btn btn-primary" id="np-save">保存草稿</button>' +
-          '<button class="btn btn-primary" id="np-publish">保存并发布</button>' +
-        '</div>' +
-        '<div class="field" style="margin-top:16px"><label>人工授予：用户名（逗号分隔，最多 200 个）</label>' +
-          '<div class="row"><input id="mg-grant-names" placeholder="user_a, user_b" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:8px">' +
-          '<select id="mg-grant-program" style="border:1px solid var(--line);border-radius:8px;padding:8px">' +
-            progs.programs.filter(function (p) { return p.type === 'award' || p.type === 'activity'; }).map(function (p) {
-              return '<option value="' + p.id + '">' + esc(p.title) + '</option>';
-            }).join('') +
-          '</select>' +
-          '<button class="btn" id="mg-grant">授予</button></div></div>' +
-        '<div class="field" style="margin-top:12px"><label>批量导入活动参与名单（CSV：用户名每行一个或逗号分隔）</label>' +
-          '<textarea id="mg-import-csv" rows="3" placeholder="user_a&#10;user_b&#10;user_c" style="border:1px solid var(--line);border-radius:8px;padding:8px;width:100%"></textarea>' +
-          '<div class="row" style="margin-top:8px">' +
-            '<select id="mg-import-program" style="border:1px solid var(--line);border-radius:8px;padding:8px">' +
-              progs.programs.filter(function (p) { return p.type === 'activity' || p.type === 'award'; }).map(function (p) {
-                return '<option value="' + p.id + '">' + esc(p.title) + '</option>';
-              }).join('') +
-            '</select>' +
-            '<button class="btn" id="mg-import">导入并签发</button>' +
-          '</div></div>';
-
-      box.innerHTML = html;
-
-      var qIndex = 0;
-      function addQuestionRow() {
-        var div = document.createElement('div');
-        div.className = 'panel';
-        div.style.marginTop = '10px';
-        div.innerHTML = '<div class="field"><label>题干</label><input class="qq-text"></div>' +
-          '<div class="row">' +
-            '<select class="qq-type" style="border:1px solid var(--line);border-radius:8px;padding:8px">' +
-              '<option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option>' +
-            '</select>' +
-            '<input class="qq-options" placeholder="选项，用 | 分隔（判断题自动为 对/错）" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:8px">' +
-            '<input class="qq-answer" type="number" value="0" min="0" title="正确答案序号（多选逗号分隔）" style="width:110px;border:1px solid var(--line);border-radius:8px;padding:8px">' +
-            '<button class="btn btn-ghost qq-del">删除</button>' +
-          '</div>';
-        div.querySelector('.qq-del').addEventListener('click', function () { div.remove(); });
-        div.querySelector('.qq-type').addEventListener('change', function (e) {
-          var opt = div.querySelector('.qq-options');
-          if (e.target.value === 'judge') { opt.value = '对|错'; opt.disabled = true; } else { opt.disabled = false; }
-        });
-        $('#np-questions').appendChild(div);
-        qIndex++;
-      }
-      $('#np-add-q').addEventListener('click', addQuestionRow);
-      addQuestionRow();
-
-      function collectPayload() {
-        var type = $('#np-type').value;
-        var badgeId = parseInt($('#np-badge').value, 10);
-        if (!badgeId) { toast('请先创建并选择奖励徽章'); return null; }
-        var questions = [];
-        $('#np-questions').querySelectorAll('.panel').forEach(function (panel) {
-          var text = panel.querySelector('.qq-text').value.trim();
-          if (!text) return;
-          var qtype = panel.querySelector('.qq-type').value;
-          var options = qtype === 'judge' ? ['对', '错'] :
-            panel.querySelector('.qq-options').value.split('|').map(function (s) { return s.trim(); }).filter(Boolean);
-          var answerRaw = panel.querySelector('.qq-answer').value || '0';
-          var answer = answerRaw.split(',').map(function (s) { return parseInt(s.trim(), 10); }).filter(function (n) { return !isNaN(n); });
-          questions.push({ type: qtype, question: text, options: options, answer: answer, points: 10 });
-        });
-        var rules = { logic: 'all', conditions: [], award: { badge_id: badgeId, verification_level: 'auto' } };
-        if (type === 'assessment') {
-          if (!questions.length) { toast('答题试炼至少需要一道题'); return null; }
-          rules.conditions.push({ op: 'score_gte', value: parseInt($('#np-pass').value, 10) || 60 });
-        }
-        return {
-          club_id: clubId, country: country, type: type,
-          title: $('#np-title').value.trim(), intro: $('#np-intro').value.trim(),
-          max_attempts: parseInt($('#np-attempts').value, 10) || 0,
-          cooldown_minutes: parseInt($('#np-cooldown').value, 10) || 0,
-          content: { quiz: { questions: questions, shuffle: false }, claim: { enabled: type === 'activity' }, rules: rules }
-        };
-      }
-
-      function saveProgram(publishAfter) {
-        var payload = collectPayload();
-        if (!payload) return;
-        api('recognition_programs.php?action=create', { body: payload }).then(function (res) {
-          if (!res.success) { toast(res.message || '创建失败'); return; }
-          if (!publishAfter) { toast('草稿已保存（层级：' + res.tier + '）'); loadManageClub(); return; }
-          api('recognition_programs.php?action=publish', { body: { program_id: res.program_id } }).then(function (pub) {
-            toast(pub.success ? '已发布' : (pub.message || '发布失败'));
-            loadManageClub();
-          });
-        });
-      }
-      $('#np-save').addEventListener('click', function () { saveProgram(false); });
-      $('#np-publish').addEventListener('click', function () { saveProgram(true); });
-
-      $('#mg-badge-create').addEventListener('click', function () {
-        var name = $('#mg-badge-name').value.trim();
-        if (!name) return;
-        api('recognition_programs.php?action=badge_create', { body: { club_id: clubId, country: country, name: name, category: 'participation' } })
-          .then(function (r) { toast(r.success ? '徽章已创建' : r.message); if (r.success) loadManageClub(); });
-      });
-
-      box.querySelectorAll('[data-publish]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          api('recognition_programs.php?action=publish', { body: { program_id: parseInt(btn.dataset.publish, 10) } })
-            .then(function (r) { toast(r.success ? '已发布 ' + r.version_no : r.message); loadManageClub(); });
-        });
-      });
-      box.querySelectorAll('[data-codes]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var pid = parseInt(btn.dataset.codes, 10);
-          var n = parseInt(prompt('生成多少个兑换码？（最多 500）', '20'), 10);
-          if (!n) return;
-          api('recognition_admin.php?action=claim_generate', { body: { program_id: pid, count: n, ttl_hours: 72 } })
-            .then(function (r) {
-              if (!r.success) { toast(r.message); return; }
-              var shareUrl = location.origin + location.pathname + '#/program/' + pid;
-              prompt('签到入口（可制作成二维码）：', shareUrl);
-              prompt('兑换码列表：', r.codes.join(','));
-              loadManageClub();
-            });
-        });
-      });
-      box.querySelectorAll('[data-sync]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var pid = parseInt(btn.dataset.sync, 10);
-          btn.disabled = true;
-          api('recognition_events.php?action=quiz_sync', { body: { program_id: pid, limit: 500 } })
-            .then(function (r) {
-              toast(r.success ? r.message : (r.message || '同步失败'));
-              btn.disabled = false;
-              if (r.success) loadManageClub();
-            }).catch(function () { btn.disabled = false; toast('网络错误'); });
-        });
-      });
-      var importBtn = $('#mg-import');
-      if (importBtn) importBtn.addEventListener('click', function () {
-        var csv = $('#mg-import-csv').value;
-        var pid = parseInt($('#mg-import-program').value, 10);
-        if (!csv.trim() || !pid) { toast('请填写名单并选择项目'); return; }
-        importBtn.disabled = true;
-        api('recognition_admin.php?action=import_participants', { body: { program_id: pid, csv: csv } })
-          .then(function (r) {
-            importBtn.disabled = false;
-            if (!r.success) { toast(r.message); return; }
-            toast('已导入签发 ' + r.imported + ' 人' + (r.skipped_total ? '；跳过 ' + r.skipped_total + ' 人' : ''));
-            if (r.imported > 0) $('#mg-import-csv').value = '';
-            loadManageClub();
-          }).catch(function () { importBtn.disabled = false; toast('网络错误'); });
-      });
-      var grantBtn = $('#mg-grant');
-      if (grantBtn) grantBtn.addEventListener('click', function () {
-        var names = $('#mg-grant-names').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
-        var pid = parseInt($('#mg-grant-program').value, 10);
-        if (!names.length || !pid) { toast('请填写用户名并选择授予项目'); return; }
-        api('recognition_credentials.php?action=grant', { body: { usernames: names, program_id: pid } })
-          .then(function (r) { toast(r.success ? ('已授予 ' + r.granted + ' 人' + (r.skipped.length ? '；跳过：' + r.skipped.join('、') : '')) : r.message); });
-      });
-    }).catch(function () { box.innerHTML = '<p class="empty">加载失败（可能无权限）</p>'; });
-  }
-
   // ---------- 路由 ----------
   function route() {
     var hash = location.hash || '#/';
     var m;
     if ((m = hash.match(/^#\/program\/(\d+)/))) renderDetail(parseInt(m[1], 10));
-    else if (hash === '#/manage') renderManage();
     else renderList();
   }
 
@@ -514,9 +286,8 @@
       state.typeFilter = chip.dataset.type;
       renderList();
     });
-    $('#manage-entry').addEventListener('click', function () { location.hash = '#/manage'; });
+    $('#manage-entry').addEventListener('click', function () { location.href = '../admin/club_manager.html?tab=recognition'; });
     $('#back-to-list').addEventListener('click', function () { location.hash = '#/'; });
-    $('#back-from-manage').addEventListener('click', function () { location.hash = '#/'; });
     window.addEventListener('hashchange', route);
 
     loadLoginState().then(route);

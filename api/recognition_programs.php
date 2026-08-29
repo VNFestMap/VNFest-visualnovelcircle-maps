@@ -37,7 +37,7 @@ function recogInput(): array {
 /**
  * 从内容推导 capabilities（不存 mode 字段，层级由能力集合判断）
  */
-function recogDeriveCapabilities(array $content, string $type): array {
+function recogDeriveCapabilities(array $content, string $type, array $fields = []): array {
     $caps = [];
     $questions = $content['quiz']['questions'] ?? [];
     if ($questions) {
@@ -56,9 +56,20 @@ function recogDeriveCapabilities(array $content, string $type): array {
     if (!empty($content['claim']['enabled'])) $caps[] = 'activity.claim_code';
     if ($type === 'submission') { $caps[] = 'submission.text'; $caps[] = 'review.manual'; }
     if ($type === 'award') $caps[] = 'award.manual';
+    if ((int)($fields['credential_ttl_days'] ?? 0) > 0) $caps[] = 'credential.expiring';
+    if ((int)($fields['max_issuance'] ?? 0) > 0) $caps[] = 'credential.limited';
     $caps[] = 'credential.single';
     $caps[] = 'stats.basic';
     return recogValidCapabilities(array_values(array_unique($caps)));
+}
+
+/**
+ * 回读时补充项目字段对应的能力（历史行的 capabilities 列可能未含）
+ */
+function recogAugmentCapsWithFields(array $caps, array $row): array {
+    if ((int)($row['credential_ttl_days'] ?? 0) > 0 && !in_array('credential.expiring', $caps, true)) $caps[] = 'credential.expiring';
+    if ((int)($row['max_issuance'] ?? 0) > 0 && !in_array('credential.limited', $caps, true)) $caps[] = 'credential.limited';
+    return $caps;
 }
 
 /**
@@ -147,7 +158,7 @@ switch ($action) {
         $type = (string)($_GET['type'] ?? '');
 
         $sql = "SELECT p.id, p.club_id, p.country, p.type, p.title, p.intro, p.participant_difficulty,
-                       p.open_at, p.close_at, p.status, p.capabilities, p.created_at
+                       p.open_at, p.close_at, p.status, p.capabilities, p.credential_ttl_days, p.max_issuance, p.created_at
                 FROM recognition_programs p
                 WHERE p.status = 'published' AND p.visibility = 'public'";
         $params = [];
@@ -160,7 +171,7 @@ switch ($action) {
         foreach ($stmt->fetchAll() as $row) {
             $club = displayClubRecord((int)$row['club_id'], (string)$row['country']);
             $row['club_name'] = $club['name'] ?? '同好会 #' . $row['club_id'];
-            $row['capabilities'] = json_decode($row['capabilities'], true) ?: [];
+            $row['capabilities'] = recogAugmentCapsWithFields(json_decode($row['capabilities'], true) ?: [], $row);
             $row['tier'] = recogDetectTier($row['capabilities']);
             // 参与人数与签发数
             $c = $db->prepare('SELECT COUNT(*) AS c FROM recognition_credentials WHERE program_id = ? AND status = ?');
@@ -206,7 +217,7 @@ switch ($action) {
         }
 
         $club = displayClubRecord((int)$program['club_id'], (string)$program['country']);
-        $caps = json_decode($program['capabilities'], true) ?: [];
+        $caps = recogAugmentCapsWithFields(json_decode($program['capabilities'], true) ?: [], $program);
 
         $payload = [
             'success' => true,
@@ -271,7 +282,10 @@ switch ($action) {
         $err = recogValidateContent($content, $type, $clubId, $country);
         if ($err !== null) recogRespond(['success' => false, 'message' => $err]);
 
-        $capabilities = recogDeriveCapabilities($content, $type);
+        $capabilities = recogDeriveCapabilities($content, $type, [
+            'credential_ttl_days' => max(0, (int)($input['credential_ttl_days'] ?? 0)),
+            'max_issuance' => max(0, (int)($input['max_issuance'] ?? 0)),
+        ]);
 
         $db->beginTransaction();
         try {
@@ -349,14 +363,30 @@ switch ($action) {
                     $params[] = max(0, (int)$input[$f]);
                 }
             }
+            $effTtl = array_key_exists('credential_ttl_days', $input) ? max(0, (int)$input['credential_ttl_days']) : (int)$program['credential_ttl_days'];
+            $effMax = array_key_exists('max_issuance', $input) ? max(0, (int)$input['max_issuance']) : (int)$program['max_issuance'];
             if ($content !== null) {
                 $err = recogValidateContent($content, $type, (int)$program['club_id'], (string)$program['country']);
                 if ($err !== null) { $db->rollBack(); recogRespond(['success' => false, 'message' => $err]); }
-                $capabilities = recogDeriveCapabilities($content, $type);
+                $capabilities = recogDeriveCapabilities($content, $type, [
+                    'credential_ttl_days' => $effTtl,
+                    'max_issuance' => $effMax,
+                ]);
                 $updates[] = 'capabilities = ?';
                 $params[] = json_encode($capabilities);
                 $updates[] = 'type = ?';
                 $params[] = $type;
+            } elseif (array_key_exists('credential_ttl_days', $input) || array_key_exists('max_issuance', $input)) {
+                // 仅字段变化：同步增删 credential.expiring / credential.limited 能力
+                $caps = json_decode((string)$program['capabilities'], true) ?: [];
+                $caps = array_values(array_filter($caps, function ($c) use ($effTtl, $effMax) {
+                    if ($c === 'credential.expiring') return $effTtl > 0;
+                    if ($c === 'credential.limited') return $effMax > 0;
+                    return true;
+                }));
+                $caps = recogAugmentCapsWithFields($caps, ['credential_ttl_days' => $effTtl, 'max_issuance' => $effMax]);
+                $updates[] = 'capabilities = ?';
+                $params[] = json_encode(array_values(array_unique($caps)));
             }
             if ($updates) {
                 $params[] = $programId;
@@ -477,13 +507,13 @@ switch ($action) {
             recogRespond(['success' => false, 'message' => '权限不足'], 403);
         }
         $stmt = $db->prepare(
-            'SELECT id, type, title, status, capabilities, open_at, close_at, created_at
+            'SELECT id, type, title, status, capabilities, open_at, close_at, credential_ttl_days, max_issuance, created_at
              FROM recognition_programs WHERE club_id = ? AND country = ? ORDER BY created_at DESC'
         );
         $stmt->execute([$clubId, $country]);
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
-            $caps = json_decode($row['capabilities'], true) ?: [];
+            $caps = recogAugmentCapsWithFields(json_decode($row['capabilities'], true) ?: [], $row);
             $row['tier'] = recogDetectTier($caps);
             $c = $db->prepare('SELECT COUNT(*) AS c FROM recognition_credentials WHERE program_id = ?');
             $c->execute([(int)$row['id']]);
