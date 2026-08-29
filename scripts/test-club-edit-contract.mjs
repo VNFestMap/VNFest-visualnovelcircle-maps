@@ -43,4 +43,13 @@ assert.match(managerSource, /--sidebar-w:\s*248px/, 'manager page should keep th
 assert.match(managerSource, /:root\[data-theme='light'\]\s*\{/, 'manager page should include a dedicated light mode pass');
 assert.match(managerSource, /async function saveClubSettings\s*\(/, 'manager should save club settings in-page without redirecting to the main editor');
 
+// A stray </div> inside the topbar header makes the HTML parser close .admin-main
+// early, re-parenting <main class="admin-content"> as a flex-row sibling and
+// pushing all tab content to the right half of the screen.
+for (const headerBlock of managerSource.match(/<header\b[\s\S]*?<\/header>/g) || []) {
+  const navOpens = (headerBlock.match(/<nav\b/g) || []).length;
+  const navCloses = (headerBlock.match(/<\/nav>/g) || []).length;
+  assert.equal(navOpens, navCloses, 'manager header blocks must close every <nav> they open');
+}
+
 console.log('club edit contract tests passed');
