@@ -1349,3 +1349,119 @@ body {
     border-color: rgba(var(--seed-primary-rgb), 0.12) !important;
   }
 }
+
+/* ── 我的成就（AchievementsTab） ── */
+.ach-root {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ach-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ach-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.ach-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid;
+  border-radius: 12px;
+}
+.ach-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ach-stat-label {
+  font-size: 13px;
+}
+.ach-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+.ach-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ach-group-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.ach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid;
+  border-radius: 12px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ach-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+.ach-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ach-badge-avatar {
+  flex-shrink: 0;
+}
+.ach-badge-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ach-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.ach-card-info .ant-typography {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ach-card-meta {
+  font-size: 12px;
+}
+.ach-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ach-verify-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+.ach-visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .ach-stats {
+    grid-template-columns: 1fr;
+  }
+}

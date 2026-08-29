@@ -12,8 +12,10 @@ import {
   MenuOutlined, CopyOutlined, LinkOutlined,
   TagOutlined, SettingOutlined, FundOutlined, BookOutlined,
   ReloadOutlined, TranslationOutlined, SunOutlined, MoonOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { buildTheme, darkTokens, lightTokens } from './theme-tokens';
+import AchievementsTab from './AchievementsTab';
 import zhCN from 'antd/locale/zh_CN';
 import jaJP from 'antd/locale/ja_JP';
 
@@ -190,7 +192,11 @@ const quickAccessItems = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const validTabs = ['overview', 'account', 'preferences', 'clubs', 'notifications', 'achievements'];
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    return validTabs.includes(requested) ? requested : 'overview';
+  });
   const [language, setLanguage] = useState(() => (
     window.VNFLanguage?.getLanguage?.() === 'ja' ? 'ja' : 'zh'
   ));
@@ -365,6 +371,14 @@ export default function App() {
   const handleTabChange = useCallback((key) => {
     setActiveTab(key);
     setSidebarOpen(false);
+    try {
+      const url = new URL(window.location.href);
+      if (key === 'overview') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', key);
+      window.history.replaceState(null, '', url);
+    } catch {
+      // URL 同步失败不影响切换
+    }
   }, []);
 
   const runAction = useCallback(async (action, successText) => {
@@ -512,6 +526,7 @@ export default function App() {
             { key: 'account', icon: <SafetyOutlined />, label: '账户' },
             { key: 'preferences', icon: <SettingOutlined />, label: '偏好设置' },
             { key: 'clubs', icon: <TeamOutlined />, label: '同好会' },
+            { key: 'achievements', icon: <TrophyOutlined />, label: '我的成就' },
             {
               key: 'notifications',
               icon: <BellOutlined />,
@@ -696,6 +711,12 @@ export default function App() {
                     isManager={isManager}
                     actions={actions}
                   />
+                </section>
+              )}
+
+              {activeTab === 'achievements' && (
+                <section className="vn-animate-in" data-component="我的成就" data-od-id="achievements">
+                  <AchievementsTab themeTokens={t} />
                 </section>
               )}
 

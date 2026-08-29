@@ -20,6 +20,7 @@ require_once __DIR__ . '/../includes/display_club.php';
 require_once __DIR__ . '/../includes/recognition/roles.php';
 require_once __DIR__ . '/../includes/recognition/credential.php';
 require_once __DIR__ . '/../includes/recognition/events.php';
+require_once __DIR__ . '/../includes/recognition/pipeline.php';
 
 function recogRespond(array $payload, int $code = 200): void {
     http_response_code($code);
