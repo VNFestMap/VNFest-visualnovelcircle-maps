@@ -28,6 +28,7 @@
       --radar-color:    #4ea89e;
       --sim-color:      #d48c6a;
       --quiz-color:     #8b6fc0;
+      --exam-color:     #d9a441;
     }
 
     /* ---- 暗色主题（默认） ---- */
@@ -223,7 +224,7 @@
        ============================================================ */
     .gateway {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 20px;
       padding: 8px 0 28px;
     }
@@ -261,6 +262,7 @@
     .card-radar .gateway-icon { background: linear-gradient(135deg, rgba(78,168,158,0.16), rgba(40,120,110,0.06)); color: var(--radar-color); }
     .card-sim   .gateway-icon { background: linear-gradient(135deg, rgba(212,140,106,0.16), rgba(160,100,70,0.06)); color: var(--sim-color); }
     .card-quiz .gateway-icon { background: linear-gradient(135deg, rgba(139,111,192,0.16), rgba(100,70,170,0.06)); color: var(--quiz-color); }
+    .card-exam .gateway-icon { background: linear-gradient(135deg, rgba(217,164,65,0.16), rgba(170,120,30,0.06)); color: var(--exam-color); }
 
     /* 内容区 */
     .gateway-body {
@@ -279,6 +281,7 @@
     .card-radar .gateway-body h2 { color: var(--radar-color); }
     .card-sim   .gateway-body h2 { color: var(--sim-color); }
     .card-quiz .gateway-body h2 { color: var(--quiz-color); }
+    .card-exam .gateway-body h2 { color: var(--exam-color); }
 
     .gateway-desc {
       font-size: 13px;
@@ -296,6 +299,7 @@
     .card-radar .gateway-stats { color: color-mix(in srgb, var(--radar-color) 75%, var(--fg-secondary)); }
     .card-sim   .gateway-stats { color: color-mix(in srgb, var(--sim-color) 75%, var(--fg-secondary)); }
     .card-quiz .gateway-stats { color: color-mix(in srgb, var(--quiz-color) 75%, var(--fg-secondary)); }
+    .card-exam .gateway-stats { color: color-mix(in srgb, var(--exam-color) 75%, var(--fg-secondary)); }
 
     /* 进入按钮 */
     .gateway-enter {
@@ -318,12 +322,14 @@
     .card-radar .gateway-enter { background: rgba(78,168,158,0.1); color: var(--radar-color); border: 1px solid rgba(78,168,158,0.2); }
     .card-sim   .gateway-enter { background: rgba(212,140,106,0.1); color: var(--sim-color); border: 1px solid rgba(212,140,106,0.2); }
     .card-quiz .gateway-enter { background: rgba(139,111,192,0.1); color: var(--quiz-color); border: 1px solid rgba(139,111,192,0.2); }
+    .card-exam .gateway-enter { background: rgba(217,164,65,0.1); color: var(--exam-color); border: 1px solid rgba(217,164,65,0.2); }
 
     .card-moe  .gateway-enter:hover { background: rgba(192,122,184,0.16); }
     .card-twelve .gateway-enter:hover { background: rgba(104,152,208,0.16); }
     .card-radar .gateway-enter:hover { background: rgba(78,168,158,0.16); }
     .card-sim   .gateway-enter:hover { background: rgba(212,140,106,0.16); }
     .card-quiz .gateway-enter:hover { background: rgba(139,111,192,0.16); }
+    .card-exam .gateway-enter:hover { background: rgba(217,164,65,0.16); }
 
     /* ============================================================
        进行中活动
@@ -579,6 +585,26 @@
           <div class="gateway-stats" id="moeStats">加载中…</div>
         </div>
         <span class="gateway-enter">进入活动</span>
+      </a>
+
+      <!-- 同好会考核 -->
+      <a class="gateway-card card-exam" href="./exam/index.html" aria-label="同好会考核 — 完成同好会发布的考核获得成就徽章">
+        <div class="gateway-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M15 8h18v9a9 9 0 0 1-18 0V8Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M15 11h-4a2 2 0 0 0-2 2c0 4.5 3.5 7.5 7 8" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.55"/>
+            <path d="M33 11h4a2 2 0 0 1 2 2c0 4.5-3.5 7.5-7 8" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.55"/>
+            <path d="M24 26v6" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M16 40h16l-2.5-8h-11L16 40Z" stroke="currentColor" stroke-width="1.4" fill="none"/>
+            <path d="M21 15l2.2 2.4 4.3-4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/>
+          </svg>
+        </div>
+        <div class="gateway-body">
+          <h2>同好会考核</h2>
+          <p class="gateway-desc">完成同好会发布的知识考核与活动，获得由同好会官方签发的成就徽章</p>
+          <div class="gateway-stats">知识问答 · 活动签到 · 成就徽章</div>
+        </div>
+        <span class="gateway-enter">进入考核</span>
       </a>
 
       <!-- 十二器 -->

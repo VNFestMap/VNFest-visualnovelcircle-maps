@@ -1734,6 +1734,7 @@ const translations = {
         detailContactApply: '申请绑定后可查看联系方式',
         detailContactQueryFail: '查询失败，请刷新重试',
         detailBtnApplyClub: '申请绑定同好会',
+        detailBtnJoinExam: '参加考核',
         detailBtnEdit: '编辑同好会信息',
         detailBtnMembers: '成员名单',
         detailBtnWiki: '查看维基页面',
@@ -2005,6 +2006,7 @@ const translations = {
         detailContactApply: '申請後に連絡先を表示できます',
         detailContactQueryFail: '照会失敗。再読み込みしてください',
         detailBtnApplyClub: 'サークルに参加申請',
+        detailBtnJoinExam: '認定試験に参加',
         detailBtnEdit: 'サークル情報を編集',
         detailBtnMembers: 'メンバー一覧',
         detailBtnWiki: 'Wikiページを見る',
@@ -2225,6 +2227,7 @@ Object.assign(translations.ja, {
     detailContactBound: 'この同好会に参加済みです。もう一度開くと連絡先を確認できます。',
     detailContactApply: '参加申請後に連絡先を確認できます。',
     detailBtnApplyClub: '参加申請を送る',
+    detailBtnJoinExam: '認定試験に参加',
     detailBtnEdit: '同好会情報を編集',
     detailBtnMembers: 'メンバー一覧',
     detailBtnWiki: 'Wikiページを見る',
@@ -4229,6 +4232,9 @@ function showClubDetail(club) {
   // ——— 操作区（纵向按钮） ———
   const actionBtns = [];
 
+  // 公开入口：参加该同好会的考核（同好会考核系统）
+  actionBtns.push(`<button data-action="join-exam" class="club-detail-btn exam full" style="margin-bottom:4px">${__('detailBtnJoinExam')}</button>`);
+
   // 已登录 + 未绑定 + 可申请 → 申请绑定
   if (canApply) {
     actionBtns.push(`<button data-action="apply-club" class="club-detail-btn primary full" style="margin-bottom:4px">${__('detailBtnApplyClub')}</button>`);
@@ -4315,6 +4321,10 @@ function showClubDetail(club) {
   hydrateClubWikiLink(club);
   if (actionsContainer) {
     actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
+    actionsContainer.querySelector('[data-action="join-exam"]')?.addEventListener('click', () => {
+      const params = new URLSearchParams({ club_id: String(clubId), country: clubCountry || 'china' });
+      location.href = `./exam/index.html?${params.toString()}`;
+    });
     actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openClubEditor(club));
     actionsContainer.querySelector('[data-action="member-list"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
     actionsContainer.querySelector('[data-action="transfer"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));

@@ -6545,6 +6545,19 @@ body {
     color: var(--md-primary);
 }
 
+.club-detail-btn.exam {
+    background: linear-gradient(135deg, rgba(217,164,65,0.16), rgba(217,164,65,0.08));
+    color: var(--exam-accent, #d9a441);
+    border: 1px solid rgba(217,164,65,0.4);
+}
+
+.club-detail-btn.exam:hover {
+    background: rgba(217,164,65,0.22);
+    border-color: rgba(217,164,65,0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217,164,65,0.2);
+}
+
 .club-detail-btn.full {
     width: 100%;
     justify-content: center;
