@@ -21,7 +21,7 @@ This repository is the public web root for the VNFest Galgame club map. Root-lev
 - `club-operation-portrait/` - standalone club operation portrait tool.
 - `Game/galgame_club_sim/` - standalone Galgame club simulator.
 - `tools/` - small public utility pages.
-- `trial/` - club recognition trial pages (list, detail, quiz, claim code redeem) and their assets; backed by the `recognition_*` tables and `includes/recognition/` modules.
+- `exam/` - club recognition assessment pages (list, detail, quiz, claim code redeem) and their assets; backed by the `recognition_*` tables and `includes/recognition/` modules. Renamed from `trial/` (同好会试炼 → 同好会考核); `trial/index.html` stays as a redirect stub for legacy links.
 - `user-v2-assets/` - built assets used by the root `user.html` entry.
 
 ## Public Root Entries
@@ -40,7 +40,7 @@ The following files intentionally stay at the web root so existing links keep wo
 - `submit_event.html`
 - `submit_publication.html`
 - `feedback.html`
-- `achievements.html` - user achievement archive (recognition credentials)
+- `achievements.html` - redirect stub to `user.html?tab=achievements` (the achievement zone moved into the user center)
 - `verify.html` - public credential verification page
 
 ## Development And Operations

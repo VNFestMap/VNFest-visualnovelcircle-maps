@@ -23,8 +23,8 @@ var RECOG_VERIFY_LABEL = {
   platform: '平台合作验证', batch_import: '名单导入'
 };
 var RECOG_CONNECTOR_TYPES = ['webhook', 'rest_api', 'discord', 'qq', 'csv', 'qr', 'claim_code', 'game', 'manual', 'event_platform'];
-// 参与页路径（Phase 3 改名 trial→exam 时仅需更新此处）
-var RECOG_EXAM_PAGE = '../trial/index.html';
+// 参与页路径（同好会考核，原「同好会试炼」）
+var RECOG_EXAM_PAGE = '../exam/index.html';
 
 // 六个标准模板：预填 type + 内容骨架
 var RECOG_TEMPLATES = [

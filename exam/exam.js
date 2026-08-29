@@ -1,12 +1,20 @@
-/* trial/trial.js - 同好会试炼前端（列表 / 详情 / 答题 / 兑换） */
+/* exam/exam.js - 同好会考核前端（列表 / 详情 / 答题 / 兑换） */
 (function () {
   'use strict';
 
   var API = '../api/';
-  var state = { user: null, typeFilter: '' };
+  var URLP = new URLSearchParams(location.search);
+  var state = {
+    user: null,
+    typeFilter: '',
+    clubFilter: {
+      club_id: parseInt(URLP.get('club_id'), 10) || 0,
+      country: URLP.get('country') || ''
+    }
+  };
 
   var TYPE_LABEL = {
-    assessment: '知识试炼', activity: '活动签到', mission: '连续任务',
+    assessment: '知识考核', activity: '活动签到', mission: '连续任务',
     submission: '作品提交', competition: '竞赛评选', award: '人工授予', external: '外部联动'
   };
   var DIFF_LABEL = { easy: '简单', normal: '普通', hard: '困难', extreme: '极难' };
@@ -53,22 +61,51 @@
       var box = $('#login-state');
       if (state.user) {
         box.innerHTML = '<span class="muted">欢迎，' + esc(state.user.nickname || state.user.username) + '</span> ' +
-          '<a class="btn" href="../achievements.html">我的认可图鉴</a>';
+          '<a class="btn" href="../user.html?tab=achievements">我的成就</a>';
         $('#manage-entry').hidden = false;
       }
     }).catch(function () { state.user = null; });
   }
 
-  // ---------- 试炼广场 ----------
+  // ---------- 考核广场 ----------
+  function renderFilterNote() {
+    var note = $('#club-filter-note');
+    if (!note) return;
+    if (state.clubFilter.club_id > 0) {
+      note.hidden = false;
+      note.innerHTML = '当前只显示该同好会的考核 <button class="btn btn-ghost" id="clear-club-filter" style="padding:2px 10px;font-size:12px">查看全部</button>';
+      var btn = $('#clear-club-filter');
+      if (btn) btn.addEventListener('click', function () {
+        state.clubFilter = { club_id: 0, country: '' };
+        var u = new URL(location.href);
+        u.searchParams.delete('club_id');
+        u.searchParams.delete('country');
+        history.replaceState(null, '', u.pathname + u.search + u.hash);
+        renderFilterNote();
+        renderList();
+      });
+    } else {
+      note.hidden = true;
+      note.innerHTML = '';
+    }
+  }
+
   function renderList() {
     showView('list');
+    renderFilterNote();
     var list = $('#program-list');
     list.innerHTML = '<p class="empty">加载中…</p>';
     var qs = 'recognition_programs.php?action=list' + (state.typeFilter ? '&type=' + state.typeFilter : '');
+    if (state.clubFilter.club_id > 0) {
+      qs += '&club_id=' + state.clubFilter.club_id;
+      if (state.clubFilter.country) qs += '&country=' + encodeURIComponent(state.clubFilter.country);
+    }
     api(qs).then(function (res) {
       var programs = (res && res.programs) || [];
       if (!programs.length) {
-        list.innerHTML = '<p class="empty">还没有已发布的试炼。同好会负责人可在管理面板创建。</p>';
+        list.innerHTML = '<p class="empty">' + (state.clubFilter.club_id > 0
+          ? '该同好会还没有已发布的考核。'
+          : '还没有已发布的考核。同好会负责人可在管理面板创建。') + '</p>';
         return;
       }
       list.innerHTML = programs.map(function (p) {
@@ -81,19 +118,19 @@
             '<span class="tag">' + esc(DIFF_LABEL[p.participant_difficulty] || '普通') + '</span>' +
             '<span class="tag tag-gold">已签发 ' + p.issued_count + '</span>' +
           '</div>' +
-          '<a class="btn btn-primary btn-block" href="#/program/' + p.id + '">查看试炼</a>' +
+          '<a class="btn btn-primary btn-block" href="#/program/' + p.id + '">查看考核</a>' +
         '</article>';
       }).join('');
     }).catch(function () { list.innerHTML = '<p class="empty">加载失败，请刷新重试。</p>'; });
   }
 
-  // ---------- 试炼详情 ----------
+  // ---------- 考核详情 ----------
   function renderDetail(programId) {
     showView('detail');
     var body = $('#detail-body');
     body.innerHTML = '<p class="empty">加载中…</p>';
     api('recognition_programs.php?action=detail&id=' + programId).then(function (res) {
-      if (!res || !res.success) { body.innerHTML = '<p class="empty">' + esc(res && res.message || '试炼不存在') + '</p>'; return; }
+      if (!res || !res.success) { body.innerHTML = '<p class="empty">' + esc(res && res.message || '考核不存在') + '</p>'; return; }
       var p = res.program, v = res.version, content = (v && v.content) || {};
       var quizCount = ((content.quiz || {}).questions || []).length;
       var html = '<div class="panel">' +
@@ -117,7 +154,7 @@
       if (!state.user) {
         html += '<a class="btn btn-primary" href="../login.html">登录后参与</a>';
       } else if (res.my_credential_uid) {
-        html += '<div class="result-banner result-pass">你已获得该试炼的徽章 ' +
+        html += '<div class="result-banner result-pass">你已获得该考核的徽章 ' +
           '<a href="../verify.html?uid=' + encodeURIComponent(res.my_credential_uid) + '">查看凭证</a></div>';
       } else if (p.status === 'published') {
         if (quizCount) {
@@ -261,7 +298,7 @@
         '得分：' + res.score + ' 分 —— ' + esc(res.message);
       if (res.credential && res.credential.credential_uid) {
         html += '<br><a href="../verify.html?uid=' + encodeURIComponent(res.credential.credential_uid) + '">查看我的凭证</a> · ' +
-          '<a href="../achievements.html">前往认可图鉴</a>';
+          '<a href="../user.html?tab=achievements">前往我的成就</a>';
       }
       html += '</div>';
       box.innerHTML = html;

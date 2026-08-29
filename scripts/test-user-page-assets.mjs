@@ -15,6 +15,8 @@ const userPages = [
   'submit_event.html',
   'submit_publication.html',
   'wiki/index.html',
+  'exam/index.html',
+  'verify.html',
 ];
 
 const attrPattern = /\b(?:href|src)=["']([^"']+)["']/gi;

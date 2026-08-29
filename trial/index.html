@@ -3,67 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>同好会试炼 - Galgame 同好会地图</title>
-  <link rel="stylesheet" href="../css/site-header.css?v=20260829-recognition" />
-  <script defer src="../js/site-header.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="trial.css?v=20260829-recognition" />
+  <title>同好会考核 - Galgame 同好会地图</title>
+  <meta http-equiv="refresh" content="2;url=../exam/index.html">
 </head>
 <body>
-  <main class="shell">
-    <div class="topbar">
-      <a class="brand" href="../index.html">Galgame 同好会地图</a>
-      <nav>
-        <a href="../index.html">地图</a>
-        <a href="../club_square.html">同好会广场</a>
-        <a href="index.html">同好会试炼</a>
-        <a href="../achievements.html">认可图鉴</a>
-        <a href="../verify.html">凭证验证</a>
-        <a href="../user.html">个人中心</a>
-      </nav>
-    </div>
-
-    <header class="hero">
-      <div>
-        <p class="kicker">同好会试炼 · Recognition Trials</p>
-        <h1 class="page-title">通过试炼，获得来自真实同好会的认可</h1>
-        <p class="lead">同好会可以发布自己的试炼与活动。完成条件后，你将获得由对应同好会签发的网络成就徽章，统一保存在你的认可图鉴中。</p>
-      </div>
-      <div class="hero-side" id="login-state">
-        <a class="btn btn-primary" href="../login.html">登录后可参与试炼</a>
-      </div>
-    </header>
-
-    <!-- 视图：试炼广场 -->
-    <section id="view-list" class="view">
-      <div class="toolbar">
-        <div class="filter-group" id="type-filter">
-          <button class="chip active" data-type="">全部</button>
-          <button class="chip" data-type="assessment">知识试炼</button>
-          <button class="chip" data-type="activity">活动签到</button>
-          <button class="chip" data-type="submission">作品提交</button>
-          <button class="chip" data-type="award">人工授予</button>
-        </div>
-        <button class="btn btn-ghost" id="manage-entry" hidden>管理我的同好会试炼</button>
-      </div>
-      <div id="program-list" class="card-grid" aria-live="polite"></div>
-    </section>
-
-    <!-- 视图：试炼详情与参与 -->
-    <section id="view-detail" class="view" hidden>
-      <button class="btn btn-ghost" id="back-to-list">&larr; 返回试炼广场</button>
-      <div id="detail-body"></div>
-    </section>
-
-    <!-- 视图：答题 -->
-    <section id="view-quiz" class="view" hidden>
-      <div id="quiz-body"></div>
-    </section>
-
-    <footer class="foot">
-      徽章由对应同好会签发，可在 <a href="../verify.html">凭证验证页</a> 核验来源。
-    </footer>
-  </main>
-  <div id="toast" class="toast" hidden></div>
-  <script src="trial.js?v=20260829-recognition"></script>
+  <p>「同好会试炼」已更名为「同好会考核」。正在跳转…如未自动跳转，请<a href="../exam/index.html">点击这里</a>。</p>
+  <script>
+    // 保留本跳转页一个发布周期，兼容存量二维码、通知链接与书签（含 #/program/N 深链）。
+    location.replace('../exam/index.html' + location.search + location.hash);
+  </script>
 </body>
 </html>

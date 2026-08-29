@@ -3,46 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>认可图鉴 - Galgame 同好会地图</title>
-  <link rel="stylesheet" href="css/site-header.css?v=20260829-recognition" />
-  <script defer src="js/site-header.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="trial/trial.css?v=20260829-recognition" />
+  <title>认可图鉴已迁移 - Galgame 同好会地图</title>
+  <meta http-equiv="refresh" content="2;url=user.html?tab=achievements">
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f6f7fb; color: #333; }
+    .box { text-align: center; padding: 40px; }
+    a { color: #4a6cf7; }
+  </style>
 </head>
 <body>
-  <main class="shell">
-    <div class="topbar">
-      <a class="brand" href="index.html">Galgame 同好会地图</a>
-      <nav>
-        <a href="index.html">地图</a>
-        <a href="trial/index.html">同好会试炼</a>
-        <a href="achievements.html">认可图鉴</a>
-        <a href="verify.html">凭证验证</a>
-        <a href="user.html">个人中心</a>
-      </nav>
-    </div>
-
-    <header class="hero">
-      <div>
-        <p class="kicker">同好会成就库 · Achievement Archive</p>
-        <h1 class="page-title">认可图鉴</h1>
-        <p class="lead">通过试炼、活动与贡献获得的同好会认可，统一保存在这里。每一份凭证都可以公开验证来源。</p>
-      </div>
-    </header>
-
-    <section class="view">
-      <div id="summary" class="row" style="gap:26px;margin-bottom:18px"></div>
-      <div class="row" style="margin-bottom:14px">
-        <button class="chip active" data-filter="">全部</button>
-        <button class="chip" data-filter="active">有效</button>
-        <button class="chip" data-filter="history">历史记录（过期/撤销/替代）</button>
-      </div>
-      <div id="credential-list"></div>
-    </section>
-
-    <footer class="foot">
-      徽章由对应同好会签发；撤销或过期的凭证将作为历史记录保留，不会无声消失。
-    </footer>
-  </main>
-  <script src="js/achievements.js?v=20260829-recognition"></script>
+  <div class="box">
+    <p>「认可图鉴」已迁移到个人中心的成就区。</p>
+    <p>正在跳转…如未自动跳转，请<a href="user.html?tab=achievements">点击这里</a>。</p>
+  </div>
+  <script>
+    location.replace('user.html?tab=achievements' + location.hash);
+  </script>
 </body>
 </html>
