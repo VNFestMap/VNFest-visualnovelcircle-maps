@@ -619,6 +619,32 @@ if ($isMysql) {
     $tryIndex("CREATE INDEX idx_recog_badge_club ON recognition_badges(club_id, country)");
     echo "[OK] recognition_badges 表已创建\n";
 
+    // Connector 接入器：只做 identify / verify_source / receive_event / normalize_event，
+    // 禁止直接写凭证；secret 仅存哈希，scope 限定可提交的事件类型与项目。
+    // 注意：MySQL 要求被引用表先存在，故必须建在 recognition_events 之前。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_connectors (
+            id             INT AUTO_INCREMENT PRIMARY KEY,
+            club_id        INT NOT NULL,
+            country        VARCHAR(50) NOT NULL DEFAULT 'china',
+            name           VARCHAR(128) NOT NULL,
+            type           VARCHAR(40) NOT NULL DEFAULT 'webhook',
+            token_prefix   VARCHAR(16) NOT NULL,
+            token_hash     VARCHAR(128) NOT NULL,
+            hmac_secret    VARCHAR(255) NOT NULL DEFAULT '',
+            scope          TEXT NOT NULL,
+            status         VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_by     INT NOT NULL,
+            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_used_at   DATETIME NULL,
+            revoked_at     DATETIME NULL,
+            FOREIGN KEY (created_by) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_recog_conn_club ON recognition_connectors(club_id, country)");
+    $tryIndex("CREATE INDEX idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
+    echo "[OK] recognition_connectors 表已创建\n";
+
     // 统一事件 Event：event_id / idempotency_key 唯一，重复提交在数据库层去重（对齐架构文档 9.4）
     $db->exec("
         CREATE TABLE IF NOT EXISTS recognition_events (
@@ -762,31 +788,6 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_recog_outbox_status ON recognition_outbox(status)");
     echo "[OK] recognition_outbox 表已创建\n";
-
-    // Connector 接入器：只做 identify / verify_source / receive_event / normalize_event，
-    // 禁止直接写凭证；secret 仅存哈希，scope 限定可提交的事件类型与项目。
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS recognition_connectors (
-            id             INT AUTO_INCREMENT PRIMARY KEY,
-            club_id        INT NOT NULL,
-            country        VARCHAR(50) NOT NULL DEFAULT 'china',
-            name           VARCHAR(128) NOT NULL,
-            type           VARCHAR(40) NOT NULL DEFAULT 'webhook',
-            token_prefix   VARCHAR(16) NOT NULL,
-            token_hash     VARCHAR(128) NOT NULL,
-            hmac_secret    VARCHAR(255) NOT NULL DEFAULT '',
-            scope          TEXT NOT NULL,
-            status         VARCHAR(20) NOT NULL DEFAULT 'active',
-            created_by     INT NOT NULL,
-            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            last_used_at   DATETIME NULL,
-            revoked_at     DATETIME NULL,
-            FOREIGN KEY (created_by) REFERENCES users(id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-    $tryIndex("CREATE INDEX idx_recog_conn_club ON recognition_connectors(club_id, country)");
-    $tryIndex("CREATE INDEX idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
-    echo "[OK] recognition_connectors 表已创建\n";
 
     // 外部身份绑定 IdentityLink：新外部身份一律走此表；users.qq_openid / discord_id 为历史只读字段。
     // 一个外部主体同一时间只能绑定一个 VNFMap 用户（revoked 历史保留）。
@@ -1448,6 +1449,29 @@ if ($isMysql) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_badge_club ON recognition_badges(club_id, country)");
     echo "[OK] recognition_badges 表已创建\n";
 
+    // 与 MySQL 分支保持一致的顺序：connectors 建在 events 之前。
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS recognition_connectors (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            club_id        INTEGER NOT NULL,
+            country        TEXT NOT NULL DEFAULT 'china',
+            name           TEXT NOT NULL,
+            type           TEXT NOT NULL DEFAULT 'webhook',
+            token_prefix   TEXT NOT NULL,
+            token_hash     TEXT NOT NULL,
+            hmac_secret    TEXT NOT NULL DEFAULT '',
+            scope          TEXT NOT NULL,
+            status         TEXT NOT NULL DEFAULT 'active',
+            created_by     INTEGER NOT NULL REFERENCES users(id),
+            created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            last_used_at   TEXT,
+            revoked_at     TEXT
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_club ON recognition_connectors(club_id, country)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
+    echo "[OK] recognition_connectors 表已创建\n";
+
     $db->exec("
         CREATE TABLE IF NOT EXISTS recognition_events (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1570,28 +1594,6 @@ if ($isMysql) {
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_outbox_status ON recognition_outbox(status)");
     echo "[OK] recognition_outbox 表已创建\n";
-
-    $db->exec("
-        CREATE TABLE IF NOT EXISTS recognition_connectors (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            club_id        INTEGER NOT NULL,
-            country        TEXT NOT NULL DEFAULT 'china',
-            name           TEXT NOT NULL,
-            type           TEXT NOT NULL DEFAULT 'webhook',
-            token_prefix   TEXT NOT NULL,
-            token_hash     TEXT NOT NULL,
-            hmac_secret    TEXT NOT NULL DEFAULT '',
-            scope          TEXT NOT NULL,
-            status         TEXT NOT NULL DEFAULT 'active',
-            created_by     INTEGER NOT NULL REFERENCES users(id),
-            created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-            last_used_at   TEXT,
-            revoked_at     TEXT
-        )
-    ");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_club ON recognition_connectors(club_id, country)");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_recog_conn_prefix ON recognition_connectors(token_prefix)");
-    echo "[OK] recognition_connectors 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS recognition_identity_links (
