@@ -15,8 +15,9 @@ assert.deepEqual(
   'Chinese and Japanese guide groups must keep the same article order',
 );
 assert.equal(zh.groups.length, 6, 'guide must include five documentation groups and one release-history group');
-assert.equal(zh.articles.length, 16, 'guide must include eleven documentation articles and five release notes');
+assert.equal(zh.articles.length, 17, 'guide must include eleven documentation articles and six release notes');
 const historyIds = [
+  'updates/2026-08-16-wiki-reading-layout',
   'updates/2-1-0',
   'updates/2026-08-13-display-language-preferences',
   'updates/2-0-0',
@@ -100,8 +101,8 @@ for (const catalog of [zh, ja]) {
 
 for (const catalog of [zh, ja]) {
   const historyArticles = historyIds.map(id => catalog.articles.find(article => article.id === id));
-  assert.ok(historyArticles.every(Boolean), 'all five release notes must exist');
-  assert.equal(new Set(historyArticles.map(article => article.updatedAt)).size, 5, 'release-note dates must be unique');
+  assert.ok(historyArticles.every(Boolean), 'all six release notes must exist');
+  assert.equal(new Set(historyArticles.map(article => article.updatedAt)).size, 6, 'release-note dates must be unique');
   assert.ok(historyArticles.every(article => article.sections.length > 0), 'release notes must include content sections');
 }
 

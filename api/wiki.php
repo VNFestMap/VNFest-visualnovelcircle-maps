@@ -41,7 +41,20 @@ function wikiEnsureDir(string $dir): bool {
 function wikiWriteFile(string $file, string $contents): bool {
     $dir = dirname($file);
     if (!wikiEnsureDir($dir)) return false;
-    return @file_put_contents($file, $contents, LOCK_EX) !== false;
+    $temporaryFile = @tempnam($dir, '.wiki-write-');
+    if ($temporaryFile === false) return false;
+    if (@file_put_contents($temporaryFile, $contents, LOCK_EX) === false) {
+        @unlink($temporaryFile);
+        return false;
+    }
+    // Replace through the writable directory so root-owned 644 files from a deployment
+    // do not make the PHP editor fail when the runtime user is www.
+    @chmod($temporaryFile, 0664);
+    if (!@rename($temporaryFile, $file)) {
+        @unlink($temporaryFile);
+        return false;
+    }
+    return true;
 }
 
 function wikiParseClubKey(string $clubKey): array {
@@ -65,10 +78,37 @@ function wikiEscape(string $value): string {
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function wikiFormatText(string $value): string {
+    $normalized = str_replace(["\\r\\n", "\\n", "\\r"], ["\n", "\n", "\r"], $value);
+    $tokens = [];
+    $token = static function (string $html) use (&$tokens): string {
+        $index = count($tokens);
+        $tokens[] = $html;
+        return '@@WIKIMARKDOWN' . $index . '@@';
+    };
+    $normalized = preg_replace_callback('/`([^`\r\n]+)`/', static function (array $match) use ($token): string {
+        return $token('<code>' . wikiEscape($match[1]) . '</code>');
+    }, $normalized);
+    $normalized = preg_replace_callback('/\[([^\]\r\n]+)\]\(([^)\s]+)\)/', static function (array $match) use ($token): string {
+        $safe = wikiSafeHref($match[2]);
+        if ($safe === '#') return $match[0];
+        return $token('<a href="' . wikiEscape($safe) . '" target="_blank" rel="noopener noreferrer">' . wikiEscape($match[1]) . '</a>');
+    }, $normalized);
+
+    $html = wikiEscape($normalized);
+    $html = preg_replace('/(\*\*|__)(?=\S)(.+?)(?<=\S)\1/s', '<strong>$2</strong>', $html);
+    $html = preg_replace('/~~(?=\S)(.+?)(?<=\S)~~/s', '<del>$1</del>', $html);
+    $html = preg_replace('/(^|[^\w])([*_])(?=\S)(.+?)(?<=\S)\2(?!\w)/s', '$1<em>$3</em>', $html);
+    $html = nl2br($html, false);
+    return preg_replace_callback('/@@WIKIMARKDOWN(\d+)@@/', static function (array $match) use ($tokens): string {
+        return $tokens[(int)$match[1]] ?? '';
+    }, $html);
+}
+
 function wikiSafeHref(string $value): string {
     $url = trim($value);
     if ($url === '') return '#';
-    if (preg_match('/^\s*javascript:/i', $url)) return '#';
+    if (preg_match('/^\s*(?:javascript|vbscript|data:text\/html):/i', $url)) return '#';
     return $url;
 }
 
@@ -88,9 +128,116 @@ function wikiSectionHeadingLevel($value): int {
     return (int)$value === 3 ? 3 : 2;
 }
 
+function wikiNormalizeImages($images): array {
+    $normalized = [];
+    foreach ((array)$images as $image) {
+        if (!is_array($image)) continue;
+        $url = wikiSafeHref((string)($image['url'] ?? ''));
+        if ($url === '#') continue;
+        $caption = trim((string)($image['caption'] ?? ''));
+        $alt = trim((string)($image['alt'] ?? ''));
+        $normalized[] = [
+            'url' => $url,
+            'caption' => $caption,
+            'alt' => $alt,
+            'width_percent' => wikiImageWidthPercent($image['width_percent'] ?? 100),
+            'aspect_ratio' => wikiImageOption($image['aspect_ratio'] ?? '16/10', ['auto', '16/9', '4/3', '1/1', '3/4', '16/10'], '16/10'),
+            'align' => wikiImageOption($image['align'] ?? 'center', ['left', 'center', 'right'], 'center'),
+            'fit' => wikiImageOption($image['fit'] ?? 'cover', ['cover', 'contain'], 'cover'),
+        ];
+    }
+    return $normalized;
+}
+
+function wikiNormalizeAvatar($avatar): array {
+    if (!is_array($avatar)) return [];
+    $url = wikiSafeHref((string)($avatar['url'] ?? ''));
+    if ($url === '#') return [];
+    return [
+        'url' => $url,
+        'caption' => trim((string)($avatar['caption'] ?? '')),
+        'alt' => trim((string)($avatar['alt'] ?? '')),
+        'position' => ($avatar['position'] ?? 'top') === 'bottom' ? 'bottom' : 'top',
+    ];
+}
+
+function wikiNormalizeParagraphs($body): array {
+    if (is_string($body)) {
+        $body = preg_split('/\r\n|\r|\n/', $body);
+    }
+    $paragraphs = [];
+    foreach ((array)$body as $text) {
+        $text = trim((string)$text);
+        if ($text !== '') $paragraphs[] = $text;
+    }
+    return $paragraphs;
+}
+
+function wikiNormalizeBlocks($blocks, $body = [], $legacyImages = []): array {
+    $normalized = [];
+    $hasExplicitBlocks = is_array($blocks) && count($blocks) > 0;
+    if ($hasExplicitBlocks) {
+        foreach ($blocks as $block) {
+            if (!is_array($block)) continue;
+            $type = strtolower(trim((string)($block['type'] ?? '')));
+            if ($type === 'paragraph') {
+                $text = trim((string)($block['text'] ?? ''));
+                $noteValue = $block['note'] ?? '';
+                $note = is_scalar($noteValue) ? trim((string)$noteValue) : '';
+                if ($text !== '') $normalized[] = ['type' => 'paragraph', 'text' => $text, 'note' => $note];
+                continue;
+            }
+            if ($type === 'image') {
+                $images = wikiNormalizeImages([$block]);
+                if ($images) $normalized[] = array_merge(['type' => 'image'], $images[0]);
+            }
+        }
+        if ($normalized) return $normalized;
+    }
+
+    foreach (wikiNormalizeParagraphs($body) as $text) {
+        $normalized[] = ['type' => 'paragraph', 'text' => $text, 'note' => ''];
+    }
+    foreach (wikiNormalizeImages($legacyImages) as $image) {
+        $normalized[] = array_merge(['type' => 'image'], $image);
+    }
+    return $normalized;
+}
+
+function wikiBlocksBody(array $blocks): array {
+    $body = [];
+    foreach ($blocks as $block) {
+        if (($block['type'] ?? '') === 'paragraph' && trim((string)($block['text'] ?? '')) !== '') {
+            $body[] = trim((string)$block['text']);
+        }
+    }
+    return $body;
+}
+
+function wikiNormalizeSection(array $section): ?array {
+    $heading = trim((string)($section['heading'] ?? ''));
+    $blocks = wikiNormalizeBlocks($section['blocks'] ?? [], $section['body'] ?? [], $section['images'] ?? []);
+    if ($heading === '' || !$blocks) return null;
+    return [
+        'heading' => $heading,
+        'level' => wikiSectionHeadingLevel($section['level'] ?? 2),
+        'blocks' => $blocks,
+        'body' => wikiBlocksBody($blocks),
+    ];
+}
+
+function wikiSectionBlocks(array $section): array {
+    return wikiNormalizeBlocks($section['blocks'] ?? [], $section['body'] ?? [], $section['images'] ?? []);
+}
+
 function wikiPageName(string $clubKey): string {
     [$country, $id] = wikiParseClubKey($clubKey);
     return $country . '-' . $id . '.html';
+}
+
+function wikiLanguagePageName(string $clubKey, string $lang = 'zh'): string {
+    $pageName = wikiPageName($clubKey);
+    return $lang === 'ja' ? preg_replace('/\.html$/', '-ja.html', $pageName) : $pageName;
 }
 
 function wikiCountryLabel(string $country): string {
@@ -170,23 +317,8 @@ function wikiNormalizeLocalizedContent(array $input): array {
     $sections = [];
     foreach (($input['sections'] ?? []) as $section) {
         if (!is_array($section)) continue;
-        $heading = trim((string)($section['heading'] ?? ''));
-        $bodyText = $section['body'] ?? [];
-        if (is_string($bodyText)) {
-            $bodyText = preg_split('/\r\n|\r|\n/', $bodyText);
-        }
-        $body = [];
-        foreach ((array)$bodyText as $paragraph) {
-            $paragraph = trim((string)$paragraph);
-            if ($paragraph !== '') $body[] = $paragraph;
-        }
-        if ($heading !== '' && $body) {
-            $sections[] = [
-                'heading' => $heading,
-                'level' => wikiSectionHeadingLevel($section['level'] ?? 2),
-                'body' => $body,
-            ];
-        }
+        $normalizedSection = wikiNormalizeSection($section);
+        if ($normalizedSection) $sections[] = $normalizedSection;
     }
 
     $hasContent = $title !== '' || $summary !== '' || !empty($infobox) || !empty($sections);
@@ -221,46 +353,15 @@ function wikiNormalizeContent(array $input, string $clubKey, array $club): array
     $sections = [];
     foreach (($input['sections'] ?? []) as $section) {
         if (!is_array($section)) continue;
-        $heading = trim((string)($section['heading'] ?? ''));
-        $bodyText = $section['body'] ?? [];
-        if (is_string($bodyText)) {
-            $bodyText = preg_split('/\r\n|\r|\n/', $bodyText);
-        }
-        $body = [];
-        foreach ((array)$bodyText as $paragraph) {
-            $paragraph = trim((string)$paragraph);
-            if ($paragraph !== '') $body[] = $paragraph;
-        }
-        if ($heading !== '' && $body) {
-            $sections[] = [
-                'heading' => $heading,
-                'level' => wikiSectionHeadingLevel($section['level'] ?? 2),
-                'body' => $body,
-            ];
-        }
+        $normalizedSection = wikiNormalizeSection($section);
+        if ($normalizedSection) $sections[] = $normalizedSection;
     }
     if (!$sections) {
-        wikiJsonResponse(['success' => false, 'message' => '至少需要一个章节，且章节正文不能为空']);
+        wikiJsonResponse(['success' => false, 'message' => '至少需要一个章节，且章节需要包含正文或内容块']);
     }
 
-    $images = [];
-    foreach (($input['images'] ?? []) as $image) {
-        if (!is_array($image)) continue;
-        $url = wikiSafeHref((string)($image['url'] ?? ''));
-        $caption = trim((string)($image['caption'] ?? ''));
-        $alt = trim((string)($image['alt'] ?? ''));
-        if ($url !== '#') {
-            $images[] = [
-                'url' => $url,
-                'caption' => $caption,
-                'alt' => $alt,
-                'width_percent' => wikiImageWidthPercent($image['width_percent'] ?? 100),
-                'aspect_ratio' => wikiImageOption($image['aspect_ratio'] ?? '16/10', ['auto', '16/9', '4/3', '1/1', '3/4', '16/10'], '16/10'),
-                'align' => wikiImageOption($image['align'] ?? 'center', ['left', 'center', 'right'], 'center'),
-                'fit' => wikiImageOption($image['fit'] ?? 'cover', ['cover', 'contain'], 'cover'),
-            ];
-        }
-    }
+    $images = wikiNormalizeImages($input['images'] ?? []);
+    $avatar = wikiNormalizeAvatar($input['avatar'] ?? []);
 
     $references = [];
     foreach (($input['references'] ?? []) as $ref) {
@@ -285,19 +386,55 @@ function wikiNormalizeContent(array $input, string $clubKey, array $club): array
         'infobox' => $infobox,
         'sections' => $sections,
         'images' => $images,
+        'avatar' => $avatar,
         'references' => $references,
         'i18n' => $i18n,
         'updated_at' => date('Y-m-d'),
     ];
 }
 
-function wikiRenderParagraphs(array $paragraphs): string {
-    return implode("\n", array_map(function ($text) {
-        return '<p>' . wikiEscape((string)$text) . '</p>';
-    }, $paragraphs));
+function wikiRenderBlocks(array $blocks, string $lang = 'zh', ?array &$footnotes = null): string {
+    if ($footnotes === null) $footnotes = [];
+    $html = '';
+    foreach ($blocks as $block) {
+        if (!is_array($block)) continue;
+        if (($block['type'] ?? '') === 'paragraph') {
+            $text = trim((string)($block['text'] ?? ''));
+            if ($text !== '') {
+                $noteValue = $block['note'] ?? '';
+                $note = is_scalar($noteValue) ? trim((string)$noteValue) : '';
+                $html .= '<p>' . wikiFormatText($text);
+                if ($note !== '') {
+                    $footnotes[] = $note;
+                    $number = count($footnotes);
+                    $footnoteId = $lang . '-footnote-' . $number;
+                    $referenceId = $lang . '-footnote-ref-' . $number;
+                    $html .= '<sup class="wiki-footnote-marker"><a href="#' . wikiEscape($footnoteId) . '" id="' . wikiEscape($referenceId) . '" aria-label="查看注释 ' . $number . '">' . $number . '</a></sup>';
+                }
+                $html .= "</p>\n";
+            }
+            continue;
+        }
+        if (($block['type'] ?? '') === 'image') {
+            $html .= wikiRenderImages([$block], 'wiki-image-gallery wiki-inline-image-gallery', '正文图片');
+        }
+    }
+    return $html;
 }
 
-function wikiRenderImages(array $images): string {
+function wikiRenderFootnotes(array $footnotes, string $lang): string {
+    if (!$footnotes) return '';
+    $items = '';
+    foreach ($footnotes as $index => $note) {
+        $number = $index + 1;
+        $footnoteId = $lang . '-footnote-' . $number;
+        $referenceId = $lang . '-footnote-ref-' . $number;
+        $items .= '<li id="' . wikiEscape($footnoteId) . '"><a class="wiki-footnote-backlink" href="#' . wikiEscape($referenceId) . '" aria-label="返回正文">' . $number . '.</a> ' . wikiFormatText((string)$note) . '</li>';
+    }
+    return '<section class="wiki-section wiki-footnotes" aria-labelledby="' . wikiEscape($lang . '-footnotes-title') . '"><h2 id="' . wikiEscape($lang . '-footnotes-title') . '">注释</h2><ol>' . $items . '</ol></section>';
+}
+
+function wikiRenderImages(array $images, string $className = 'wiki-image-gallery', string $label = '图片'): string {
     $items = '';
     foreach ($images as $image) {
         if (!is_array($image)) continue;
@@ -313,12 +450,12 @@ function wikiRenderImages(array $images): string {
         $items .= '<figure class="wiki-image-card wiki-image-align-' . $align . ' wiki-image-fit-' . $fit . '" style="--wiki-image-width:' . $width . '%;' . $ratioStyle . '">';
         $items .= '<img src="' . wikiEscape($url) . '" alt="' . wikiEscape($alt) . '" loading="lazy">';
         if ($caption !== '') {
-            $items .= '<figcaption>' . wikiEscape($caption) . '</figcaption>';
+            $items .= '<figcaption>' . wikiFormatText($caption) . '</figcaption>';
         }
         $items .= "</figure>\n";
     }
     if ($items === '') return '';
-    return '<section class="wiki-image-gallery" aria-label="图片">' . $items . '</section>';
+    return '<section class="' . wikiEscape($className) . '" aria-label="' . wikiEscape($label) . '">' . $items . '</section>';
 }
 
 function wikiLocalizedContent(array $content, string $lang): array {
@@ -332,28 +469,66 @@ function wikiLocalizedContent(array $content, string $lang): array {
         'sections' => !empty($localized['sections']) && is_array($localized['sections']) ? $localized['sections'] : ($content['sections'] ?? []),
         'images' => !empty($localized['images']) && is_array($localized['images']) ? $localized['images'] : ($content['images'] ?? []),
         'references' => !empty($localized['references']) && is_array($localized['references']) ? $localized['references'] : ($content['references'] ?? []),
+        'avatar' => !empty($localized['avatar']) && is_array($localized['avatar']) ? $localized['avatar'] : ($content['avatar'] ?? []),
     ]);
 }
 
-function wikiRenderArticle(array $content, array $club, string $lang): string {
+function wikiRenderAppearanceRail(): string {
+    return '<aside class="wiki-appearance-rail" aria-label="阅读外观" data-wiki-appearance aria-hidden="false"><div class="wiki-appearance-header"><div class="wiki-rail-heading">阅读外观</div><div class="wiki-appearance-header-actions"><button type="button" class="wiki-appearance-close" data-appearance-close aria-label="关闭阅读设置" hidden>×</button><button type="button" class="wiki-appearance-hide" data-appearance-hide>隐藏</button></div></div><button class="wiki-appearance-toggle" type="button" data-appearance-toggle aria-expanded="false">展开阅读设置</button><div class="wiki-appearance-panel" data-appearance-panel><fieldset><legend>字号</legend><div class="wiki-appearance-options" role="group" aria-label="字号"><button type="button" data-appearance-key="font" data-appearance-value="small">小</button><button type="button" data-appearance-key="font" data-appearance-value="medium">标准</button><button type="button" data-appearance-key="font" data-appearance-value="large">大</button></div></fieldset><fieldset><legend>正文宽度</legend><div class="wiki-appearance-options" role="group" aria-label="正文宽度"><button type="button" data-appearance-key="width" data-appearance-value="narrow">窄</button><button type="button" data-appearance-key="width" data-appearance-value="standard">标准</button><button type="button" data-appearance-key="width" data-appearance-value="wide">宽</button></div></fieldset><fieldset><legend>行距</legend><div class="wiki-appearance-options" role="group" aria-label="行距"><button type="button" data-appearance-key="leading" data-appearance-value="compact">紧凑</button><button type="button" data-appearance-key="leading" data-appearance-value="standard">标准</button><button type="button" data-appearance-key="leading" data-appearance-value="loose">宽松</button></div></fieldset><fieldset><legend>阅读主题</legend><div class="wiki-appearance-options" role="group" aria-label="阅读主题"><button type="button" data-appearance-key="theme" data-appearance-value="light">明亮</button><button type="button" data-appearance-key="theme" data-appearance-value="paper">纸张</button><button type="button" data-appearance-key="theme" data-appearance-value="dark">深色</button></div></fieldset><button type="button" class="wiki-appearance-reset" data-appearance-reset>恢复默认</button><button type="button" class="wiki-appearance-dock" data-appearance-dock hidden>恢复到侧栏</button></div></aside>';
+}
+
+function wikiRenderAppearanceLauncher(): string {
+    return '<button type="button" class="wiki-appearance-launcher" data-appearance-launcher aria-label="打开阅读外观" aria-expanded="false" hidden><svg viewBox="0 0 24 24" width="18" height="18" role="img" aria-hidden="true" focusable="false"><title>阅读外观</title><path d="M4 5.5h16v13H4zM8 9v3m0 0 2-2m-2 2 2 2m6-3v3m0 0 2-2m-2 2 2 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+}
+
+function wikiRenderTocItems(array $items): string {
+    $html = '';
+    foreach ($items as $item) {
+        $children = !empty($item['children'])
+            ? '<ol class="wiki-toc-sublist">' . wikiRenderTocItems($item['children']) . '</ol>'
+            : '';
+        $html .= '<li class="wiki-toc-item wiki-toc-level-' . (int)$item['level'] . '"><a href="#' . wikiEscape($item['id']) . '" data-wiki-section-link="' . wikiEscape($item['id']) . '">' . wikiEscape($item['heading']) . '</a>' . $children . '</li>';
+    }
+    return $html;
+}
+
+function wikiRenderAvatar(array $avatar): string {
+    $url = wikiSafeHref((string)($avatar['url'] ?? ''));
+    if ($url === '#') return '';
+    $caption = trim((string)($avatar['caption'] ?? ''));
+    $alt = trim((string)($avatar['alt'] ?? ''));
+    if ($alt === '') $alt = $caption !== '' ? $caption : '条目头像';
+    $html = '<figure class="wiki-entry-avatar wiki-image-fit-contain" aria-label="条目头像"><img src="' . wikiEscape($url) . '" alt="' . wikiEscape($alt) . '" loading="lazy">';
+    if ($caption !== '') $html .= '<figcaption>' . wikiEscape($caption) . '</figcaption>';
+    return $html . '</figure>';
+}
+
+function wikiRenderArticle(array $content, array $club, string $lang, bool $hidden = false): string {
     $rows = $content['infobox'] ?? [];
     $infoboxRows = '';
     foreach ($rows as $key => $value) {
         if (trim((string)$value) === '') continue;
-        $infoboxRows .= '<tr><th>' . wikiEscape((string)$key) . '</th><td>' . wikiEscape((string)$value) . "</td></tr>\n";
+        $infoboxRows .= '<tr><th>' . wikiEscape((string)$key) . '</th><td>' . wikiFormatText((string)$value) . "</td></tr>\n";
     }
 
-    $toc = '';
+    $tocItems = [];
     foreach (($content['sections'] ?? []) as $i => $section) {
-        $toc .= '<li><a href="#section-' . ($i + 1) . '">' . wikiEscape((string)$section['heading']) . "</a></li>\n";
+        $sectionId = $lang . '-section-' . ($i + 1);
+        $level = wikiSectionHeadingLevel($section['level'] ?? 2);
+        $item = ['id' => $sectionId, 'heading' => (string)($section['heading'] ?? ''), 'level' => $level, 'children' => []];
+        if ($level === 3 && !empty($tocItems)) $tocItems[count($tocItems) - 1]['children'][] = $item;
+        else $tocItems[] = $item;
     }
+    $toc = wikiRenderTocItems($tocItems);
 
+    $footnotes = [];
     $sections = '';
     foreach (($content['sections'] ?? []) as $i => $section) {
         $level = wikiSectionHeadingLevel($section['level'] ?? 2);
-        $sections .= '<section class="wiki-section" id="section-' . ($i + 1) . "\">\n";
+        $sectionId = $lang . '-section-' . ($i + 1);
+        $sections .= '<section class="wiki-section" id="' . wikiEscape($sectionId) . '" data-wiki-section="' . wikiEscape($sectionId) . '">' . "\n";
         $sections .= '<h' . $level . '>' . wikiEscape((string)$section['heading']) . '</h' . $level . ">\n";
-        $sections .= wikiRenderParagraphs($section['body'] ?? []);
+        $sections .= wikiRenderBlocks(wikiSectionBlocks($section), $lang, $footnotes);
         $sections .= "\n</section>\n";
     }
 
@@ -369,29 +544,43 @@ function wikiRenderArticle(array $content, array $club, string $lang): string {
     $summary = wikiEscape((string)$content['summary']);
     $updated = wikiEscape((string)($content['updated_at'] ?? '未记录'));
     $images = wikiRenderImages($content['images'] ?? []);
+    $avatar = wikiRenderAvatar($content['avatar'] ?? []);
+    $avatarTop = (($content['avatar']['position'] ?? 'top') === 'bottom') ? '' : $avatar;
+    $avatarBottom = (($content['avatar']['position'] ?? 'top') === 'bottom') ? $avatar : '';
+    $hiddenAttribute = $hidden ? ' hidden' : '';
 
-    return '<article class="wiki-article" data-wiki-lang="' . wikiEscape($lang) . '">
-      <h1>' . $title . '</h1>
-      <aside class="wiki-infobox">
-        <div class="wiki-infobox-title">' . $title . '</div>
-        <table>' . $infoboxRows . '</table>
+    $entryFacts = '<aside class="wiki-entry-facts" aria-label="条目资料"><div class="wiki-rail-heading">条目资料</div>' . $avatarTop . '<div class="wiki-infobox"><div class="wiki-infobox-title">' . $title . '</div><table>' . $infoboxRows . '</table></div>' . $avatarBottom . '</aside>';
+
+    return '<article class="wiki-article" data-wiki-lang="' . wikiEscape($lang) . '" data-wiki-article="true"' . $hiddenAttribute . '>
+      <aside class="wiki-article-nav">
+        <nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>' . $toc . '</ol></nav>
       </aside>
-      <p class="wiki-summary">' . $summary . '</p>
-      ' . $images . '
-      <nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>' . $toc . '</ol></nav>
-      ' . $sections . '
-      ' . $references . '
-      <footer class="wiki-footer">最后更新：' . $updated . '</footer>
+      <div class="wiki-article-main">
+        <header class="wiki-article-header"><p class="wiki-index-kicker">VNFest WIKI · 条目</p><h1>' . $title . '</h1></header>
+        <p class="wiki-summary">' . wikiFormatText((string)$content['summary']) . '</p>
+        ' . $entryFacts . '
+        ' . $images . '
+        ' . $sections . '
+        ' . wikiRenderFootnotes($footnotes, $lang) . '
+        ' . $references . '
+        <footer class="wiki-footer">最后更新：' . $updated . '</footer>
+      </div>
+      <aside class="wiki-article-rail">
+        ' . wikiRenderAppearanceRail() . '
+      </aside>
     </article>';
 }
 
-function wikiRenderPage(array $content, array $club): string {
-    $zhArticle = wikiRenderArticle(wikiLocalizedContent($content, 'zh'), $club, 'zh');
-    $jaArticle = wikiRenderArticle(wikiLocalizedContent($content, 'ja'), $club, 'ja');
-    $title = wikiEscape((string)$content['title']);
+function wikiRenderPage(array $content, array $club, string $lang = 'zh'): string {
+    $article = wikiLocalizedContent($content, $lang);
+    $title = wikiEscape((string)($article['title'] ?? $content['title'] ?? ''));
+    $isJapanese = $lang === 'ja';
+    $pageName = wikiLanguagePageName((string)$content['club_key'], $lang);
+    $zhPageName = wikiLanguagePageName((string)$content['club_key'], 'zh');
+    $jaPageName = wikiLanguagePageName((string)$content['club_key'], 'ja');
 
     return '<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="' . ($isJapanese ? 'ja' : 'zh-CN') . '">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -399,19 +588,23 @@ function wikiRenderPage(array $content, array $club): string {
   <script src="../../js/language-catalog.js?v=20260813-language"></script>
   <script src="../../js/language-static-ja.js?v=20260813-language"></script>
   <title>' . $title . ' - 同好会维基</title>
-  <link rel="stylesheet" href="../wiki.css">
+  <link rel="stylesheet" href="../wiki.css?v=20260817-editor-workbench">
 </head>
 <body>
   <header class="wiki-header">
     <a href="../../index.html">Galgame 同好会地图</a>
     <a href="../index.html">VNFest WIKI</a>
     <span>同好会维基</span>
+    ' . wikiRenderAppearanceLauncher() . '
   </header>
-  <main class="wiki-page">
-    ' . $zhArticle . '
-    ' . $jaArticle . '
+  <main class="wiki-page wiki-reading-page" data-wiki-page-lang="' . wikiEscape($lang) . '" data-wiki-page-name="' . wikiEscape($pageName) . '">
+    <nav class="wiki-language-switch" role="tablist" aria-label="页面语言">
+      <a role="tab" data-wiki-language="zh" aria-selected="' . ($isJapanese ? 'false' : 'true') . '" class="' . ($isJapanese ? '' : 'is-active') . '" href="./' . wikiEscape($zhPageName) . '">中文</a>
+      <a role="tab" data-wiki-language="ja" aria-selected="' . ($isJapanese ? 'true' : 'false') . '" class="' . ($isJapanese ? 'is-active' : '') . '" href="./' . wikiEscape($jaPageName) . '">日本語</a>
+    </nav>
+    ' . wikiRenderArticle($article, $club, $lang, false) . '
   </main>
-  <script>(function(){function applyLanguage(){var lang=window.VNFLanguage&&window.VNFLanguage.getLanguage()==="ja"?"ja":"zh";document.documentElement.lang=lang==="ja"?"ja":"zh-CN";document.querySelectorAll("[data-wiki-lang]").forEach(function(n){n.hidden=n.getAttribute("data-wiki-lang")!==lang;});}applyLanguage();if(window.VNFLanguage){window.VNFLanguage.subscribe(applyLanguage);window.VNFLanguage.ready.then(applyLanguage);}})();</script>
+  <script src="../wiki-page.js?v=20260816-motion"></script>
 </body>
 </html>
 ';
@@ -586,6 +779,10 @@ function wikiGeneratePageAndIndex(string $clubKey, array $content, array $club, 
     if (!wikiWriteFile($pagesDir . '/' . $pageName, wikiRenderPage($content, $club))) {
         throw new RuntimeException('wiki page write failed: ' . $pageName);
     }
+    $jaPageName = wikiLanguagePageName($clubKey, 'ja');
+    if (!wikiWriteFile($pagesDir . '/' . $jaPageName, wikiRenderPage($content, $club, 'ja'))) {
+        throw new RuntimeException('wiki page write failed: ' . $jaPageName);
+    }
 
     $manifest = [];
     if (is_dir($contentDir)) {
@@ -612,6 +809,7 @@ function wikiGeneratePageAndIndex(string $clubKey, array $content, array $club, 
                         'title' => (string)($row['i18n']['ja']['title'] ?? $row['title'] ?? ''),
                         'summary' => (string)($row['i18n']['ja']['summary'] ?? $row['summary'] ?? ''),
                         'region' => (string)($row['i18n']['ja']['region'] ?? ($row['i18n']['ja']['infobox']['Region'] ?? ($row['i18n']['ja']['infobox']['地域'] ?? ''))),
+                        'url' => './pages/' . wikiLanguagePageName((string)$row['club_key'], 'ja'),
                     ],
                 ];
             }
@@ -627,7 +825,7 @@ function wikiGeneratePageAndIndex(string $clubKey, array $content, array $club, 
         }
     }
 
-    return ['page_url' => './wiki/pages/' . $pageName, 'manifest' => $manifest];
+    return ['page_url' => './wiki/pages/' . $pageName, 'ja_page_url' => './wiki/pages/' . $jaPageName, 'manifest' => $manifest];
 }
 
 function wikiUploadImage(string $clubKey, string $uploadsDir): void {
@@ -929,6 +1127,7 @@ try {
             'club' => $club,
             'content' => $content,
             'page_url' => './wiki/pages/' . wikiPageName($clubKey),
+            'ja_page_url' => './wiki/pages/' . wikiLanguagePageName($clubKey, 'ja'),
         ]);
     }
 
@@ -951,6 +1150,7 @@ try {
             'message' => '维基内容已保存',
             'content' => $content,
             'page_url' => $generated['page_url'],
+            'ja_page_url' => $generated['ja_page_url'],
         ]);
     }
 

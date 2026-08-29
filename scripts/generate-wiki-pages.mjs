@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
+import { localizedContent, normalizeBlocks, renderAppearanceLauncher, renderReaderArticle } from '../wiki/wiki-reader.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const DEFAULT_ROOT = join(__dirname, '..');
@@ -20,6 +21,11 @@ export function pageNameForClubKey(clubKey) {
     throw new Error(`Invalid club_key: ${clubKey}`);
   }
   return `${clean}.html`;
+}
+
+export function languagePageNameForClubKey(clubKey, lang = 'zh') {
+  const pageName = pageNameForClubKey(clubKey);
+  return lang === 'ja' ? pageName.replace(/\.html$/, '-ja.html') : pageName;
 }
 
 function readJson(filePath, fallback) {
@@ -60,82 +66,6 @@ function validateContent(content, fileName) {
   }
 }
 
-function renderParagraphs(paragraphs) {
-  return (paragraphs || [])
-    .map((text) => `<p>${escapeHtml(text)}</p>`)
-    .join('\n');
-}
-
-function renderInfobox(content, club) {
-  const rows = {
-    学校: club.school || content.infobox?.学校 || '',
-    地区: club.province || club.prefecture || content.infobox?.地区 || '',
-    类型: content.infobox?.类型 || (club.type === 'school' ? '高校同好会' : '同好会'),
-    成立时间: club.created_at || content.infobox?.成立时间 || '',
-    状态: content.infobox?.状态 || (Number(club.verified) ? '已认证' : '未认证'),
-    ...content.infobox,
-  };
-
-  const body = Object.entries(rows)
-    .filter(([, value]) => String(value || '').trim())
-    .map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`)
-    .join('\n');
-
-  return `<aside class="wiki-infobox">
-    <div class="wiki-infobox-title">${escapeHtml(content.title)}</div>
-    <table>${body}</table>
-  </aside>`;
-}
-
-function renderToc(sections) {
-  const items = sections
-    .map((section, index) => `<li><a href="#section-${index + 1}">${escapeHtml(section.heading)}</a></li>`)
-    .join('\n');
-  return `<nav class="wiki-toc" aria-label="目录"><div class="wiki-toc-title">目录</div><ol>${items}</ol></nav>`;
-}
-
-function sectionHeadingLevel(value) {
-  return Number.parseInt(value, 10) === 3 ? 3 : 2;
-}
-
-function renderSections(sections) {
-  return sections.map((section, index) => {
-    const level = sectionHeadingLevel(section.level);
-    return `
-    <section class="wiki-section" id="section-${index + 1}">
-      <h${level}>${escapeHtml(section.heading)}</h${level}>
-      ${renderParagraphs(section.body)}
-    </section>
-  `;
-  }).join('\n');
-}
-
-function renderReferences(references) {
-  if (!Array.isArray(references) || references.length === 0) return '';
-  const items = references.map((ref) => {
-    const label = escapeHtml(ref.label || ref.url || '参考资料');
-    const url = escapeHtml(ref.url || '#');
-    return `<li><a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a></li>`;
-  }).join('\n');
-  return `<section class="wiki-section wiki-references"><h2>参考资料</h2><ol>${items}</ol></section>`;
-}
-
-function localizedWikiContent(content, lang) {
-  const localized = lang === 'ja' ? (content.i18n?.ja || {}) : {};
-  const sections = Array.isArray(localized.sections) && localized.sections.length ? localized.sections : content.sections;
-  return {
-    ...content,
-    ...localized,
-    title: localized.title || content.title,
-    summary: localized.summary || content.summary,
-    infobox: localized.infobox && Object.keys(localized.infobox).length ? localized.infobox : (content.infobox || {}),
-    sections,
-    images: Array.isArray(localized.images) && localized.images.length ? localized.images : (content.images || []),
-    references: Array.isArray(localized.references) && localized.references.length ? localized.references : (content.references || []),
-    updated_at: content.updated_at,
-  };
-}
-
 function manifestJapaneseMetadata(content) {
   const ja = content.i18n?.ja || {};
   if (!ja || typeof ja !== 'object') return null;
@@ -147,20 +77,6 @@ function manifestJapaneseMetadata(content) {
     summary: String(ja.summary || content.summary || ''),
     region: String(ja.region || ja.infobox?.Region || ja.infobox?.地域 || ''),
   };
-}
-
-function renderWikiArticle(content, club, lang) {
-  const languageLabel = lang === 'ja' ? 'ja' : 'zh';
-  return `<article class="wiki-article" data-wiki-lang="${languageLabel}">
-      <h1>${escapeHtml(content.title)}</h1>
-      ${renderInfobox(content, club)}
-      <p class="wiki-summary">${escapeHtml(content.summary)}</p>
-      ${renderImages(content.images)}
-      ${renderToc(content.sections)}
-      ${renderSections(content.sections)}
-      ${renderReferences(content.references)}
-      <footer class="wiki-footer">最后更新：${escapeHtml(content.updated_at || '未记录')}</footer>
-    </article>`;
 }
 
 function countryLabel(country) {
@@ -183,93 +99,52 @@ function displayNameForClub(club) {
   return club.display_name || club.name || club.school || '';
 }
 
-function safeImageUrl(value) {
-  const url = String(value || '').trim();
-  if (!url || /^\s*javascript:/i.test(url)) return '';
-  return url;
-}
-
-function imageWidthPercent(value) {
-  const width = Number.parseInt(value, 10);
-  if (!Number.isFinite(width)) return 100;
-  return Math.min(100, Math.max(25, width));
-}
-
-function imageOption(value, allowed, fallback) {
-  return allowed.includes(value) ? value : fallback;
-}
-
-function renderImages(images) {
-  if (!Array.isArray(images) || images.length === 0) return '';
-  const items = images.map((image) => {
-    const src = safeImageUrl(image.url);
-    if (!src) return '';
-    const caption = image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : '';
-    const width = imageWidthPercent(image.width_percent ?? 100);
-    const align = imageOption(image.align || 'center', ['left', 'center', 'right'], 'center');
-    const fit = imageOption(image.fit || 'cover', ['cover', 'contain'], 'cover');
-    return `<figure class="wiki-image-card wiki-image-align-${align} wiki-image-fit-${fit}" style="--wiki-image-width:${width}%">
-      <img src="${escapeHtml(src)}" alt="${escapeHtml(image.alt || image.caption || '')}" loading="lazy">
-      ${caption}
-    </figure>`;
-  }).filter(Boolean).join('\n');
-  if (!items) return '';
-  return `<section class="wiki-image-gallery" aria-label="图片">${items}</section>`;
-}
-
-function renderPage(content, club) {
-  const zhContent = localizedWikiContent(content, 'zh');
-  const jaContent = localizedWikiContent(content, 'ja');
+function renderPage(content, club, lang = 'zh') {
+  const articleContent = localizedContent(content, lang);
+  const pageName = languagePageNameForClubKey(content.club_key, lang);
+  const zhPageName = languagePageNameForClubKey(content.club_key, 'zh');
+  const jaPageName = languagePageNameForClubKey(content.club_key, 'ja');
+  const isJapanese = lang === 'ja';
+  const interfaceLabels = isJapanese
+    ? { map: 'Galgame同好会地図', wiki: 'VNFest WIKI', page: 'サークルWiki', pageLanguage: 'ページ言語' }
+    : { map: 'Galgame 同好会地图', wiki: 'VNFest WIKI', page: '同好会维基', pageLanguage: '页面语言' };
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${isJapanese ? 'ja' : 'zh-CN'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="../../js/language-runtime.js?v=20260813-language"></script>
   <script src="../../js/language-catalog.js?v=20260813-language"></script>
   <script src="../../js/language-static-ja.js?v=20260813-language"></script>
-  <title>${escapeHtml(content.title)} - 同好会维基</title>
-  <link rel="stylesheet" href="../wiki.css">
+  <title>${escapeHtml(articleContent.title)} - ${interfaceLabels.page}</title>
+  <link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header">
+  <script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+  <link rel="stylesheet" href="../wiki.css?v=20260817-editor-workbench">
 </head>
 <body>
-  <header class="wiki-header">
-    <a href="../../index.html">Galgame 同好会地图</a>
-    <a href="../index.html">VNFest WIKI</a>
-    <span>同好会维基</span>
+  <header class="wiki-header vn-topbar" data-page-header>
+    <a class="vn-topbar-brand" href="../../index.html?guest=1" aria-label="${isJapanese ? '地図に戻る' : '返回地图'}">
+      <span class="vn-topbar-name">VNFest</span>
+      <span class="vn-topbar-divider" aria-hidden="true"></span>
+      <span class="vn-topbar-sub">${interfaceLabels.page}</span>
+    </a>
+    <nav class="vn-topbar-actions" aria-label="${isJapanese ? 'ページ操作' : '页面操作'}">
+      <a class="vn-topbar-action" href="../../index.html?guest=1">${interfaceLabels.map}</a>
+      <a class="vn-topbar-action" href="../index.html">${interfaceLabels.wiki}</a>
+      ${renderAppearanceLauncher(lang).replace('class="wiki-appearance-launcher"', 'class="wiki-appearance-launcher vn-topbar-action is-icon"')}
+    </nav>
   </header>
-  <main class="wiki-page">
-    ${renderWikiArticle(zhContent, club, 'zh')}
-    ${renderWikiArticle(jaContent, club, 'ja')}
-    <article class="wiki-article" hidden>
-      <h1>${escapeHtml(content.title)}</h1>
-      ${renderInfobox(content, club)}
-      <p class="wiki-summary">${escapeHtml(content.summary)}</p>
-      ${renderImages(content.images)}
-      ${renderToc(content.sections)}
-      ${renderSections(content.sections)}
-      ${renderReferences(content.references)}
-      <footer class="wiki-footer">最后更新：${escapeHtml(content.updated_at || '未记录')}</footer>
-    </article>
+  <main class="wiki-page wiki-reading-page" data-wiki-page-lang="${lang}" data-wiki-page-name="${escapeHtml(pageName)}">
+    <nav class="wiki-language-switch" role="tablist" aria-label="${interfaceLabels.pageLanguage}">
+      <a role="tab" data-wiki-language="zh" aria-selected="${isJapanese ? 'false' : 'true'}" class="${isJapanese ? '' : 'is-active'}" href="./${zhPageName}">中文</a>
+      <a role="tab" data-wiki-language="ja" aria-selected="${isJapanese ? 'true' : 'false'}" class="${isJapanese ? 'is-active' : ''}" href="./${jaPageName}">日本語</a>
+    </nav>
+    ${renderReaderArticle(articleContent, club, lang)}
   </main>
-  <script>
-  (function () {
-    function applyLanguage() {
-      var lang = window.VNFLanguage && window.VNFLanguage.getLanguage() === 'ja' ? 'ja' : 'zh';
-      document.documentElement.lang = lang === 'ja' ? 'ja' : 'zh-CN';
-      document.querySelectorAll('[data-wiki-lang]').forEach(function (node) {
-        node.hidden = node.getAttribute('data-wiki-lang') !== lang;
-      });
-    }
-    applyLanguage();
-    if (window.VNFLanguage) {
-      window.VNFLanguage.subscribe(applyLanguage);
-      window.VNFLanguage.ready.then(applyLanguage);
-    }
-  })();
-  </script>
+  <script src="../wiki-page.js?v=20260816-motion"></script>
 </body>
 </html>
-`;
+`.replace(/^[ \t]+$/gm, '');
 }
 
 function readLibraryIndex(rootDir) {
@@ -317,10 +192,11 @@ function wikiCompleteness(content) {
   const missing = [];
   let score = 0;
   const infoboxCount = Object.values(content.infobox || {}).filter((value) => String(value || '').trim()).length;
-  const sectionCount = (content.sections || []).filter((section) =>
-    section.heading && Array.isArray(section.body) && section.body.some((line) => String(line || '').trim())
-  ).length;
-  const imageCount = (content.images || []).filter((image) => image.url).length;
+  const sectionCount = (content.sections || []).filter((section) => section.heading && normalizeBlocks(section).length).length;
+  const sectionImageCount = (content.sections || [])
+    .flatMap((section) => normalizeBlocks(section))
+    .filter((block) => block.type === 'image' && block.url).length;
+  const imageCount = (content.images || []).filter((image) => image.url).length + sectionImageCount;
   const referenceCount = (content.references || []).filter((ref) => ref.url || ref.label).length;
 
   if (String(content.summary || '').trim().length >= 20) score += 20;
@@ -623,27 +499,35 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
 `;
 }
 
-export function generateWikiPages({ rootDir = DEFAULT_ROOT } = {}) {
+export function generateWikiPages({ rootDir = DEFAULT_ROOT, onlyClubKeys = null } = {}) {
   const contentDir = join(rootDir, 'wiki/content');
   const pagesDir = join(rootDir, 'wiki/pages');
   const manifestPath = join(rootDir, 'wiki/index.json');
   const homePath = join(rootDir, 'wiki/index.html');
   const clubMap = readClubMap(rootDir);
-  const manifest = {};
+  const only = Array.isArray(onlyClubKeys) && onlyClubKeys.length
+    ? new Set(onlyClubKeys.map((key) => String(key || '').trim()).filter(Boolean))
+    : null;
+  const manifest = only ? readJson(manifestPath, {}) : {};
 
   mkdirSync(contentDir, { recursive: true });
   mkdirSync(pagesDir, { recursive: true });
 
-  const contentFiles = readdirSync(contentDir).filter((file) => file.endsWith('.json'));
-  for (const file of contentFiles) {
+  const sourceFiles = readdirSync(contentDir).filter((file) => file.endsWith('.json'));
+  const contentFiles = [];
+  for (const file of sourceFiles) {
     const content = readJson(join(contentDir, file), null);
     validateContent(content, file);
+    if (only && !only.has(content.club_key)) continue;
+    contentFiles.push(file);
     const pageName = pageNameForClubKey(content.club_key);
     const club = clubMap.get(content.club_key) || {};
-    const html = renderPage(content, club);
+    const html = renderPage(content, club, 'zh');
+    const jaHtml = renderPage(content, club, 'ja');
     const completeness = wikiCompleteness(content);
     const jaManifest = manifestJapaneseMetadata(content);
     writeFileSync(join(pagesDir, pageName), html, 'utf8');
+    writeFileSync(join(pagesDir, languagePageNameForClubKey(content.club_key, 'ja')), jaHtml, 'utf8');
     manifest[content.club_key] = {
       title: content.title,
       url: `./pages/${pageName}`,
@@ -656,7 +540,7 @@ export function generateWikiPages({ rootDir = DEFAULT_ROOT } = {}) {
       updated_at: content.updated_at || '',
       completeness_score: completeness.score,
       missing_fields: completeness.missing,
-      ...(jaManifest ? { i18n: { ja: jaManifest } } : {}),
+      ...(jaManifest ? { i18n: { ja: { ...jaManifest, url: `./pages/${languagePageNameForClubKey(content.club_key, 'ja')}` } } } : {}),
     };
   }
 
@@ -670,6 +554,11 @@ export function generateWikiPages({ rootDir = DEFAULT_ROOT } = {}) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const result = generateWikiPages();
+  const onlyArgs = process.argv.slice(2).flatMap((arg, index, args) => {
+    if (arg === '--only') return args[index + 1] ? [args[index + 1]] : [];
+    if (arg.startsWith('--only=')) return [arg.slice('--only='.length)];
+    return [];
+  });
+  const result = generateWikiPages({ onlyClubKeys: onlyArgs.length ? onlyArgs : null });
   console.log(`Generated ${result.count} wiki page(s).`);
 }

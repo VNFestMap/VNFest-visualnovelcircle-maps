@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>同好会管理后台 - Galgame 同好会地图</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
 <script src="../js/theme-runtime.js?v=20260702-theme"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -223,12 +225,21 @@ body::before, body::after { display: none; }
 .badge-status.banned { background: var(--danger-bg); color: var(--danger); }
 .badge-group { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.member-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.member-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; min-width: 0; }
 .member-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface-hover); }
 .member-avatar-fallback { display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; background: var(--primary-bg); color: var(--primary); }
-.member-info { min-width: 0; flex: 1; }
+.member-head { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; }
+.member-info { min-width: 72px; flex: 0 1 180px; }
 .member-info .name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.member-info .detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.member-details { display: flex; align-items: baseline; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; gap: 2px 6px; font-size: 12px; color: var(--text-muted); line-height: 1.45; }
+.member-detail-item { display: inline-flex; align-items: baseline; min-width: 0; max-width: 100%; }
+.member-detail-item:not(:last-child)::after { content: '·'; margin-left: 6px; color: var(--text-muted); }
+.member-detail-label { color: var(--text-muted); flex: 0 0 auto; }
+.member-detail-label::after { content: '：'; }
+.member-detail-value { min-width: 0; overflow-wrap: anywhere; word-break: break-word; color: var(--text-secondary); }
+.member-role { flex: 0 0 auto; }
+.member-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: 0 0 auto; max-width: 100%; flex-wrap: wrap; min-width: 0; }
+.member-actions > * { min-width: 0; max-width: 100%; }
 
 .section-card { background: var(--surface); border-radius: var(--radius-lg); padding: 18px; border: 1px solid var(--border); margin-bottom: 12px; transition: border-color 0.3s var(--ease-smooth), transform 0.35s var(--ease-spring), box-shadow 0.35s var(--ease-smooth); }
 .section-card:hover { border-color: var(--card-hover-border); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
@@ -467,6 +478,27 @@ body::before, body::after { display: none; }
 .rec-card .info .rating { font-size: 11px; color: var(--accent-gold); display: flex; align-items: center; gap: 3px; margin-top: 2px; }
 .rec-card .remove-btn { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; font-size: 14px; opacity: 0; transition: opacity 0.15s; }
 .rec-card:hover .remove-btn { opacity: 1; }
+.rec-card[data-rec-slot] { min-height: 64px; }
+.rec-card[draggable="true"] { cursor: grab; }
+.rec-card[draggable="true"]:active { cursor: grabbing; }
+.rec-card.rec-card-moving { border-color: var(--primary); background: var(--primary-bg); box-shadow: 0 0 0 2px rgba(231,76,60,0.16); }
+.rec-card.rec-card-drop-target { border-color: var(--primary); box-shadow: inset 0 0 0 2px rgba(231,76,60,0.2); }
+.rec-card-empty { min-height: 64px; border: 1px dashed var(--border-strong); background: transparent; cursor: pointer; color: var(--text-muted); font: inherit; text-align: left; }
+.rec-card-empty:hover, .rec-card-empty.rec-card-target { border-color: var(--primary); background: var(--primary-bg); opacity: 1; }
+.rec-card-empty .cover { border: 1px dashed var(--border); background: transparent; }
+.rec-card-empty .info { text-align: left; }
+.rec-slot-index { position: absolute; top: 5px; left: 6px; z-index: 1; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--surface); color: var(--text-muted); font-size: 10px; line-height: 20px; text-align: center; font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+.rec-card:not(.rec-card-empty) .rec-slot-index { background: var(--primary-bg); color: var(--primary); }
+.rec-card .rec-drag-hint { margin-top: 3px; color: var(--text-muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-card-empty .rec-drag-hint { color: var(--primary); }
+.rec-slot-status { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 7px 9px; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.rec-slot-status strong { color: var(--primary); }
+@media (max-width: 640px) {
+  .rec-card[data-rec-slot], .rec-card-empty { min-height: 72px; }
+  .rec-card .remove-btn { width: 44px; height: 44px; top: 1px; right: 1px; opacity: 1; font-size: 18px; }
+  .rec-card .info { padding-right: 24px; }
+  .rec-card .rec-drag-hint { white-space: normal; }
+}
 .moe-king-admin { grid-column: 1 / -1; }
 .current-moe-king { margin-top: 8px; }
 
@@ -517,6 +549,10 @@ body::before, body::after { display: none; }
   .uc-actions { margin-left: 0; width: 100%; margin-top: 6px; }
   .dl-item { flex-wrap: wrap; }
   .dl-actions { margin-left: 0; width: 100%; margin-top: 8px; }
+  .member-item { align-items: flex-start; flex-wrap: wrap; }
+  .member-head { flex: 1 1 100%; width: 100%; }
+  .member-actions { width: 100%; justify-content: flex-start; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .member-actions > * { flex: 1 1 auto; }
 }
 
 @media (max-width: 640px) {
@@ -550,6 +586,26 @@ body::before, body::after { display: none; }
   .settings-actions { flex-wrap: wrap; }
   .settings-avatar-section { flex-direction: column; align-items: flex-start; }
   .pagination { flex-wrap: wrap; justify-content: center; }
+  .member-card { padding: 14px; }
+  .member-item { flex-direction: column; align-items: stretch; gap: 0; }
+  .member-head { align-items: center; flex-wrap: wrap; gap: 10px; }
+  .member-info { flex: 1 1 0; min-width: 0; }
+  .member-role { order: 3; margin-left: auto; }
+  .member-details { order: 4; flex: 0 0 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .member-detail-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: none; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-raised); }
+  .member-detail-item:not(:last-child)::after { content: none; }
+  .member-detail-label { font-size: 11px; color: var(--text-muted); }
+  .member-detail-label::after { content: none; }
+  .member-detail-value { width: 100%; font-size: 13px; line-height: 1.45; color: var(--text-primary); }
+  .member-actions { width: 100%; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); gap: 8px; justify-content: stretch; }
+  .member-actions > * { flex: 1 1 calc(50% - 4px); min-height: 44px; max-width: 100%; white-space: normal; }
+  .member-actions .member-email-pref { justify-content: center; padding: 8px 10px; white-space: normal; }
+  .member-actions .btn { padding: 8px 10px; }
+}
+
+@media (max-width: 380px) {
+  .member-details { grid-template-columns: 1fr; }
+  .member-actions > * { flex-basis: 100%; }
 }
 
 .icon-sun, .icon-moon { display: none; }
@@ -599,15 +655,22 @@ body::before, body::after { display: none; }
     </div>
   </aside>
   <div class="admin-main">
-    <header class="admin-topbar">
+    <header class="admin-topbar vn-topbar admin-topbar--manual" data-page-header data-header-manual>
       <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="菜单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg></button>
-      <div class="topbar-breadcrumb"><span>同好会管理</span><span class="bc-sep">/</span><span class="bc-current" id="bcCurrent">待审核</span></div>
-      <div class="topbar-actions">
-        <button class="topbar-btn" onclick="loadData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 0 0-14.8-4"/><path d="M4 5v5h5"/><path d="M4 13a8 8 0 0 0 14.8 4"/><path d="M20 19v-5h-5"/></svg><span>刷新</span></button>
+      <div class="vn-topbar-leading admin-topbar-leading">
+        <a class="vn-topbar-brand" href="../index.html?guest=1" aria-label="返回地图">
+          <span class="vn-topbar-name">VNFest</span>
+          <span class="vn-topbar-divider" aria-hidden="true"></span>
+          <span class="vn-topbar-sub">同好会管理</span>
+        </a>
+        <div class="topbar-breadcrumb"><span>同好会管理</span><span class="bc-sep">/</span><span class="bc-current" id="bcCurrent">待审核</span></div>
+      </div>
+      <nav class="topbar-actions vn-topbar-actions" aria-label="页面操作">
+        <button class="topbar-btn vn-topbar-action" onclick="loadData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 0 0-14.8-4"/><path d="M4 5v5h5"/><path d="M4 13a8 8 0 0 0 14.8 4"/><path d="M20 19v-5h-5"/></svg><span>刷新</span></button>
         <a class="topbar-btn" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg><span>返回地图</span></a>
         <a class="topbar-btn" href="../admin/reviews.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/></svg><span>审核中心</span></a>
         <div class="topbar-divider"></div>
-        <button class="topbar-theme-btn" id="themeToggle" title="切换主题">
+        <button class="topbar-theme-btn vn-topbar-action is-icon" id="themeToggle" title="切换主题" aria-label="切换主题">
           <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
@@ -1081,31 +1144,36 @@ function renderMembers() {
         const emailPreferenceControl = canConfigureEmailRecipients && isEmailRecipient
           ? `<label class="member-email-pref" title="仅控制本同好会的申请邮件；成员个人关闭邮件提醒后仍不会收到邮件"><input type="checkbox" ${emailRecipientEnabled ? 'checked' : ''} onchange="setMembershipApplicationEmailRecipient(${m.id}, this)">接收申请邮件</label>`
           : '';
-        const memberDetails = [
-          m.nickname ? '昵称：' + escapeHtml(m.nickname) : '',
-          isSuperAdmin && m.email ? '邮箱：' + escapeHtml(m.email) : '',
-          isSuperAdmin && m.qq_account ? 'QQ：' + escapeHtml(m.qq_account) : '',
-          isSuperAdmin && m.apply_role ? '申请身份：' + applyRoleText(m.apply_role) : '',
-          isSuperAdmin && typeof m.is_student !== 'undefined' ? '学生：' + (parseInt(m.is_student) === 1 ? '是' : '否') : '',
-          '加入于 ' + formatDate(m.joined_at)
-        ].filter(Boolean).join(' · ');
+        const memberDetailFields = [
+          m.nickname ? { label: '昵称', value: escapeHtml(m.nickname) } : null,
+          isSuperAdmin && m.email ? { label: '邮箱', value: escapeHtml(m.email) } : null,
+          isSuperAdmin && m.qq_account ? { label: 'QQ', value: escapeHtml(m.qq_account) } : null,
+          isSuperAdmin && m.apply_role ? { label: '申请身份', value: applyRoleText(m.apply_role) } : null,
+          isSuperAdmin && typeof m.is_student !== 'undefined' ? { label: '学生', value: parseInt(m.is_student) === 1 ? '是' : '否' } : null,
+          { label: '加入于', value: escapeHtml(formatDate(m.joined_at)) }
+        ].filter(Boolean);
+        const memberDetails = memberDetailFields.map(field =>
+          `<span class="member-detail-item"><span class="member-detail-label">${field.label}</span><span class="member-detail-value">${field.value}</span></span>`
+        ).join('');
 
         const resolvedAvatar = m.avatar_url ? (m.avatar_url.startsWith('http') || m.avatar_url.startsWith('/') || m.avatar_url.startsWith('data:') ? m.avatar_url : '../' + m.avatar_url) : '';
         const avatarInitial = escapeHtml((m.username || '?')[0].toUpperCase());
 
         return `
-        <div class="card">
+        <div class="card member-card">
           <div class="member-item" style="padding:0;border:none;">
-            ${resolvedAvatar
-              ? `<img class="member-avatar" src="${escapeHtml(resolvedAvatar)}" alt="" onerror="this.outerHTML='<div class=\\'member-avatar member-avatar-fallback\\'>${avatarInitial}</div>'" />`
-              : `<div class="member-avatar member-avatar-fallback">${avatarInitial}</div>`
-            }
-            <div class="member-info">
-              <div class="name">${escapeHtml(m.username || '未知')}</div>
-              <div class="detail">${memberDetails}</div>
+            <div class="member-head">
+              ${resolvedAvatar
+                ? `<img class="member-avatar" src="${escapeHtml(resolvedAvatar)}" alt="" onerror="this.outerHTML='<div class=\\'member-avatar member-avatar-fallback\\'>${avatarInitial}</div>'" />`
+                : `<div class="member-avatar member-avatar-fallback">${avatarInitial}</div>`
+              }
+              <div class="member-info">
+                <div class="name">${escapeHtml(m.username || '未知')}</div>
+              </div>
+              <div class="member-details">${memberDetails}</div>
+              <span class="badge badge-role member-role ${m.role}">${ROLE_NAMES[m.role] || m.role}</span>
             </div>
-            <span class="badge badge-role ${m.role}">${ROLE_NAMES[m.role] || m.role}</span>
-            <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;">
+            <div class="member-actions">
               ${emailPreferenceControl}
               ${showRoleUp ? `<button class="btn btn-glass btn-sm" onclick="changeMemberRole(${m.id},'manager')">升为管理</button>` : ''}
               ${showRoleDown ? `<button class="btn btn-glass btn-sm" onclick="changeMemberRole(${m.id},'member')">设为成员</button>` : ''}
@@ -2949,11 +3017,11 @@ async function renderBotTokens() {
 
   const clubName = getClubName(selectedClubId, selectedCountry);
   let html = `<div class="section-card">
-    <div class="section-title">${icon('download')} 下载 GalgameMap 插件（beta0.5）</div>
+    <div class="section-title">${icon('download')} 下载 GalgameMap 插件（beta0.6）</div>
     <div class="section-sub">在 AstrBot 中安装本插件后，可在群里查询同好会公开资料、接收成员申请提醒，负责人还可直接审批。GalOnly 摊位与 Staff 查询/同步等全站能力需要站点私有 BOT_API_KEY。</div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;">
-      <a class="btn btn-primary" href="../downloads/astrbot_plugin_galgamemap_beta0.5.zip" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;">
-        ${icon('download')} 下载插件压缩包（beta0.5）
+      <a class="btn btn-primary" href="../downloads/astrbot_plugin_galgamemap_beta0.6.zip" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;">
+        ${icon('download')} 下载插件压缩包（beta0.6）
       </a>
       <a class="btn btn-ghost" href="../wiki/guide/#/astrbot/install-and-sync" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;">
         ${icon('book')} 查看详细使用说明
@@ -3076,9 +3144,191 @@ function copyBotToken(token) {
 let recSearchResults = [];
 let recHasSearched = false;
 let recData = [];
+const REC_SLOT_COUNT = 12;
+let recSlots = Array(REC_SLOT_COUNT).fill(null);
+let recTargetSlot = null;
+let recMovingSlot = null;
+let recDraggedSlot = null;
+let recReorderBusy = false;
 let moeKingData = null;
 let moeKingSearchResults = [];
 let moeKingHasSearched = false;
+
+function firstEmptyRecommendationSlot(slots = recSlots) {
+  return slots.findIndex(item => !item);
+}
+
+function buildRecommendationSlots() {
+  const slots = Array(REC_SLOT_COUNT).fill(null);
+  recData.forEach((rec, index) => {
+    const requestedSlot = Number(rec.sort_order);
+    const preferredSlot = Number.isInteger(requestedSlot) && requestedSlot >= 0 && requestedSlot < REC_SLOT_COUNT
+      ? requestedSlot
+      : -1;
+    const slot = preferredSlot >= 0 && !slots[preferredSlot]
+      ? preferredSlot
+      : firstEmptyRecommendationSlot(slots);
+    if (slot >= 0) slots[slot] = rec;
+  });
+  return slots;
+}
+
+function updateRecommendationSlotSelection() {
+  if (recMovingSlot !== null && !recSlots[recMovingSlot]) recMovingSlot = null;
+  if (recTargetSlot === null || recTargetSlot < 0 || recTargetSlot >= REC_SLOT_COUNT || recSlots[recTargetSlot]) {
+    const firstEmpty = firstEmptyRecommendationSlot();
+    recTargetSlot = firstEmpty >= 0 ? firstEmpty : null;
+  }
+}
+
+function recommendationSlotsPayload(slots) {
+  return slots.map(item => item ? Number(item.id) : null);
+}
+
+function selectRecommendationTarget(slot) {
+  if (recMovingSlot !== null) {
+    if (recMovingSlot === slot) return cancelRecommendationMove();
+    return moveRecommendationSlot(recMovingSlot, slot);
+  }
+  if (recSlots[slot]) {
+    recMovingSlot = slot;
+    recTargetSlot = null;
+    renderRecommendationBoardState();
+    showToast(`已选中第 ${slot + 1} 位，请点击目标位置`, 'info');
+    return;
+  }
+  recTargetSlot = slot;
+  renderRecommendationBoardState();
+}
+
+function cancelRecommendationMove() {
+  if (recMovingSlot === null) return;
+  recMovingSlot = null;
+  updateRecommendationSlotSelection();
+  renderRecommendationBoardState();
+}
+
+function renderRecommendationBoardState() {
+  const list = document.querySelector('.rec-list');
+  if (!list) return;
+  list.querySelectorAll('[data-rec-slot]').forEach(card => {
+    const slot = Number(card.dataset.recSlot);
+    card.classList.toggle('rec-card-moving', recMovingSlot === slot);
+    card.classList.toggle('rec-card-target', recMovingSlot === null && recTargetSlot === slot && !recSlots[slot]);
+    card.classList.remove('rec-card-drop-target');
+    if (card.classList.contains('rec-card-empty')) {
+      card.setAttribute('aria-pressed', recMovingSlot === null && recTargetSlot === slot ? 'true' : 'false');
+    } else {
+      card.setAttribute('aria-pressed', recMovingSlot === slot ? 'true' : 'false');
+    }
+  });
+  const status = document.getElementById('recSlotStatus');
+  if (!status) return;
+  if (recMovingSlot !== null) {
+    status.innerHTML = `正在移动第 <strong>${recMovingSlot + 1}</strong> 位：点击空槽移动，或点击其他条目互换；按 Esc 取消`;
+  } else if (recTargetSlot !== null) {
+    status.innerHTML = `新增目标：第 <strong>${recTargetSlot + 1}</strong> 位空槽`;
+  } else {
+    status.textContent = '推荐榜已填满，可拖拽或点击条目互换位置';
+  }
+}
+
+function bindRecommendationBoardInteractions() {
+  const list = document.querySelector('.rec-list');
+  if (!list) return;
+
+  list.addEventListener('click', event => {
+    if (event.target.closest('.remove-btn')) return;
+    const card = event.target.closest('[data-rec-slot]');
+    if (!card) return;
+    selectRecommendationTarget(Number(card.dataset.recSlot));
+  });
+
+  list.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      cancelRecommendationMove();
+      return;
+    }
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const card = event.target.closest('[data-rec-slot]');
+    if (!card) return;
+    event.preventDefault();
+    selectRecommendationTarget(Number(card.dataset.recSlot));
+  });
+
+  list.addEventListener('dragstart', event => {
+    const card = event.target.closest('[data-rec-slot]:not(.rec-card-empty)');
+    if (!card || recReorderBusy) return;
+    recDraggedSlot = Number(card.dataset.recSlot);
+    card.classList.add('rec-card-moving');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(recDraggedSlot));
+  });
+
+  list.addEventListener('dragover', event => {
+    const card = event.target.closest('[data-rec-slot]');
+    if (!card || recDraggedSlot === null || recReorderBusy) return;
+    event.preventDefault();
+    card.classList.add('rec-card-drop-target');
+    event.dataTransfer.dropEffect = 'move';
+  });
+
+  list.addEventListener('dragleave', event => {
+    const card = event.target.closest('[data-rec-slot]');
+    if (card && !card.contains(event.relatedTarget)) card.classList.remove('rec-card-drop-target');
+  });
+
+  list.addEventListener('drop', event => {
+    const card = event.target.closest('[data-rec-slot]');
+    if (!card || recDraggedSlot === null) return;
+    event.preventDefault();
+    const targetSlot = Number(card.dataset.recSlot);
+    list.querySelectorAll('.rec-card-drop-target').forEach(item => item.classList.remove('rec-card-drop-target'));
+    moveRecommendationSlot(recDraggedSlot, targetSlot);
+  });
+
+  list.addEventListener('dragend', () => {
+    recDraggedSlot = null;
+    list.querySelectorAll('.rec-card-drop-target').forEach(item => item.classList.remove('rec-card-drop-target'));
+  });
+  renderRecommendationBoardState();
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') cancelRecommendationMove();
+});
+
+async function moveRecommendationSlot(fromSlot, toSlot) {
+  if (fromSlot === toSlot || recReorderBusy || !recSlots[fromSlot]) return;
+  const nextSlots = recSlots.slice();
+  const source = nextSlots[fromSlot];
+  nextSlots[fromSlot] = nextSlots[toSlot] || null;
+  nextSlots[toSlot] = source;
+  const previousSlots = recSlots;
+  recSlots = nextSlots;
+  recMovingSlot = null;
+  recTargetSlot = null;
+  recReorderBusy = true;
+  try {
+    const response = await fetch('../api/club_recommendations.php?action=reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ slots: recommendationSlotsPayload(nextSlots) })
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '排序保存失败');
+    showToast('推荐榜排序已保存', 'success');
+    await renderRecommendations();
+  } catch (error) {
+    recSlots = previousSlots;
+    updateRecommendationSlotSelection();
+    showToast(error.message || '排序保存失败，请稍后重试', 'error');
+    renderRecommendationBoardState();
+  } finally {
+    recReorderBusy = false;
+  }
+}
 
 async function renderRecommendations() {
   const container = document.getElementById('listContainer');
@@ -3101,6 +3351,8 @@ async function renderRecommendations() {
     moeKingData = data.success ? data.data : null;
   } catch { moeKingData = null; }
 
+  recSlots = buildRecommendationSlots();
+  updateRecommendationSlotSelection();
   let html = '<div class="rec-layout">';
 
   // Left: Search panel
@@ -3132,7 +3384,8 @@ async function renderRecommendations() {
       if (alreadyAdded) {
         html += '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">已添加</span>';
       } else {
-        html += `<button class="add-btn" onclick="addRecommendation(${item.bangumi_id})">+ 添加</button>`;
+        const targetText = recTargetSlot !== null ? `第 ${recTargetSlot + 1} 位` : '首个空位';
+        html += `<button class="add-btn" onclick="addRecommendation(${item.bangumi_id})">+ 添加到${targetText}</button>`;
       }
       html += '</div>';
     });
@@ -3140,35 +3393,40 @@ async function renderRecommendations() {
 
   html += `</div></div></div>`; // close search-results, search-area, card
 
-  // Right: Current 12-slot recommendation list
-  const filledCount = recData.length;
+  // Right: Current fixed 12-slot recommendation list
+  const filledCount = recSlots.filter(Boolean).length;
   html += `<div class="section-card">
     <div class="section-title">${icon('star')} 当前推荐榜 <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${filledCount} / 12)</span></div>
-    <div class="section-sub">点击右上角 × 移除条目</div>
-    <div class="rec-list">`;
+    <div class="section-sub">点击空位后添加；已有条目可拖拽排序。手机端点击条目，再点击目标位置即可移动或互换。</div>
+    <div class="rec-slot-status" id="recSlotStatus" role="status" aria-live="polite"></div>
+    <div class="rec-list" role="list" aria-label="十二个推荐榜位置">`;
 
-  recData.forEach((rec, idx) => {
-    html += `<div class="rec-card">
-      <div class="cover">
-        ${rec.image_url ? `<img src="${escapeHtml(rec.image_url)}" alt="" onerror="this.style.display='none'">` : `<span>#${idx + 1}</span>`}
-      </div>
+  recSlots.forEach((rec, slot) => {
+    if (rec) {
+      html += `<div class="rec-card${recMovingSlot === slot ? ' rec-card-moving' : ''}" data-rec-slot="${slot}" draggable="true" role="button" tabindex="0" aria-pressed="${recMovingSlot === slot ? 'true' : 'false'}" aria-label="第 ${slot + 1} 位：${escapeHtml(rec.title)}">
+        <span class="rec-slot-index">${slot + 1}</span>
+        <div class="cover">
+          ${rec.image_url ? `<img src="${escapeHtml(rec.image_url)}" alt="" onerror="this.style.display='none'">` : `<span>#${slot + 1}</span>`}
+        </div>
+        <div class="info">
+          <div class="title">${escapeHtml(rec.title)}</div>
+          ${rec.rating ? `<div class="rating">${icon('star')} ${rec.rating}</div>` : ''}
+          <div class="rec-drag-hint">拖动或点击选择</div>
+        </div>
+        <button class="remove-btn" onclick="removeRecommendation(${rec.id})" title="移除第 ${slot + 1} 位" aria-label="移除第 ${slot + 1} 位">×</button>
+      </div>`;
+      return;
+    }
+
+    html += `<button type="button" class="rec-card rec-card-empty${recTargetSlot === slot ? ' rec-card-target' : ''}" data-rec-slot="${slot}" role="listitem" aria-pressed="${recTargetSlot === slot ? 'true' : 'false'}" aria-label="选择第 ${slot + 1} 位空槽">
+      <span class="rec-slot-index">${slot + 1}</span>
+      <div class="cover"><span>空缺</span></div>
       <div class="info">
-        <div class="title">${escapeHtml(rec.title)}</div>
-        ${rec.rating ? `<div class="rating">${icon('star')} ${rec.rating}</div>` : ''}
-      </div>
-      <button class="remove-btn" onclick="removeRecommendation(${rec.id})" title="移除">×</button>
-    </div>`;
+        <div class="title">第 ${slot + 1} 位</div>
+        <div class="rec-drag-hint">点击选择此位置</div>
+      </nav>
+    </button>`;
   });
-
-  // Empty placeholders for remaining slots
-  for (let i = filledCount; i < 12; i++) {
-    html += `<div class="rec-card rec-card-empty">
-      <div class="cover" style="display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;font-weight:500;">空缺</div>
-      <div class="info" style="text-align:center;padding:8px;">
-        <div class="title" style="color:var(--text-muted);font-size:10px;">第 ${i + 1} 位</div>
-      </div>
-    </div>`;
-  }
 
   html += `</div></div></div>`; // close rec-list, card, rec-layout
 
@@ -3214,6 +3472,7 @@ async function renderRecommendations() {
   html += `</div></div></div>`;
 
   container.innerHTML = html;
+  bindRecommendationBoardInteractions();
 
   // Restore search input value after re-render
   const restoredInput = document.getElementById('recSearchInput');
@@ -3312,6 +3571,14 @@ async function addRecommendation(bangumiId) {
     return;
   }
 
+  const targetSlot = recTargetSlot !== null && !recSlots[recTargetSlot]
+    ? recTargetSlot
+    : firstEmptyRecommendationSlot();
+  if (targetSlot < 0) {
+    showToast('推荐榜已填满，请先移除或调整已有条目', 'error');
+    return;
+  }
+
   // Bangumi 搜索 API 不再返回评分，从条目详情获取
   let rating = item.rating || 0;
   try {
@@ -3336,7 +3603,8 @@ async function addRecommendation(bangumiId) {
         title: item.title_cn || item.title,
         image_url: item.image_url || '',
         rating: rating,
-        summary: item.summary || ''
+        summary: item.summary || '',
+        position: targetSlot + 1
       })
     });
     const data = await r.json();

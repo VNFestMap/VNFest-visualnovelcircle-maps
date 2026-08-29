@@ -32,11 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $memberRoles = [];
     if ($user) {
         $db = getDB();
-        $stmt = $db->prepare("SELECT club_id, status, role FROM club_memberships WHERE user_id = ?");
+        $stmt = $db->prepare("SELECT club_id, COALESCE(country, 'china') AS country, status, role FROM club_memberships WHERE user_id = ?");
         $stmt->execute([$user['id']]);
         foreach ($stmt->fetchAll() as $m) {
-            $memberships[$m['club_id']] = $m['status'];
-            $memberRoles[$m['club_id']] = $m['role'] ?? '';
+            $key = $m['club_id'] . ':' . ($m['country'] ?? 'china');
+            $memberships[$key] = $m['status'];
+            $memberRoles[$key] = $m['role'] ?? '';
             // 取俱乐部角色中的最高等级
             if ($m['status'] === 'active') {
                 $clubLevel = ROLE_HIERARCHY[$m['role']] ?? -1;
@@ -48,21 +49,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     foreach ($rows as &$item) {
         $clubId = $item['id'] ?? 0;
-        $isMember = isset($memberships[$clubId]) && $memberships[$clubId] === 'active' && ($memberRoles[$clubId] ?? '') !== 'external';
+        $clubCountry = $item['country'] ?? 'japan';
+        $membershipKey = $clubId . ':' . $clubCountry;
+        $membershipStatus = $memberships[$membershipKey] ?? null;
+        $hasPending = $membershipStatus === 'pending';
+        $isMember = $membershipStatus === 'active' && ($memberRoles[$membershipKey] ?? '') !== 'external';
         $visibleByDefault = !empty($item['visible_by_default']);
         // 管理员及以上系统角色可查看所有学校的信息
 
         // 联系方式可见性: 非成员 + 非公开 + 非管理员 → 隐藏
+        // 新增：已提交绑定申请（pending）的用户可临时查看联系方式
         $isProtected = !empty($item['protected']);
         if ($isProtected) {
-            // 保护模式：仅成员或 负责人级别及以上 可见
+            // 保护模式：成员、待审核申请人或 负责人级别及以上 可见
             $canSeeProtected = $effectiveLevel >= ROLE_HIERARCHY['representative'];
-            $item['info_hidden'] = !$isMember && !$canSeeProtected;
+            $item['info_hidden'] = !$isMember && !$hasPending && !$canSeeProtected;
         } else {
-            $item['info_hidden'] = !$isMember && !$visibleByDefault && !$canSeeAllInfo;
+            $item['info_hidden'] = !$isMember && !$hasPending && !$visibleByDefault && !$canSeeAllInfo;
         }
-        // 申请资格: 已登录 + 非该俱乐部成员 → 可申请（与可见性解耦）
-        $item['can_apply'] = ($user !== null) && !$isMember;
+        // 申请资格: 已登录 + 非该俱乐部成员 + 无待审核申请 → 可申请（与可见性解耦）
+        $item['can_apply'] = ($user !== null) && !$isMember && !$hasPending;
+        $item['membership_status'] = $membershipStatus;
         if ($item['info_hidden']) {
             $item['info'] = '申请绑定后可见';
         }
@@ -131,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = ['success' => true, 'total' => count($rows), 'data' => $rows];
     
     file_put_contents($dataFile, json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    echo json_encode(['success' => true, 'message' => '添加成功', 'data' => $newItem]);
+    echo json_encode(['success' => true, 'message' => '添加成功', 'id' => $newItem['id'], 'data' => $newItem]);
     exit();
 }
 

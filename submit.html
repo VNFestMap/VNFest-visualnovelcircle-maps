@@ -871,13 +871,24 @@
                     <div class="field-helper">仅用于审核沟通，不会公开发布。</div>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label-field" for="applicantRole">你在这个同好会中的角色 <span class="required">*</span></label>
+                    <select id="applicantRole" required>
+                        <option value="external">其他</option>
+                        <option value="member" selected>成员</option>
+                        <option value="manager">管理员</option>
+                        <option value="representative">负责人</option>
+                    </select>
+                    <div class="field-helper">审核通过后会自动为你绑定该同好会的对应身份。</div>
+                </div>
+
                 <button type="submit" class="btn-submit" id="submitBtn">
                     <span class="btn-text">提交信息</span>
                 </button>
             </form>
 
             <div class="form-footer">
-                提交后管理员会尽快审核，审核通过后将在同好会地图上展示。
+                提交后管理员会尽快审核，审核通过后将在同好会地图上展示，并自动为你绑定对应同好会身份。
             </div>
         </div>
     </div>
@@ -968,6 +979,23 @@
             try { localStorage.setItem('themePreference', next); } catch (e) {}
         });
 
+        // ===== 登录校验：提交信息需要登录，审批通过后会自动绑定当前账号 =====
+        window.__submitAuthReady = false;
+        (function() {
+            fetch('./api/auth.php?action=me', { credentials: 'same-origin' })
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) {
+                    if (data && data.logged_in) {
+                        window.__submitAuthReady = true;
+                    } else {
+                        window.location.replace('./login.html?redirect=submit.html');
+                    }
+                })
+                .catch(function() {
+                    window.location.replace('./login.html?redirect=submit.html');
+                });
+        })();
+
         // ===== DOM refs =====
         var clubName = document.getElementById('clubName');
         var schoolName = document.getElementById('schoolName');
@@ -983,6 +1011,7 @@
         var createdAt = document.getElementById('createdAt');
         var remark = document.getElementById('remark');
         var submitter = document.getElementById('submitter');
+        var applicantRole = document.getElementById('applicantRole');
         var submitBtn = document.getElementById('submitBtn');
         var errorMsg = document.getElementById('errorMsg');
         var successDialog = document.getElementById('successDialog');
@@ -1146,6 +1175,12 @@
             // Hide previous error
             errorMsg.classList.remove('show');
 
+            if (!window.__submitAuthReady) {
+                showError('请先登录后再提交，页面正在跳转登录...');
+                window.location.replace('./login.html?redirect=submit.html');
+                return;
+            }
+
             // Collect type
             var clubType = '';
             document.querySelectorAll('input[name="clubType"]').forEach(function(radio) {
@@ -1202,6 +1237,7 @@
                 created_at: createdAt.value || '',
                 remark: remark.value.trim(),
                 submitter: submitter.value.trim(),
+                applicant_role: applicantRole.value,
                 timestamp: new Date().toISOString(),
                 status: 'pending'
             };
@@ -1212,6 +1248,7 @@
             try {
                 var response = await fetch('./api/submit.php', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
@@ -1223,13 +1260,17 @@
                     submitBtn.classList.remove('btn-loading');
                     openDialog();
                 } else {
+                    if (result.logged_in === false) {
+                        window.location.replace('./login.html?redirect=submit.html');
+                        return;
+                    }
                     throw new Error(result.message || '提交失败');
                 }
             } catch (err) {
                 console.error('提交失败:', err);
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('btn-loading');
-                showError('提交失败，请稍后重试或联系管理员。');
+                showError(err && err.message ? err.message : '提交失败，请稍后重试或联系管理员。');
             }
         });
 

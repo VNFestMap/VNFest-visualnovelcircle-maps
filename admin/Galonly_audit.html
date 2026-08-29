@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
 <head>
+<!-- 2026-08 北京 GalOnly 2.0 两阶段参展更新备注：
+     审核卡片新增「是否升级摊位」；联系方式展示 QQ 号 + 手机号；
+     新增「参展经历」；阶段二制品条目支持展示每项制品图片。
+     2026-08 审核体验：北京两阶段去计数条（不再集票），审核意见按
+     阶段一/阶段二分区块展示与提交；陪审意见匿名（仅总审可见姓名，
+     陪审视角显示「审核意见 N」）；摊主侧不再展示逐条意见。
+     2026-08 补充：阶段一视图保留所有申请（含已进入二阶段者）；
+     总审可在两阶段通过后「撤回」最终决定；摊主可删除自己的已通过表单。
+     样式统一由 css/galonly-poster-theme.css 约束。 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GalOnly 审核面板 - Galgame 同好会地图</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@400;500;600&display=swap');
 
@@ -18,6 +29,17 @@
   --font-body: 'Jost', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
   --transition-theme: background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
   --header-height: 56px;
+
+  /* Admin dashboard tokens (aligned with reviews.html backend style) */
+  --sidebar-bg: oklch(15% 0.03 275);
+  --sidebar-surface: oklch(22% 0.04 272);
+  --sidebar-text: oklch(75% 0.03 270);
+  --sidebar-text-active: oklch(93% 0.003 80);
+  --sidebar-accent: oklch(72% 0.07 290);
+  --sidebar-width: 232px;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-md: 0 10px 36px rgba(0,0,0,0.18), 0 2px 4px oklch(72% 0.04 290 / 0.08);
 }
 
 [data-theme="dark"] {
@@ -2788,32 +2810,184 @@ body,
     }
   }
 }
+
+/* ============================================================
+   Dashboard layout (sidebar + main content) — reviews.html style
+   ============================================================ */
+.app-layout {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+}
+.sidebar {
+  width: var(--sidebar-width); flex: 0 0 var(--sidebar-width);
+  display: flex; flex-direction: column;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  position: sticky; top: 0; height: 100vh;
+  z-index: 90;
+}
+.sidebar-brand {
+  padding: var(--space-lg) var(--space-md) var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-brand h2 {
+  margin: 0; font-size: 17px; font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: .01em; color: var(--sidebar-text-active);
+}
+.sidebar-brand .brand-badge {
+  display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: var(--radius-pill);
+  font-size: 10px; font-weight: 700; color: #fff; background: var(--sidebar-accent);
+}
+.sidebar-brand p { margin: 5px 0 0; font-size: 11px; color: var(--sidebar-text); opacity: .72; }
+.sidebar-nav { flex: 1; padding: var(--space-sm) 0; overflow-y: auto; }
+.nav-section-label {
+  padding: 12px var(--space-md) 5px; font-size: 10px; font-weight: 700;
+  letter-spacing: .1em; color: var(--sidebar-text); opacity: .55; text-transform: uppercase;
+}
+.sidebar-nav .nav-item {
+  display: flex; align-items: center; gap: 10px; width: auto;
+  margin: 2px 10px; padding: 9px 12px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--sidebar-text);
+  font-size: 13px; font-family: inherit; cursor: pointer; text-align: left;
+  transition: background .16s ease, color .16s ease;
+}
+.sidebar-nav .nav-item:hover { background: var(--sidebar-surface); color: var(--sidebar-text-active); }
+.sidebar-nav .nav-item.active {
+  background: var(--sidebar-surface); color: var(--sidebar-text-active);
+  box-shadow: inset 3px 0 0 var(--sidebar-accent);
+  font-weight: 700;
+}
+.sidebar-nav .nav-icon { width: 16px; text-align: center; font-size: 12px; opacity: .85; }
+.sidebar-nav .nav-badge {
+  margin-left: auto; padding: 1px 7px; border-radius: var(--radius-pill);
+  font-size: 10px; font-weight: 700; color: var(--accent-orange); background: var(--accent-orange-bg);
+  border: 1px solid var(--warning-border);
+}
+.sidebar-footer {
+  padding: 12px var(--space-md); border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.sidebar-footer a { font-size: 12px; color: var(--sidebar-text); text-decoration: none; transition: color .15s; }
+.sidebar-footer a:hover { color: var(--sidebar-text-active); }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 89; }
+.main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main-content .top-header {
+  position: sticky; top: 0; z-index: 80;
+  left: auto; right: auto; width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 var(--space-lg); height: var(--header-height);
+  background: var(--shell);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-menu-btn {
+  display: none; width: 36px; height: 36px; padding: 0; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary);
+  font-size: 16px; cursor: pointer; font-family: inherit;
+}
+.mobile-menu-btn:hover { color: var(--fg); border-color: var(--fg-muted); }
+.main-content .content { padding: var(--space-lg); flex: 1; min-width: 0; }
+.btn-export {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  background: transparent; color: var(--text-secondary); font-size: 12px; font-family: inherit;
+  cursor: pointer; transition: all .15s;
+}
+.btn-export:hover { color: var(--accent); border-color: var(--accent); }
+
+/* 卡片层级：统一阴影与悬停（对齐超管后台风格） */
+.card, .app-card, .stat-card { box-shadow: var(--shadow-sm); }
+.card:hover, .app-card:hover, .stat-card:hover { box-shadow: var(--shadow-md); }
+
+/* 紧凑排版（尺寸优化） */
+.page-title { font-size: 18px; margin-bottom: 14px; }
+.stats-row { gap: 12px; margin-bottom: 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.stat-card { padding: 14px 16px; }
+.stat-card .label { font-size: 12px; margin-bottom: 4px; }
+.stat-card .num { font-size: 22px; }
+.tabs { margin-bottom: 12px; gap: 2px; }
+.tab-btn { padding: 7px 14px; font-size: 13px; }
+.app-list { gap: 12px; }
+.app-card { padding: 16px 18px; }
+.app-grid { gap: 10px; margin-bottom: 12px; }
+.vote-section { margin-top: 12px; padding-top: 12px; }
+.app-footer { font-size: 11px; color: var(--fg-dim); }
+.card { margin-bottom: 14px; }
+.card-header { padding: 10px 16px; }
+.card-body { padding: 14px 16px; }
+#eventMgr { margin-bottom: 14px; }
+  .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
+  .main-content .top-header { padding: 0 14px; }
+  .main-content .content { padding: 14px; }
+  .header-actions .header-link:nth-child(2) { display: none; }
+}
 </style>
+<link rel="stylesheet" href="../css/galonly-poster-theme.css">
 </head>
 <body>
 
-<!-- Main Area -->
-<div class="main-area">
+<!-- App Layout -->
+<div class="app-layout">
 
-  <!-- Top Header -->
-  <header class="top-header">
-    <div class="breadcrumb">
-      <a href="../index.html">首页</a>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-current">申请审核</span>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h2>GalOnly <span class="brand-badge">Audit</span></h2>
+      <p>摊位与工作人员审核</p>
     </div>
-    <div class="header-actions">
-      <a class="header-link" href="../Galgame_events/galgameonly_list.html">活动列表</a>
-      <a class="header-link" href="../admin/club_manager.html">同好会管理</a>
-      <a class="header-link" href="../index.html">返回地图</a>
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题"></button>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">活动</div>
+      <button class="nav-item active" data-event-key="all" onclick="selectSidebarEvent('all')">
+        <span class="nav-icon">&#9634;</span> 全部活动 <span class="nav-badge" id="badgeAll" style="display:none;"></span>
+      </button>
+      <button class="nav-item" data-event-key="shanghai" onclick="selectSidebarEvent('shanghai')">
+        <span class="nav-icon">&#27710;</span> 上海 GalgameOnly <span class="nav-badge" id="badgeShanghai" style="display:none;"></span>
+      </button>
+      <button class="nav-item" data-event-key="beijing" onclick="selectSidebarEvent('beijing')">
+        <span class="nav-icon">&#20140;</span> 北京 GalOnly <span class="nav-badge" id="badgeBeijing" style="display:none;"></span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="../Galgame_events/galgameonly_list.html">活动列表</a>
+      <a href="../index.html">返回首页</a>
     </div>
-  </header>
+  </aside>
 
-  <!-- Content -->
-  <main class="content" data-component="audit-panel">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
-    <h1 class="page-title">申请审核</h1>
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="top-header vn-topbar galonly-top-header" data-page-header data-header-manual>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="openMobileSidebar()" title="菜单">&#9776;</button>
+      <div class="vn-topbar-leading galonly-topbar-leading">
+        <a class="vn-topbar-brand" href="../index.html?guest=1" aria-label="返回地图">
+          <span class="vn-topbar-name">VNFest</span>
+          <span class="vn-topbar-divider" aria-hidden="true"></span>
+          <span class="vn-topbar-sub">GalOnly 审核面板</span>
+        </a>
+        <div class="breadcrumb">
+          <a href="../index.html">首页</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">申请审核</span>
+        </div>
+      </div>
+      <nav class="header-actions vn-topbar-actions" aria-label="页面操作">
+        <a class="header-link vn-topbar-action" href="../Galgame_events/galgameonly_list.html">活动列表</a>
+        <a class="header-link vn-topbar-action" href="../admin/club_manager.html">同好会管理</a>
+        <a class="header-link vn-topbar-action" href="../index.html">返回地图</a>
+        <button class="btn-export vn-topbar-action" id="exportCsvBtn" onclick="exportBoothCSV()" title="导出当前筛选的摊位申请为 CSV">导出 CSV</button>
+        <button class="theme-toggle vn-topbar-action is-icon" id="themeToggle" onclick="toggleTheme()" title="切换主题" aria-label="切换主题"></button>
+      </nav>
+    </header>
+
+    <!-- Content -->
+    <div class="content" data-component="audit-panel">
+
+      <h1 class="page-title" id="pageTitle">申请审核</h1>
 
     <!-- Mode Switch -->
     <div class="mode-switch" id="modeSwitch" data-component="mode-switch">
@@ -2838,10 +3012,6 @@ body,
           <div class="label">已拒绝</div>
           <div class="num" id="statRejected" style="color:var(--accent-red);">—</div>
         </div>
-        <div class="stat-card">
-          <div class="label">审核员总数</div>
-          <div class="num" id="statAuditors" style="color:var(--accent-purple);">—</div>
-        </div>
       </div>
 
       <!-- Event Management (booth) -->
@@ -2858,19 +3028,14 @@ body,
         </div>
       </div>
 
-      <!-- Event Filter -->
-      <div class="filters-row">
-        <select class="filter-select" id="eventFilter" onchange="onEventFilterChange()">
-          <option value="">全部活动</option>
-        </select>
+      <!-- Phase Tabs (two-stage review) -->
+      <div class="tabs" id="boothPhaseBar" data-component="booth-phase-tabs">
+        <button class="tab-btn active" data-phase="1" onclick="switchBoothPhase(1)">阶段一 · 资质审核</button>
+        <button class="tab-btn" data-phase="2" onclick="switchBoothPhase(2)">阶段二 · 制品审核</button>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs" id="boothTabBar" data-component="booth-tabs">
-        <button class="tab-btn active" data-tab="pending">待审核</button>
-        <button class="tab-btn" data-tab="approved">已通过</button>
-        <button class="tab-btn" data-tab="rejected">已拒绝</button>
-      </div>
+      <!-- Status Tabs (dynamically rebuilt per phase) -->
+      <div class="tabs" id="boothTabBar" data-component="booth-tabs"></div>
 
       <!-- App List -->
       <div class="app-list" id="boothAppList" data-component="booth-app-list">
@@ -2921,14 +3086,6 @@ body,
         </div>
       </div>
 
-      <!-- Staff Event Filter -->
-      <div class="filters-row">
-        <label for="staffEventFilter" style="font-size:12px;color:var(--fg-dim);white-space:nowrap;">活动：</label>
-        <select class="filter-select" id="staffEventFilter" onchange="onStaffEventFilterChange()">
-          <option value="">全部活动</option>
-        </select>
-      </div>
-
       <!-- Staff Status Tabs -->
       <div class="tabs" id="staffTabBar" data-component="staff-tabs">
         <button class="tab-btn active" data-tab="pending">待审核</button>
@@ -2945,6 +3102,7 @@ body,
 
     </div>
 
+    </div>
   </main>
 
 </div>
@@ -2979,6 +3137,7 @@ var allApplications = [];
 var allStaffApplications = [];
 var allEvents = [];
 var currentMode = 'booth';
+var currentBoothPhase = 1;
 var currentBoothTab = 'pending';
 var currentStaffTab = 'pending';
 var selectedEventId = 0;
@@ -3060,6 +3219,141 @@ function switchMode(mode) {
   }
 }
 
+function eventIsBeijing(eventId) {
+  for (var i = 0; i < allEvents.length; i++) {
+    if (parseInt(allEvents[i].id, 10) === parseInt(eventId, 10)) {
+      return String(allEvents[i].event_code || '').toLowerCase() === 'beijing';
+    }
+  }
+  return false;
+}
+
+function selectedEventIsBeijing() {
+  // 全部活动视图按北京两阶段展示（含北京申请）
+  if (selectedEventId <= 0) return true;
+  return eventIsBeijing(selectedEventId);
+}
+
+function syncPhaseBarVisibility() {
+  var bar = document.getElementById('boothPhaseBar');
+  if (!bar) return;
+  if (selectedEventIsBeijing()) {
+    bar.style.display = '';
+  } else {
+    // 上海等活动无阶段：隐藏阶段 tab，固定阶段一视图
+    bar.style.display = 'none';
+    if (currentBoothPhase !== 1) {
+      currentBoothPhase = 1;
+      buildBoothTabBar();
+      renderBoothCurrentTab();
+    }
+  }
+}
+
+function selectSidebarEvent(key) {
+  document.querySelectorAll('.sidebar-nav .nav-item[data-event-key]').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.eventKey === key);
+  });
+  if (key === 'all') {
+    selectedEventId = 0;
+    selectedStaffEventId = 0;
+  } else {
+    var matchId = 0;
+    allEvents.forEach(function(ev) {
+      var code = String(ev.event_code || '').toLowerCase();
+      var isB = code === 'beijing';
+      var isS = code === '' || code === 'shanghai';
+      if ((key === 'beijing' && isB) || (key === 'shanghai' && isS)) matchId = parseInt(ev.id, 10);
+    });
+    selectedEventId = matchId;
+    selectedStaffEventId = matchId;
+  }
+  renderBoothCurrentTab();
+  renderStaffCurrentTab();
+  updateBoothStats(allApplications);
+  syncStaffModeTitle();
+  updateSidebarBadges();
+  syncPhaseBarVisibility();
+}
+
+function updateSidebarBadges() {
+  var counts = { all: 0, shanghai: 0, beijing: 0 };
+  allApplications.forEach(function(app) {
+    var key = 'shanghai';
+    for (var i = 0; i < allEvents.length; i++) {
+      if (parseInt(allEvents[i].id, 10) === parseInt(app.event_id, 10)) {
+        key = String(allEvents[i].event_code || '').toLowerCase() === 'beijing' ? 'beijing' : 'shanghai';
+        break;
+      }
+    }
+    var s = app.status || '';
+    if (s === 'pending' || s === 'phase2_pending') {
+      counts.all++;
+      counts[key]++;
+    }
+  });
+  [['all', 'badgeAll'], ['shanghai', 'badgeShanghai'], ['beijing', 'badgeBeijing']].forEach(function(pair) {
+    var el = document.getElementById(pair[1]);
+    if (!el) return;
+    el.style.display = counts[pair[0]] ? '' : 'none';
+    el.textContent = counts[pair[0]];
+  });
+}
+
+function openMobileSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+}
+
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+function daysLeftFrom(markedAt) {
+  if (!markedAt) return null;
+  var ts = new Date(String(markedAt).replace(' ', 'T')).getTime();
+  if (isNaN(ts)) return null;
+  var remain = Math.ceil((3 * 24 * 3600 * 1000 - (Date.now() - ts)) / (24 * 3600 * 1000));
+  return remain;
+}
+
+function exportBoothCSV() {
+  var filtered = allApplications;
+  if (selectedEventId > 0) {
+    filtered = filtered.filter(function(app) { return parseInt(app.event_id) === selectedEventId; });
+  }
+  filtered = filtered.filter(boothPhaseFilter);
+  var powerMap = { yes: '是', no: '否', unsure: '不确定' };
+  var header = ['ID', '摊位名称', '摊位类型', '是否升级摊位', '申请人', 'QQ号', '手机号', '联系方式', '联合参展', '预计人数', '电源', '状态', '阶段', '提交时间', '驳回时间', '打回时间', '阶段一反馈', '阶段二反馈'];
+  var rows = filtered.map(function(app) {
+    return [
+      app.id, app.booth_name || '', app.booth_type_label || '',
+      (app.wants_upgrade === 1 || app.wants_upgrade === '1' || app.wants_upgrade === true) ? '是' : '否',
+      (app.nickname || app.username || ''),
+      app.qq_number || '', app.phone_number || '', app.contact || '',
+      parseInt(app.is_joint) === 1 ? '是' : '否',
+      app.expected_members || 0, powerMap[app.needs_power] || '', app.status || '',
+      app.phase || 1, app.created_at || '', app.rejected_at || '', app.revision_at || '',
+      (app.phase1_feedback || '').replace(/\n/g, ' '), (app.phase2_feedback || '').replace(/\n/g, ' ')
+    ];
+  });
+  var csv = [header].concat(rows).map(function(row) {
+    return row.map(function(cell) {
+      var s = String(cell == null ? '' : cell);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',');
+  }).join('\n');
+  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'galonly_booth_phase' + currentBoothPhase + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
 function isStaffOnlyEvent(eventId) {
   for (var i = 0; i < allEvents.length; i++) {
     if (parseInt(allEvents[i].id, 10) === parseInt(eventId, 10)) {
@@ -3121,22 +3415,6 @@ async function loadEvents() {
   } catch (e) {
     allEvents = [];
   }
-  var boothSel = document.getElementById('eventFilter');
-  boothSel.innerHTML = '<option value="">全部活动</option>';
-  allEvents.forEach(function(ev) {
-    var opt = document.createElement('option');
-    opt.value = ev.id;
-    opt.textContent = ev.title || ev.name || ('活动 #' + ev.id);
-    boothSel.appendChild(opt);
-  });
-  var staffSel = document.getElementById('staffEventFilter');
-  staffSel.innerHTML = '<option value="">全部活动</option>';
-  allEvents.forEach(function(ev) {
-    var opt = document.createElement('option');
-    opt.value = ev.id;
-    opt.textContent = ev.title || ev.name || ('活动 #' + ev.id);
-    staffSel.appendChild(opt);
-  });
   renderEventMgr();
   renderStaffEventConfig();
 }
@@ -3162,6 +3440,7 @@ async function loadApplications() {
     return;
   }
   renderBoothCurrentTab();
+  updateSidebarBadges();
 }
 
 // ====== Staff Applications Loading ======
@@ -3189,19 +3468,62 @@ function updateBoothStats(applications) {
   if (selectedEventId > 0) {
     filtered = filtered.filter(function(app) { return parseInt(app.event_id, 10) === selectedEventId; });
   }
-  var pending = 0, approved = 0, rejected = 0, maxVotes = 0;
+  filtered = filtered.filter(boothPhaseFilter);
+  var pending = 0, approved = 0, rejected = 0;
   filtered.forEach(function(app) {
     var s = app.status || 'pending';
-    if (s === 'pending') pending++;
-    else if (s === 'approved') approved++;
-    else if (s === 'rejected') rejected++;
-    var totalVotes = (app.vote_counts ? (app.vote_counts.approve || 0) + (app.vote_counts.reject || 0) : 0);
-    if (totalVotes > maxVotes) maxVotes = totalVotes;
+    if (currentBoothPhase === 1) {
+      if (s === 'pending') pending++;
+      else if (boothPhase1ApprovedSet().indexOf(s) !== -1) approved++;
+      else if (s === 'rejected') rejected++;
+    } else {
+      if (s === 'phase2_pending') pending++;
+      else if (s === 'confirmed') approved++;
+      else if (s === 'rejected') rejected++;
+    }
   });
   document.getElementById('statPending').textContent = pending;
   document.getElementById('statApproved').textContent = approved;
   document.getElementById('statRejected').textContent = rejected;
-  document.getElementById('statAuditors').textContent = applications.length > 0 ? maxVotes : '—';
+}
+
+function buildBoothTabBar() {
+  var bar = document.getElementById('boothTabBar');
+  var tabs = [];
+  if (!selectedEventIsBeijing()) {
+    tabs = [
+      { key: 'pending', label: '待审核' },
+      { key: 'approved', label: '已通过' },
+      { key: 'rejected', label: '已拒绝' }
+    ];
+  } else if (currentBoothPhase === 1) {
+    tabs = [
+      { key: 'pending', label: '待审核' },
+      { key: 'approved', label: '预选通过' },
+      { key: 'rejected', label: '已驳回' }
+    ];
+  } else {
+    tabs = [
+      { key: 'pending', label: '制品审核中' },
+      { key: 'revision', label: '打回修改' },
+      { key: 'approved', label: '正式摊主' },
+      { key: 'shared', label: '拼摊' },
+      { key: 'rejected', label: '已驳回' }
+    ];
+  }
+  if (!tabs.some(function (t) { return t.key === currentBoothTab; })) currentBoothTab = 'pending';
+  bar.innerHTML = tabs.map(function (t) {
+    return '<button class="tab-btn' + (t.key === currentBoothTab ? ' active' : '') + '" data-tab="' + t.key + '" onclick="switchBoothTab(\'' + t.key + '\')">' + t.label + '</button>';
+  }).join('');
+}
+
+function switchBoothPhase(phase) {
+  currentBoothPhase = phase;
+  document.querySelectorAll('#boothPhaseBar .tab-btn').forEach(function (btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.phase, 10) === phase);
+  });
+  buildBoothTabBar();
+  renderBoothCurrentTab();
 }
 
 // ====== Staff Stats ======
@@ -3235,15 +3557,35 @@ function updateStaffStats(applications) {
 }
 
 // ====== Booth Render ======
+// 2026-08 一阶段表单保留：阶段一视图显示所有申请（含已进入二阶段者，不因 phase 变更而消失）；
+// 阶段二视图仅显示二阶段中的申请
+function boothPhaseFilter(app) {
+  var phase = parseInt(app.phase || 1, 10);
+  return currentBoothPhase === 1 ? true : phase === 2;
+}
+// 阶段一「预选通过」聚合：已通过一阶段并进入二阶段的申请（phase2_pending/revision、confirmed、shared）
+function boothPhase1ApprovedSet() {
+  return ['approved', 'phase2_pending', 'phase2_revision', 'confirmed', 'shared'];
+}
+
 function renderBoothCurrentTab() {
   var filtered = allApplications;
   if (selectedEventId > 0) {
     filtered = filtered.filter(function(app) { return parseInt(app.event_id) === selectedEventId; });
   }
+  filtered = filtered.filter(boothPhaseFilter);
   if (currentBoothTab === 'pending') {
-    filtered = filtered.filter(function(app) { return (app.status || 'pending') === 'pending'; });
+    filtered = filtered.filter(function(app) {
+      return currentBoothPhase === 1 ? ((app.status || 'pending') === 'pending') : ((app.status || '') === 'phase2_pending');
+    });
   } else if (currentBoothTab === 'approved') {
-    filtered = filtered.filter(function(app) { return app.status === 'approved'; });
+    filtered = filtered.filter(function(app) {
+      return currentBoothPhase === 1 ? boothPhase1ApprovedSet().indexOf(app.status || '') !== -1 : app.status === 'confirmed';
+    });
+  } else if (currentBoothTab === 'revision') {
+    filtered = filtered.filter(function(app) { return app.status === 'phase2_revision'; });
+  } else if (currentBoothTab === 'shared') {
+    filtered = filtered.filter(function(app) { return app.status === 'shared'; });
   } else if (currentBoothTab === 'rejected') {
     filtered = filtered.filter(function(app) { return app.status === 'rejected'; });
   }
@@ -3272,6 +3614,23 @@ function normalizeAuditImageSrc(src) {
   return '../' + src.replace(/^\/+/, '');
 }
 
+// 2026-08 性能修复：预览一律使用 WebP 缩略图（上传时服务端生成），原图保留供点击查看
+function galonlyThumbUrl(path) {
+  if (!path) return '';
+  var m = String(path).match(/^uploads\/galonly\/(\d+)\/([^/]+)$/);
+  if (!m) return path; // 已是缩略图/其他路径则原样返回
+  var stem = m[2].replace(/\.[^.]+$/, '');
+  return 'uploads/galonly/' + m[1] + '/thumbs/' + stem + '.webp';
+}
+
+// 缩略图加载失败（旧图无缩略图）时回退显示原图
+function galonlyImgFallback(img) {
+  var full = img.getAttribute('data-full');
+  if (!full || img.src.indexOf('thumbs') === -1) return;
+  img.onerror = null;
+  img.src = full;
+}
+
 function normalizeBoothImageList(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== 'string') return [];
@@ -3295,11 +3654,14 @@ function getBoothImageItems(app) {
   var seen = {};
 
   function pushItem(thumb, full) {
-    var thumbSrc = normalizeAuditImageSrc(thumb || full);
     var fullSrc = normalizeAuditImageSrc(full || thumb);
-    if (!thumbSrc || !fullSrc || seen[fullSrc]) return;
+    if (!fullSrc || seen[fullSrc]) return;
     seen[fullSrc] = true;
-    items.push({ thumb: thumbSrc, full: fullSrc });
+    // 预览优先缩略图约定路径；旧图无缩略图时由 img onerror 回退原图
+    items.push({
+      thumb: normalizeAuditImageSrc(galonlyThumbUrl(thumb || full)),
+      full: fullSrc
+    });
   }
 
   pushItem(app.display_thumbnail || primaryOriginal, primaryOriginal || app.display_thumbnail);
@@ -3316,9 +3678,29 @@ function renderBoothImageHtml(app) {
   }
   return '<div class="booth-image-list">' + items.map(function(item, index) {
     return '<button type="button" class="booth-image-button" data-full-src="' + escapeHtml(item.full) + '" onclick="openImageModal(this.dataset.fullSrc)" aria-label="查看制品图片 ' + (index + 1) + '">' +
-      '<img class="app-image-thumb" src="' + escapeHtml(item.thumb) + '" alt="制品图片 ' + (index + 1) + '" loading="lazy">' +
+      '<img class="app-image-thumb" data-full="' + escapeHtml(item.full) + '" src="' + escapeHtml(item.thumb) + '" alt="制品图片 ' + (index + 1) + '" loading="lazy" decoding="async" onerror="galonlyImgFallback(this)">' +
     '</button>';
   }).join('') + '</div>';
+}
+
+function boothStatusBadge(app) {
+  var status = app.status || 'pending';
+  var phase = parseInt(app.phase || 1, 10);
+  var map = {
+    'pending': { cls: 'app-status-pending', text: '阶段一 · 审核中' },
+    'approved': { cls: 'app-status-approved', text: '预选通过' },
+    'rejected': { cls: 'app-status-rejected', text: '已驳回' },
+    'phase2_pending': { cls: 'app-status-pending', text: '制品审核中' },
+    'phase2_revision': { cls: 'app-status-pooled', text: '打回修改' },
+    'confirmed': { cls: 'app-status-confirmed', text: '正式摊主' },
+    'shared': { cls: 'app-status-pooled', text: '拼摊' }
+  };
+  var info = map[status] || map.pending;
+  var badge = '<span class="app-status-badge ' + info.cls + '">' + info.text + '</span>';
+  if (status === 'rejected' || status === 'phase2_revision') {
+    badge += ' <span class="app-status-badge app-status-rejected" style="font-size:10px;">阶段' + phase + '</span>';
+  }
+  return badge;
 }
 
 function renderBoothAppCard(app) {
@@ -3328,14 +3710,21 @@ function renderBoothAppCard(app) {
   var clubsStr = clubs.length > 0
     ? clubs.map(function(c) { return (c.club_country === 'japan' ? 'JP ' : 'CN ') + escapeHtml(getClubName(parseInt(c.club_id), c.club_country || 'china')); }).join(', ')
     : '未关联同好会';
-  var isResolved = (app.status === 'approved' || app.status === 'rejected');
-  var headerBadgeHtml = '';
-  if (isResolved) {
-    var badgeCls = app.status === 'approved' ? 'approved' : 'rejected';
-    var badgeText = app.status === 'approved' ? '审核通过' : '已拒绝';
-    headerBadgeHtml = '<span class="result-badge ' + badgeCls + '">' + badgeText + '</span>';
+  var phase = parseInt(app.phase || 1, 10);
+  var isBeijingEvent = eventIsBeijing(app.event_id);
+  var isResolved = (app.status === 'approved' || app.status === 'confirmed' || app.status === 'shared' || app.status === 'rejected');
+  var canVote = isBeijingEvent
+    ? ((phase === 1 && app.status === 'pending') || (phase === 2 && (app.status === 'phase2_pending' || app.status === 'phase2_revision')))
+    : (app.status === 'pending');
+  var isChief = app.my_review_role === 'chief';
+
+  var headerBadgeHtml;
+  if (!isBeijingEvent) {
+    if (app.status === 'approved') headerBadgeHtml = '<span class="app-status-badge app-status-approved">审核通过</span>';
+    else if (app.status === 'rejected') headerBadgeHtml = '<span class="app-status-badge app-status-rejected">已拒绝</span>';
+    else headerBadgeHtml = '<span class="app-status-badge app-status-pending">审核中</span>';
   } else {
-    headerBadgeHtml = '<span class="app-status-badge app-status-pending">审核中</span>';
+    headerBadgeHtml = boothStatusBadge(app);
   }
   if (app.resubmitted && !isResolved) {
     headerBadgeHtml += ' <span class="app-status-badge" style="background:var(--accent-purple-bg);color:var(--accent-purple);border:1px solid var(--pooled-border);">重审</span>';
@@ -3344,59 +3733,223 @@ function renderBoothAppCard(app) {
     headerBadgeHtml += ' <span class="app-status-badge" style="background:var(--accent-orange-bg);color:var(--accent-orange);border:1px solid var(--warning-border);">已更新</span>';
   }
   var cardBorderStyle = '';
-  if (app.status === 'approved') cardBorderStyle = ' style="border-color:var(--success-border);"';
+  if (app.status === 'approved' || app.status === 'confirmed') cardBorderStyle = ' style="border-color:var(--success-border);"';
   else if (app.status === 'rejected') cardBorderStyle = ' style="border-color:var(--danger-border);"';
-  var contactDisplay = app.contact ? escapeHtml(app.contact) : '<span style="color:var(--text-muted);">未填写</span>';
+
+  var qqDisplay = app.qq_number ? escapeHtml(app.qq_number) : (app.contact ? escapeHtml(app.contact) : '<span style="color:var(--text-muted);">未填写</span>');
+  var phoneDisplay = app.phone_number ? escapeHtml(app.phone_number) : '<span style="color:var(--text-muted);">未填写</span>';
   var boothNameDisplay = app.booth_name ? escapeHtml(app.booth_name) : '<span style="color:var(--text-muted);">未填写</span>';
   var jointDisplay = parseInt(app.is_joint) === 1 ? ('是' + (app.joint_name ? ' · ' + escapeHtml(app.joint_name) : '')) : '否';
-  var upgradeDisplay = parseInt(app.wants_upgrade) === 1 ? '是' : '否';
+  var typeDisplay = app.booth_type_label ? escapeHtml(app.booth_type_label) : '<span style="color:var(--text-muted);">未填写</span>';
+  var membersDisplay = parseInt(app.expected_members || 0, 10) > 0 ? (app.expected_members + ' 人') : '<span style="color:var(--text-muted);">未填写</span>';
+  var powerMap = { yes: '是', no: '否', unsure: '不确定' };
+  var powerDisplay = powerMap[app.needs_power] || '<span style="color:var(--text-muted);">不确定</span>';
+  var upgradeDisplay = (app.wants_upgrade === 1 || app.wants_upgrade === '1' || app.wants_upgrade === true)
+    ? '是（升级 1.2×0.6m）' : '否（基础 1.2×0.4m）';
+  var exp = app.exhibition_experience || {};
+  if (typeof exp === 'string') {
+    try { exp = JSON.parse(exp); } catch (e) { exp = exp === '' ? {} : { has: 1, detail: exp }; }
+  }
+  var expHas = exp && (exp.has === 1 || exp.has === true || exp.has === '1');
+  var expDisplay = expHas
+    ? (exp.detail && String(exp.detail).trim() ? escapeHtml(exp.detail) : '有')
+    : '<span style="color:var(--text-muted);">无</span>';
   var imageHtml = renderBoothImageHtml(app);
+
   var notesHtml = '';
   if (app.notes && app.notes.trim()) {
     notesHtml = '<div class="app-field full"><div class="app-field-label">备注</div><div class="app-field-value" style="color:var(--text-secondary);">' + escapeHtml(app.notes) + '</div></div>';
   }
-  var approveCount = app.vote_counts ? (app.vote_counts.approve || 0) : 0;
-  var rejectCount = app.vote_counts ? (app.vote_counts.reject || 0) : 0;
-  var approvePct = Math.min(100, (approveCount / VOTE_THRESHOLD) * 100);
-  var rejectPct = Math.min(100, (rejectCount / VOTE_THRESHOLD) * 100);
-  var approveThresholdMet = approveCount >= VOTE_THRESHOLD;
-  var rejectThresholdMet = rejectCount >= VOTE_THRESHOLD;
-  var approveBarLabel = approveThresholdMet ? '<span class="vote-bar-label threshold-met">已达门槛</span>' : ('<span class="vote-bar-label">/ ' + VOTE_THRESHOLD + '</span>');
-  var rejectBarLabel = rejectThresholdMet ? '<span class="vote-bar-label threshold-met" style="color:var(--accent-red);">已达门槛</span>' : ('<span class="vote-bar-label">/ ' + VOTE_THRESHOLD + '</span>');
-  var voteActionsHtml = '';
-  if (app.my_vote) {
-    var voteText = app.my_vote === 'approve' ? '通过' : '不通过';
-    voteActionsHtml = '<div style="display:flex;gap:8px;align-items:center;">' +
-      '<span class="voted-badge">你已投票 · ' + voteText + '</span>' +
-      '<button class="btn-vote" onclick="withdrawVote(' + app.id + ')" ' +
-        'style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-color);padding:6px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:var(--transition);">撤回投票</button>' +
-    '</div>';
-  } else if (isResolved) {
-    voteActionsHtml = '';
-  } else {
-    voteActionsHtml = '<div class="vote-actions">' +
-      '<button class="btn-vote approve" onclick="castVote(' + app.id + ',\'approve\')">通过</button>' +
-      '<button class="btn-vote reject" onclick="castVote(' + app.id + ',\'reject\')">不通过</button>' +
+  var layoutHtml = '';
+  if (app.layout_notes && app.layout_notes.trim()) {
+    layoutHtml = '<div class="app-field full"><div class="app-field-label">排摊特别需求</div><div class="app-field-value" style="color:var(--text-secondary);">' + escapeHtml(app.layout_notes) + '</div></div>';
+  }
+
+  var attachmentHtml = '';
+  var attachmentPaths = app.attachment_paths || [];
+  if (attachmentPaths.length) {
+    attachmentHtml = '<div class="app-field full"><div class="app-field-label">制品名单表附件</div><div class="app-field-value">' +
+      attachmentPaths.map(function (p) {
+        var path = typeof p === 'string' ? p : (p && p.path) || '';
+        var name = typeof p === 'string' ? String(path).split('/').pop() : (p && p.name) || String(path).split('/').pop();
+        return '<a class="file-chip" href="../' + escapeHtml(String(path).replace(/^\/+/, '')) + '" target="_blank" rel="noopener">📎 ' + escapeHtml(name) + '</a>';
+      }).join(' ') + '</div></div>';
+  }
+
+  var merchHtml = '';
+  if (phase === 2) {
+    var items = app.merchandise_items || [];
+    var merchAttachments = app.merchandise_attachments || [];
+    var itemsHtml = items.length
+      ? '<ul style="margin:6px 0 0;padding-left:18px;line-height:1.8;">' + items.map(function (it) {
+          var imgs = (it.images || []).map(function (p) {
+            var src = normalizeAuditImageSrc(p);
+            var thumbSrc = normalizeAuditImageSrc(galonlyThumbUrl(p));
+            return '<button type="button" class="booth-image-button" data-full-src="' + escapeHtml(src) + '" onclick="openImageModal(this.dataset.fullSrc)" aria-label="查看制品图片">' +
+              '<img class="app-image-thumb" data-full="' + escapeHtml(src) + '" src="' + escapeHtml(thumbSrc) + '" alt="制品图片" loading="lazy" decoding="async" onerror="galonlyImgFallback(this)"></button>';
+          }).join('');
+          return '<li><strong>' + escapeHtml(it.name || '未命名制品') + '</strong>' +
+            (it.category ? ' <span style="color:var(--text-muted);font-size:12px;">[' + escapeHtml(it.category) + ']</span>' : '') +
+            (it.description ? '<br><span style="color:var(--text-secondary);font-size:12px;">' + escapeHtml(it.description) + '</span>' : '') +
+            (imgs ? '<div class="booth-image-list" style="margin-top:6px;">' + imgs + '</div>' : '') +
+            '</li>';
+        }).join('') + '</ul>'
+      : '<span style="color:var(--text-muted);">未填写</span>';
+    var merchFiles = merchAttachments.length
+      ? merchAttachments.map(function (p) {
+          var path = typeof p === 'string' ? p : (p && p.path) || '';
+          return '<a class="file-chip" href="../' + escapeHtml(String(path).replace(/^\/+/, '')) + '" target="_blank" rel="noopener">📎 ' + escapeHtml(String(path).split('/').pop()) + '</a>';
+        }).join(' ')
+      : '';
+    merchHtml = '<div class="app-field full"><div class="app-field-label">制品 / 菜单清单（阶段二）</div><div class="app-field-value">' + itemsHtml + (merchFiles ? '<div style="margin-top:8px;">' + merchFiles + '</div>' : '') + '</div></div>';
+  }
+
+  // ===== 北京两阶段：分阶段审核意见（2026-08：去集票、陪审匿名、阶段一/二各自独立） =====
+  var phase1Actionable = app.status === 'pending';
+  var phase2Actionable = app.status === 'phase2_pending' || app.status === 'phase2_revision';
+  var showReviewerNames = app.my_review_role === 'chief';
+
+  function buildPhaseOpinions(phaseNum) {
+    var phaseVotes = (app.votes || []).filter(function (v) { return parseInt(v.phase || 1, 10) === phaseNum; });
+    if (!phaseVotes.length) {
+      return '<div style="color:var(--text-muted);font-size:12px;margin-top:8px;">暂无意见</div>';
+    }
+    var counter = 0;
+    return '<div style="display:grid;gap:6px;margin-top:10px;">' + phaseVotes.map(function (v) {
+      counter++;
+      var who = showReviewerNames
+        ? '<span style="color:var(--text-muted);flex:0 0 auto;">' + escapeHtml(v.reviewer_name || '审核员') + ' · ' + (v.reviewer_role === 'chief' ? '总审' : v.reviewer_role === 'jury' ? '陪审' : '审核员') + '</span>'
+        : '<span style="color:var(--text-muted);flex:0 0 auto;">审核意见 ' + counter + '</span>';
+      return '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border-color);border-radius:10px;font-size:12px;">' +
+        '<span class="voted-badge" style="' + (v.vote === 'approve' ? 'color:var(--accent-green);border-color:var(--success-border);' : 'color:var(--accent-red);border-color:var(--danger-border);') + '">' + (v.vote === 'approve' ? '通过' : '驳回') + '</span>' +
+        who +
+        (v.comment ? '<span style="flex:1;min-width:0;overflow-wrap:anywhere;color:var(--text-secondary);">' + escapeHtml(v.comment) + '</span>' : '') +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function buildPhaseMyOpinion(phaseNum, actionable) {
+    var myVote = app.my_votes ? app.my_votes[phaseNum] : null;
+    if (myVote) {
+      var voteText = myVote === 'approve' ? '通过' : '驳回';
+      return '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;">' +
+        '<span class="voted-badge">你已提交意见 · ' + voteText + '</span>' +
+        '<button class="btn-vote" onclick="withdrawVote(' + app.id + ',' + phaseNum + ')" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-color);padding:6px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:var(--transition);">撤回意见</button>' +
+      '</div>';
+    }
+    if (!actionable) return '';
+    return '<div style="margin-top:10px;display:grid;gap:8px;">' +
+      '<textarea id="vote-comment-' + app.id + '-' + phaseNum + '" rows="2" maxlength="500" placeholder="审核意见（选填）：例如补充说明驳回原因、通过理由等" style="width:100%;padding:9px 12px;border:1px solid var(--border-color);border-radius:10px;background:var(--surface-raised);color:var(--fg);font-family:inherit;font-size:13px;resize:vertical;"></textarea>' +
+      '<div class="vote-actions">' +
+        '<button class="btn-vote approve" onclick="castVote(' + app.id + ',\'approve\',' + phaseNum + ')">意见：通过</button>' +
+        '<button class="btn-vote reject" onclick="castVote(' + app.id + ',\'reject\',' + phaseNum + ')">意见：驳回</button>' +
+      '</div>' +
     '</div>';
   }
-  var voteSectionHtml = '<div class="vote-section">' +
-    '<div class="vote-title">审核投票</div>' +
-    '<div class="vote-row">' +
-      '<div class="vote-item">' +
-        '<div class="vote-label">通过</div>' +
-        '<div class="vote-count approve">' + approveCount + '</div>' +
-        '<div class="vote-bar-track"><div class="vote-bar-fill approve" style="width:' + approvePct + '%;"></div></div>' +
-        approveBarLabel +
+
+  function buildPhaseResolve(phaseNum, actionable) {
+    if (!isChief || !actionable) return '';
+    var feedbackBox = '<div style="margin-top:10px;display:grid;gap:8px;">' +
+      '<textarea id="resolve-feedback-' + app.id + '" rows="2" maxlength="1000" placeholder="最终决定反馈（将反馈给摊主）：' + (phaseNum === 1 ? '通过理由 / 驳回原因' : '通过 / 不合规制品及原因 / 拼摊说明') + '" style="width:100%;padding:9px 12px;border:1px solid var(--border-color);border-radius:10px;background:var(--surface-raised);color:var(--fg);font-family:inherit;font-size:13px;resize:vertical;"></textarea>';
+    if (phaseNum === 1) {
+      return '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border-color);">' +
+        '<div class="vote-title" style="color:var(--accent-purple);">总审最终决定（阶段一）</div>' + feedbackBox +
+        '<div class="vote-actions" style="margin-top:8px;">' +
+          '<button class="btn-single-vote approve" onclick="resolveApplication(' + app.id + ',\'approve\')">最终：通过 · 进入第二阶段</button>' +
+          '<button class="btn-single-vote reject" onclick="resolveApplication(' + app.id + ',\'reject\')">最终：驳回（3天内可改）</button>' +
+        '</div></div>';
+    }
+    return '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border-color);">' +
+      '<div class="vote-title" style="color:var(--accent-purple);">总审/专人最终决定（阶段二 · 制品审核）</div>' + feedbackBox +
+      '<div class="vote-actions" style="margin-top:8px;flex-wrap:wrap;">' +
+        '<button class="btn-single-vote approve" onclick="resolveProduct(' + app.id + ',\'approved\')">通过 · 正式摊主</button>' +
+        '<button class="btn-single-vote reject" onclick="resolveProduct(' + app.id + ',\'revision\')">打回修改（3天内）</button>' +
+        '<button class="btn-single-vote reject" onclick="resolveProduct(' + app.id + ',\'rejected\')">驳回</button>' +
+        '<button class="btn-single-vote" style="background:var(--pooled-bg);color:var(--pooled);border:1px solid var(--pooled-border);" onclick="resolveProduct(' + app.id + ',\'shared\')">拼摊</button>' +
+      '</div></div>';
+  }
+
+  // 2026-08 两阶段撤回：总审可在通过后撤回最终决定（一阶段 approved→pending；二阶段 confirmed/shared→phase2_pending）
+  function buildPhaseUndo(phaseNum) {
+    if (!isChief) return '';
+    var status = app.status || '';
+    var phase = parseInt(app.phase || 1, 10);
+    var btnHtml = '';
+    if (phaseNum === 1 && status === 'approved' && phase === 1) {
+      btnHtml = '<button class="btn-single-vote withdraw" onclick="undoResolve(' + app.id + ',1)">撤回通过（回到待审核）</button>';
+    } else if (phaseNum === 2 && (status === 'confirmed' || status === 'shared') && phase === 2) {
+      btnHtml = '<button class="btn-single-vote withdraw" onclick="undoResolve(' + app.id + ',2)">撤回通过（回到制品审核中）</button>';
+    }
+    if (!btnHtml) return '';
+    return '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-color);">' +
+      '<div class="vote-title" style="color:var(--accent-red);">撤回已通过的最终决定</div>' +
+      '<div class="vote-actions" style="margin-top:8px;">' + btnHtml + '</div>' +
+    '</div>';
+  }
+
+  var deadlineHtml = '';
+  if (isBeijingEvent && (app.status === 'rejected' || app.status === 'phase2_revision')) {
+    var markedAt = app.status === 'rejected' ? app.rejected_at : app.revision_at;
+    var remainDays = daysLeftFrom(markedAt);
+    if (remainDays !== null) {
+      var expired = remainDays <= 0;
+      deadlineHtml = '<div class="app-field full"><div class="app-field-label">修改期限</div><div class="app-field-value" style="' + (expired ? 'color:var(--accent-red);font-weight:700;' : 'color:var(--accent-orange);font-weight:600;') + '">' +
+        (expired ? '已过期 · 超过 3 天修改期' : '剩余 ' + remainDays + ' 天可修改') + '</div></div>';
+    }
+  }
+
+  var voteSectionHtml;
+  if (!isBeijingEvent) {
+    // 上海等原流程：简单投票制，达到阈值自动判定
+    var legacyCounts = app.vote_counts || { approve: 0, reject: 0 };
+    var lAc = legacyCounts.approve || 0;
+    var lRc = legacyCounts.reject || 0;
+    var legacyActions = '';
+    if (app.my_vote) {
+      var lvt = app.my_vote === 'approve' ? '通过' : '不通过';
+      legacyActions = '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<span class="voted-badge">你已投票 · ' + lvt + '</span>' +
+        '<button class="btn-vote" onclick="withdrawVote(' + app.id + ')" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-color);padding:6px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:var(--transition);">撤回投票</button>' +
+      '</div>';
+    } else if (!isResolved) {
+      legacyActions = '<div class="vote-actions">' +
+        '<button class="btn-vote approve" onclick="castVote(' + app.id + ',\'approve\',1)">通过</button>' +
+        '<button class="btn-vote reject" onclick="castVote(' + app.id + ',\'reject\',1)">不通过</button>' +
+      '</div>';
+    }
+    voteSectionHtml = '<div class="vote-section">' +
+      '<div class="vote-title">审核投票（通过 ≥ ' + VOTE_THRESHOLD + ' / 不通过 ≥ ' + VOTE_THRESHOLD + ' 自动判定）</div>' +
+      '<div class="vote-row">' +
+        '<div class="vote-item">' +
+          '<div class="vote-label">通过</div>' +
+          '<div class="vote-count approve">' + lAc + '</div>' +
+          '<div class="vote-bar-track"><div class="vote-bar-fill approve" style="width:' + Math.min(100, (lAc / VOTE_THRESHOLD) * 100) + '%;"></div></div>' +
+          (lAc >= VOTE_THRESHOLD ? '<span class="vote-bar-label threshold-met">已达门槛</span>' : '<span class="vote-bar-label">/ ' + VOTE_THRESHOLD + '</span>') +
+        '</div>' +
+        '<div class="vote-item">' +
+          '<div class="vote-label">不通过</div>' +
+          '<div class="vote-count reject">' + lRc + '</div>' +
+          '<div class="vote-bar-track"><div class="vote-bar-fill reject" style="width:' + Math.min(100, (lRc / VOTE_THRESHOLD) * 100) + '%;"></div></div>' +
+          (lRc >= VOTE_THRESHOLD ? '<span class="vote-bar-label threshold-met" style="color:var(--accent-red);">已达门槛</span>' : '<span class="vote-bar-label">/ ' + VOTE_THRESHOLD + '</span>') +
+        '</div>' +
       '</div>' +
-      '<div class="vote-item">' +
-        '<div class="vote-label">反对</div>' +
-        '<div class="vote-count reject">' + rejectCount + '</div>' +
-        '<div class="vote-bar-track"><div class="vote-bar-fill reject" style="width:' + rejectPct + '%;"></div></div>' +
-        rejectBarLabel +
-      '</div>' +
-    '</div>' +
-    voteActionsHtml +
-  '</div>';
+      legacyActions +
+    '</div>';
+  } else {
+    // 北京两阶段：分阶段展示审核意见（去计数条；陪审匿名，仅总审可见姓名；总审可撤回已通过的最终决定）
+    voteSectionHtml = '<div class="vote-section">' +
+      '<div class="vote-title">阶段一 · 审核意见</div>' +
+      buildPhaseOpinions(1) +
+      buildPhaseMyOpinion(1, phase1Actionable) +
+      buildPhaseResolve(1, phase1Actionable) +
+      buildPhaseUndo(1) +
+      '<div class="vote-title" style="margin-top:20px;">阶段二 · 审核意见</div>' +
+      buildPhaseOpinions(2) +
+      buildPhaseMyOpinion(2, phase2Actionable) +
+      buildPhaseResolve(2, phase2Actionable) +
+      buildPhaseUndo(2) +
+    '</div>';
+  }
   return '<div class="app-card"' + cardBorderStyle + '>' +
     '<div class="app-header">' +
       '<div class="applicant">' +
@@ -3409,20 +3962,28 @@ function renderBoothAppCard(app) {
       headerBadgeHtml +
     '</div>' +
     '<div class="app-grid">' +
-      '<div class="app-field"><div class="app-field-label">联系方式</div><div class="app-field-value">' + contactDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">QQ 号</div><div class="app-field-value">' + qqDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">手机号</div><div class="app-field-value">' + phoneDisplay + '</div></div>' +
       '<div class="app-field"><div class="app-field-label">摊位名称</div><div class="app-field-value">' + boothNameDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">摊位类型</div><div class="app-field-value">' + typeDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">是否升级摊位</div><div class="app-field-value">' + upgradeDisplay + '</div></div>' +
       '<div class="app-field"><div class="app-field-label">联合参展</div><div class="app-field-value">' + jointDisplay + '</div></div>' +
-      '<div class="app-field"><div class="app-field-label">升摊</div><div class="app-field-value">' + upgradeDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">参展经历</div><div class="app-field-value">' + expDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">预计参展人数</div><div class="app-field-value">' + membersDisplay + '</div></div>' +
+      '<div class="app-field"><div class="app-field-label">需要电源</div><div class="app-field-value">' + powerDisplay + '</div></div>' +
       '<div class="app-field"><div class="app-field-label">制品图片</div><div class="app-field-value">' + imageHtml + '</div></div>' +
+      layoutHtml +
+      attachmentHtml +
+      merchHtml +
       notesHtml +
+      deadlineHtml +
     '</div>' +
     voteSectionHtml +
     '<div class="app-footer">' +
-      '<span class="app-id">申请 #' + app.id + ' · 提交: ' + formatDate(app.created_at) + '</span>' +
+      '<span class="app-id">申请 #' + app.id + ' · 提交: ' + formatDate(app.created_at) + (app.rejected_at ? ' · 驳回: ' + formatDate(app.rejected_at) : '') + (app.revision_at ? ' · 打回: ' + formatDate(app.revision_at) : '') + '</span>' +
     '</div>' +
   '</div>';
 }
-
 // ====== Staff Render ======
 function renderStaffCurrentTab() {
   var filtered = allStaffApplications;
@@ -4001,50 +4562,127 @@ async function unlockRoster() {
   }
 }
 
-// ====== Booth Vote ======
-async function castVote(applicationId, vote) {
+// ====== Booth Opinions (jury + chief), Resolve (chief only) ======
+async function castVote(applicationId, vote, phase) {
+  phase = phase || 1;
   var btn = document.querySelector('.btn-vote.approve[onclick*="' + applicationId + '"]') ||
             document.querySelector('.btn-vote.reject[onclick*="' + applicationId + '"]');
   if (btn) btn.disabled = true;
+  var commentEl = document.getElementById('vote-comment-' + applicationId + '-' + phase) ||
+                  document.getElementById('vote-comment-' + applicationId);
+  var comment = commentEl ? commentEl.value.trim() : '';
   try {
     var r = await fetch('../api/galonly.php?action=vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ application_id: applicationId, vote: vote })
+      body: JSON.stringify({ application_id: applicationId, vote: vote, comment: comment, phase: phase })
     });
     var data = await r.json();
     if (!data.success) {
-      showToast(data.message || '投票失败', 'error');
+      showToast(data.message || '意见提交失败', 'error');
       if (btn) btn.disabled = false;
       return;
     }
-    showToast('投票成功', 'success');
+    showToast('意见已记录', 'success');
     await loadApplications();
   } catch (e) {
-    showToast('网络错误，投票失败', 'error');
+    showToast('网络错误，意见提交失败', 'error');
     if (btn) btn.disabled = false;
   }
 }
 
-async function withdrawVote(applicationId) {
-  if (!confirm('确定要撤回你的投票吗？')) return;
+async function withdrawVote(applicationId, phase) {
+  if (!confirm('确定要撤回你的意见吗？')) return;
   try {
     var r = await fetch('../api/galonly.php?action=withdraw_vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ application_id: applicationId })
+      body: JSON.stringify({ application_id: applicationId, phase: phase || undefined })
     });
     var data = await r.json();
     if (!data.success) {
-      showToast(data.message || '撤回投票失败', 'error');
+      showToast(data.message || '撤回意见失败', 'error');
       return;
     }
-    showToast('已撤回投票', 'success');
+    showToast('意见已撤回', 'success');
     await loadApplications();
   } catch (e) {
-    showToast('网络错误，撤回投票失败', 'error');
+    showToast('网络错误，撤回意见失败', 'error');
+  }
+}
+
+async function resolveApplication(applicationId, decision) {
+  var msg = decision === 'approve'
+    ? '确认将通过第一阶段（锁定预选资格，摊主解锁制品表单）？'
+    : '确认驳回该申请？（摊主可在驳回当天起 3 天内修改并重新提交）';
+  if (!confirm(msg)) return;
+  var fbEl = document.getElementById('resolve-feedback-' + applicationId);
+  var feedback = fbEl ? fbEl.value.trim() : '';
+  try {
+    var r = await fetch('../api/galonly.php?action=resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ application_id: applicationId, decision: decision, feedback: feedback })
+    });
+    var data = await r.json();
+    if (!data.success) {
+      showToast(data.message || '操作失败', 'error');
+      return;
+    }
+    showToast('阶段一审核结果已确定', 'success');
+    await loadApplications();
+  } catch (e) {
+    showToast('网络错误，操作失败', 'error');
+  }
+}
+
+async function resolveProduct(applicationId, decision) {
+  var labels = { approved: '通过（正式摊主）', revision: '打回修改（3天内）', rejected: '驳回', shared: '拼摊' };
+  if (!confirm('确认阶段二最终决定：' + labels[decision] + '？')) return;
+  var fbEl = document.getElementById('resolve-feedback-' + applicationId);
+  var feedback = fbEl ? fbEl.value.trim() : '';
+  try {
+    var r = await fetch('../api/galonly.php?action=resolve_product', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ application_id: applicationId, decision: decision, feedback: feedback })
+    });
+    var data = await r.json();
+    if (!data.success) {
+      showToast(data.message || '操作失败', 'error');
+      return;
+    }
+    showToast('阶段二审核结果已确定', 'success');
+    await loadApplications();
+  } catch (e) {
+    showToast('网络错误，操作失败', 'error');
+  }
+}
+
+// 2026-08 两阶段撤回：总审撤回已通过的最终决定
+async function undoResolve(applicationId, phase) {
+  var backTo = phase === 1 ? '待审核' : '制品审核中';
+  if (!confirm('确定撤回该申请阶段' + (phase === 1 ? '一' : '二') + '的「通过」？申请将回到「' + backTo + '」状态，摊主可重新修改/重新审核。')) return;
+  try {
+    var r = await fetch('../api/galonly.php?action=undo_resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ application_id: applicationId, phase: phase })
+    });
+    var data = await r.json();
+    if (!data.success) {
+      showToast(data.message || '撤回失败', 'error');
+      return;
+    }
+    showToast(data.message || '已撤回', 'success');
+    await loadApplications();
+  } catch (e) {
+    showToast('网络错误，撤回失败', 'error');
   }
 }
 
@@ -4062,20 +4700,7 @@ function closeImageModal() {
   document.getElementById('previewImage').src = '';
 }
 
-// ====== Event Filters ======
-function onEventFilterChange() {
-  var val = document.getElementById('eventFilter').value;
-  selectedEventId = val ? parseInt(val) : 0;
-  renderBoothCurrentTab();
-}
-
-function onStaffEventFilterChange() {
-  var val = document.getElementById('staffEventFilter').value;
-  selectedStaffEventId = val ? parseInt(val) : 0;
-  renderStaffCurrentTab();
-  updateStaffStats(allStaffApplications);
-  syncStaffModeTitle();
-}
+// ====== Event Filters (moved to sidebar: selectSidebarEvent) ======
 
 function syncStaffModeTitle() {
   var title = document.getElementById('staffModeTitle');
@@ -4095,9 +4720,7 @@ function syncStaffModeTitle() {
 // ====== Tab Switch ======
 function switchBoothTab(tab) {
   currentBoothTab = tab;
-  document.querySelectorAll('#boothTabBar .tab-btn').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.tab === tab);
-  });
+  buildBoothTabBar();
   renderBoothCurrentTab();
 }
 
@@ -4212,6 +4835,8 @@ async function init() {
   await loadClubNames();
   await loadEvents();
   renderEventMgr();
+  buildBoothTabBar();
+  selectSidebarEvent('all');
   await loadApplications();
   await loadStaffApplications();
 }

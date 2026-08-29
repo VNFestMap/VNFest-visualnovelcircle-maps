@@ -95,7 +95,7 @@ switch ($action) {
         // 分页数据（LIMIT/OFFSET 需用 PARAM_INT 绑定）
         $dataStmt = $db->prepare(
             "SELECT u.id, u.username, u.nickname, u.email, u.avatar_url,
-                    u.role, u.status, u.created_at, u.updated_at, u.last_login_at
+                    u.role, u.status, u.is_audit, u.created_at, u.updated_at, u.last_login_at
              FROM users u
              $whereClause
              ORDER BY u.id DESC
@@ -173,7 +173,7 @@ switch ($action) {
         $db = getDB();
         $stmt = $db->prepare(
             "SELECT u.id, u.username, u.nickname, u.email, u.avatar_url,
-                    u.role, u.status, u.created_at, u.updated_at, u.last_login_at
+                    u.role, u.status, u.is_audit, u.created_at, u.updated_at, u.last_login_at
              FROM users u WHERE u.id = ?"
         );
         $stmt->execute([$id]);
@@ -266,8 +266,18 @@ switch ($action) {
         }
 
         if (isset($input['is_audit'])) {
+            $isAuditOn = (int)(bool)$input['is_audit'];
             $updates[] = 'is_audit = ?';
-            $params[] = (int)(bool)$input['is_audit'];
+            $params[] = $isAuditOn;
+            // 联动撤销：关闭「审核成员」身份时，同时清除其总审/陪审细分权限
+            if (!$isAuditOn) {
+                try {
+                    $db->prepare("DELETE FROM galonly_reviewers WHERE user_id = ?")->execute([$id]);
+                    logAction('users.revoke_audit_reviewer', 'user', $id, ['removed_reviewer_roles' => true]);
+                } catch (Exception $e) {
+                    // galonly_reviewers 表可能不存在（旧库），忽略
+                }
+            }
         }
 
         if (empty($updates)) {

@@ -28,9 +28,12 @@ assert.match(jiangsuSource, /cityFill\s*=\s*options\.cityFill\s*\|\|\s*['"]var\(
 assert.match(jiangsuSource, /\.attr\(['"]fill['"],\s*cityFill\)/);
 assert.match(jiangsuSource, /var strokeWidth = 1\.5/);
 assert.match(jiangsuSource, /var isCompactViewport = width <= 520/);
-assert.match(jiangsuSource, /var badgeRadius = \(isCompactViewport \? 8\.5 : 11\) \/ zoomK/);
+assert.match(jiangsuSource, /var badgeRadius = \(isCompactViewport \? 4\.5 : 7\.5\) \/ zoomK/);
+assert.match(jiangsuSource, /var badgeRadiusLarge = \(isCompactViewport \? 5\.5 : 8\.5\) \/ zoomK/);
 assert.match(jiangsuSource, /\.attr\(['"]stroke-opacity['"],\s*1\)/);
 assert.match(jiangsuSource, /\.attr\(['"]shape-rendering['"],\s*['"]geometricPrecision['"]\)/);
+assert.match(jiangsuSource, /\.attr\(['"]stroke['"],\s*['"]#ffffff['"]\)/, 'Jiangsu city and province strokes must be pure white');
+assert.match(jiangsuSource, /\.attr\(['"]opacity['"],\s*1\)/, 'Jiangsu province outline must stay fully opaque');
 assert.match(jiangsuSource, /class['"]?,\s*['"]jiangsu-badge-layer['"]/);
 
 // 加载模块（draw 依赖 d3，但仅 getCityForSchool/getCityForClub 为纯逻辑，加载期无需 d3）
@@ -165,9 +168,12 @@ assert.match(cssSource, /\.jiangsu-context-menu\s*\{/);
 assert.equal(cssSource.includes('jiangsu-back-btn'), false, 'fixed Jiangsu back button styles must be removed');
 assert.equal(cssSource.includes('brightness(1.07)'), false, 'Jiangsu CSS must not brighten hovered cities');
 assert.match(cssSource, /\.jiangsu-backdrop:hover\s*\{[\s\S]*?fill:\s*transparent;/);
-assert.match(cssSource, /\.jiangsu-city:hover \.jiangsu-city-path\s*\{[\s\S]*?stroke:\s*var\(--md-primary-strong\)/);
+assert.match(cssSource, /\.jiangsu-city-path\s*\{[\s\S]*?stroke:\s*#ffffff\s*!important[\s\S]*?stroke-opacity:\s*1\s*!important/);
+assert.match(cssSource, /\.jiangsu-city:hover \.jiangsu-city-path\s*\{[\s\S]*?stroke:\s*#ffffff\s*!important/);
 assert.match(cssSource, /--jiangsu-map-fill:\s*color-mix\(/, 'Jiangsu needs a light-orange unselected fill token');
 assert.match(cssSource, /\.jiangsu-city\.selected \.jiangsu-city-path\s*\{[\s\S]*?fill:\s*var\(--md-primary\)/, 'selected Jiangsu city must use deep primary orange');
+assert.match(cssSource, /\.jiangsu-city\.selected \.jiangsu-city-path\s*\{[\s\S]*?stroke:\s*#ffffff\s*!important/);
+assert.match(cssSource, /\.jiangsu-province-outline\s*\{[\s\S]*?stroke:\s*#ffffff\s*!important[\s\S]*?stroke-opacity:\s*1\s*!important/);
 assert.match(cssSource, /\.jiangsu-badge-layer\s*\{/);
 assert.match(cssSource, /\.jiangsu-badge circle\s*\{[\s\S]*?stroke:\s*#ffffff\s*!important[\s\S]*?stroke-opacity:\s*1\s*!important/);
 assert.equal(cssSource.includes('.jiangsu-city-label'), false, 'city label styles must be removed');

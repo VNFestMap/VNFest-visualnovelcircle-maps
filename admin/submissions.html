@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>同好会提交审核 - 管理后台</title>
+    <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+    <script defer src="../js/site-header.js?v=20260827-site-header"></script>
     <style>
         * {
             margin: 0;
@@ -320,9 +322,15 @@
         const CHINA_API = '../api/clubs.php';
         const JAPAN_API = '../api/clubs_japan.php';
         const SUBMIT_API = '../api/submit.php';
+        const MEMBERSHIP_API = '../api/membership.php';
 
         let submissions = [];
         let currentTab = 'pending';
+
+        function applicantRoleText(role) {
+            const map = { external: '其他', member: '成员', manager: '管理员', representative: '负责人' };
+            return map[role] || map[(role === 'other' ? 'external' : '')] || role || '未填写';
+        }
 
         // 检查管理员登录（session 认证）
         async function checkAuth() {
@@ -426,11 +434,41 @@
                 const result = await response.json();
                 
                 if (result.success) {
+                    const newClubId = result.id ?? result.data?.id;
+                    let grantWarning = '';
+
+                    // 新提交已记录 user_id + applicant_role，审批通过后自动绑定身份
+                    if (newClubId && submit.user_id && submit.applicant_role) {
+                        try {
+                            const grantResp = await fetch(MEMBERSHIP_API + '?action=grant_from_submission', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    user_id: submit.user_id,
+                                    club_id: newClubId,
+                                    country: submit.country || 'china',
+                                    role: submit.applicant_role,
+                                    contact_account: submit.submitter || ''
+                                })
+                            });
+                            const grantResult = await grantResp.json();
+                            if (grantResult.success) {
+                                submissions[index].membership_id = grantResult.membership_id;
+                            } else {
+                                grantWarning = '\n⚠️ 同好会已添加，但自动绑定身份失败：' + (grantResult.message || '未知错误') + '，请手动在成员管理中处理。';
+                            }
+                        } catch (grantErr) {
+                            console.error('自动绑定身份失败:', grantErr);
+                            grantWarning = '\n⚠️ 同好会已添加，但自动绑定身份请求失败，请手动在成员管理中处理。';
+                        }
+                    }
+
                     // 更新状态
                     submissions[index].status = 'approved';
                     submissions[index].approved_at = new Date().toISOString();
                     await saveSubmissions();
-                    alert(`✅ 已通过：${submit.name}`);
+                    alert(`✅ 已通过：${submit.name}` + grantWarning);
                     loadSubmissions();
                 } else {
                     alert('添加失败：' + (result.message || '未知错误'));
@@ -515,6 +553,12 @@
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">📧 提交者：</span>${escapeHtml(item.submitter || '匿名')}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">👤 提交账号：</span>${escapeHtml(item.submitter_nickname || item.submitter_username || '（历史匿名提交）')}
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">🪪 申请身份：</span>${applicantRoleText(item.applicant_role || item.role)}
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">⏰ 提交时间：</span>${formatDate(item.submitted_at)}

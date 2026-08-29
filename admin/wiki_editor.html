@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>同好会维基编辑</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
+<link rel="stylesheet" href="../wiki/wiki.css?v=20260817-editor-workbench">
 <style>
 * { box-sizing: border-box; }
 body {
@@ -315,102 +318,751 @@ button:disabled {
     max-height: none;
   }
 }
+
+/* Compact workspace layout: the reading view is a deliberate tab, not a side-window preview. */
+[hidden] { display: none !important; }
+body {
+  background: #f6f7f9;
+  color: #202a35;
+  font-size: 14px;
+}
+.topbar {
+  padding: 14px clamp(16px, 4vw, 46px);
+  background: #182332;
+}
+.topbar h1 { font-size: 18px; letter-spacing: .01em; }
+.topbar nav { display: flex; flex-wrap: wrap; gap: 12px; }
+.topbar nav a { color: #c9d7e8; }
+.editor-eyebrow,
+.panel-label {
+  margin: 0 0 5px;
+  color: #718096;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.topbar .editor-eyebrow { color: #9bb2cc; }
+.layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+  max-width: 1420px;
+  align-items: start;
+  gap: 16px;
+  padding: 18px clamp(12px, 3vw, 32px) 48px;
+}
+.panel {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.editor-context {
+  position: sticky;
+  top: 16px;
+  padding: 16px;
+}
+.editor-workspace {
+  min-width: 0;
+  padding: 20px 22px 18px;
+}
+.workspace-heading,
+.section-heading,
+.preview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.workspace-heading { margin-bottom: 16px; }
+.workspace-heading h2,
+.preview-heading h2,
+.section-heading h2 {
+  margin: 0;
+  color: #253241;
+  font-size: 19px;
+  line-height: 1.25;
+}
+.wiki-lang-tabs,
+.mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.wiki-lang-tabs { margin: 0; }
+.wiki-lang-tabs button,
+.mode-tabs button {
+  min-height: 34px;
+  border: 1px solid #d7dee8;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #52606d;
+  font-size: 12px;
+}
+.wiki-lang-tabs button.active,
+.mode-tabs button.active {
+  border-color: #2463eb;
+  background: #2463eb;
+  color: #fff;
+}
+.mode-tabs {
+  margin: 0 -22px 18px;
+  padding: 0 22px;
+  border-bottom: 1px solid #e2e7ee;
+}
+.mode-tabs button {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #697586;
+}
+.mode-tabs button.active {
+  background: transparent;
+  color: #1f56d8;
+}
+.mode-tabs button.active::after {
+  position: absolute;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 2px;
+  background: #2463eb;
+  content: "";
+}
+.field-primary { margin-bottom: 11px; }
+.field-primary input { min-height: 44px; font-size: 17px; }
+.field-hint,
+.section-note,
+.save-hint {
+  color: #7b8794;
+  font-size: 12px;
+  font-weight: 400;
+}
+.tool-strip {
+  align-items: center;
+  margin: 14px 0 18px;
+  padding: 8px;
+  border-color: #e1e7ef;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+.tool-strip-label { margin-right: auto; color: #7b8794; font-size: 12px; font-weight: 700; }
+.json-tools {
+  margin: -5px 0 18px;
+  border-color: #cbd8ee;
+  border-radius: 7px;
+  background: #f5f8ff;
+}
+.json-tools textarea { min-height: 180px; }
+.json-validation {
+  min-height: 20px;
+  margin: -3px 0 8px;
+  color: #718096;
+  font-size: 12px;
+}
+.json-validation.is-valid { color: #147d4d; }
+.json-validation.is-invalid { color: #b42318; }
+.json-validation.is-warning { color: #996000; }
+.editor-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e7ebf0;
+}
+.editor-section:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.section-heading { align-items: center; margin-bottom: 10px; }
+.section-heading button { min-height: 32px; padding: 6px 9px; font-size: 12px; }
+.section-note { margin: -3px 0 10px; }
+.row-card {
+  padding: 11px;
+  border-color: #e0e6ee;
+  border-radius: 7px;
+  background: #fbfcfe;
+}
+.row-card + .row-card { margin-top: 8px; }
+.row-grid { grid-template-columns: 150px minmax(0, 1fr) auto; }
+.row-grid .actions { margin-top: 0; }
+.section-card { border-left: 3px solid #dce7fb; }
+.section-card textarea { min-height: 118px; }
+.section-blocks {
+  margin: 9px 0 2px;
+  padding: 9px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+}
+.section-blocks-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: #52606d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.section-blocks-heading > div:first-child { display: grid; gap: 2px; }
+.section-blocks-heading > div:first-child span { color: #7b8794; font-size: 11px; font-weight: 400; }
+.block-add-actions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
+.block-add-actions button { min-height: 28px; padding: 4px 8px; font-size: 11px; }
+.content-block-list { display: grid; gap: 7px; }
+.content-block {
+  padding: 8px;
+  border: 1px solid #e5eaf0;
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+.content-block-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: #334e68;
+  font-size: 12px;
+  font-weight: 700;
+}
+.content-block-hint { color: #9aa5b1; font-size: 11px; font-weight: 400; }
+.content-block textarea { min-height: 84px; margin-bottom: 0; }
+.paragraph-block textarea[data-field="text"] { min-height: 128px; }
+.block-note { margin-top: 8px; }
+.block-note summary { cursor: pointer; color: #52606d; font-size: 12px; font-weight: 700; }
+.block-note textarea { min-height: 72px; margin-top: 7px; }
+.content-block .actions { margin-top: 8px; }
+.content-block .upload-line { margin-bottom: 7px; }
+.content-block .image-control-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.editor-actions { align-items: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e7ebf0; }
+.editor-actions .save-hint { margin-left: auto; }
+.status { min-height: 22px; }
+.editor-context .club-meta { gap: 6px; font-size: 12px; }
+.editor-context .club-meta strong { font-size: 11px; letter-spacing: .03em; text-transform: uppercase; }
+.context-divider { height: 1px; margin: 16px 0; background: #e7ebf0; }
+.draft-box { padding: 10px; border-radius: 7px; background: #f8fafc; }
+.draft-actions { display: grid; grid-template-columns: 1fr; }
+.draft-actions button { min-height: 34px; }
+.side-list { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.7; }
+.preview-heading { align-items: center; margin-bottom: 12px; }
+.preview-heading > span { color: #7b8794; font-size: 12px; }
+.preview-pane {
+  min-height: 620px;
+  max-height: none;
+  padding: clamp(18px, 3vw, 32px);
+  border-color: #dfe5ee;
+  border-radius: 7px;
+  background: #fff;
+}
+.wiki-preview-reader { max-width: none; padding: 0; background: transparent; }
+.wiki-preview-reader .wiki-article { min-height: 0; padding: 0 0 24px; }
+.wiki-preview-reader .wiki-appearance-rail { position: static; }
+.wiki-preview-reader .wiki-language-switch { display: none; }
+.preview-title { font-size: clamp(22px, 3vw, 30px); }
+.preview-section + .preview-section { margin-top: 18px; padding-top: 10px; border-top: 1px solid #edf0f4; }
+@media (min-width: 1180px) {
+  .layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .editor-context { grid-column: 1; }
+  .editor-workspace { grid-column: 2; }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; padding: 12px; }
+  .editor-context { position: static; }
+  .editor-workspace { padding: 16px 14px; }
+  .mode-tabs { margin-inline: -14px; padding-inline: 14px; }
+  .workspace-heading { flex-direction: column; }
+  .row-grid { grid-template-columns: 1fr; }
+  .content-block .image-control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .paragraph-block textarea[data-field="text"] { min-height: 112px; }
+  .editor-actions .save-hint { width: 100%; margin-left: 0; }
+}
+@media (max-width: 420px) {
+  .content-block .image-control-grid { grid-template-columns: 1fr; }
+}
+
+/* Final density pass: keep the workbench scannable without turning controls into a form wall. */
+@media (min-width: 861px) {
+  .layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px clamp(12px, 2.4vw, 28px) 36px;
+  }
+  .editor-context { padding: 13px; }
+  .editor-workspace { padding: 16px 18px 14px; }
+  .mode-tabs { margin-inline: -18px; padding-inline: 18px; margin-bottom: 14px; }
+}
+
+.topbar { min-height: 52px; padding-block: 10px; }
+.topbar h1 { font-size: 17px; }
+.topbar nav { gap: 10px; }
+.panel { padding: 14px; }
+.editor-workspace { padding: 16px 18px 14px; }
+.workspace-heading { margin-bottom: 12px; }
+.workspace-heading h2,
+.preview-heading h2,
+.section-heading h2 { font-size: 17px; }
+.field { gap: 4px; margin-bottom: 10px; }
+.field label { font-size: 12px; }
+.field-primary input { min-height: 40px; font-size: 16px; }
+textarea { min-height: 82px; }
+.tool-strip { margin-block: 10px 14px; padding: 7px; gap: 6px; }
+.json-tools { margin-bottom: 14px; padding: 10px; }
+.json-tools textarea { min-height: 144px; }
+.editor-section { margin-top: 16px; padding-top: 13px; }
+.section-heading { margin-bottom: 8px; }
+.section-heading button,
+.block-add-actions button { min-height: 30px; padding: 5px 8px; }
+.rows { gap: 6px; }
+.row-card { padding: 8px; }
+.row-card + .row-card { margin-top: 6px; }
+.row-grid { grid-template-columns: 122px minmax(0, 1fr) auto; gap: 6px; }
+.section-card { border-left-width: 2px; }
+.section-card .field { margin-bottom: 0; }
+.section-card > .actions,
+.content-block > .actions { margin-top: 8px; }
+.section-blocks { margin: 7px 0 1px; padding: 7px; }
+.section-blocks-heading { margin-bottom: 6px; }
+.content-block-list { gap: 5px; }
+.content-block { padding: 7px; }
+.content-block-heading { margin-bottom: 5px; }
+.content-block textarea { min-height: 72px; }
+.content-block .upload-line { margin-bottom: 5px; }
+.content-block .field { margin-bottom: 7px; }
+.actions { gap: 6px; }
+.actions button,
+.tool-strip button { min-height: 32px; padding: 6px 9px; }
+.editor-actions { margin-top: 18px; padding-top: 12px; }
+.preview-pane { min-height: 540px; padding: 20px; }
+
+@media (max-width: 760px) {
+  .topbar { padding: 10px 12px; }
+  .topbar nav { gap: 8px; }
+  .editor-workspace { padding: 13px 12px 12px; }
+  .mode-tabs { margin-inline: -12px; padding-inline: 12px; margin-bottom: 12px; }
+  .workspace-heading { gap: 9px; }
+  .wiki-lang-tabs button,
+  .mode-tabs button { min-height: 40px; padding-inline: 11px; }
+  .row-card { padding: 8px; }
+  .row-grid { gap: 7px; }
+  .content-block .actions button,
+  .row-card .actions button,
+  .section-card > .actions button,
+  .tool-strip button,
+  .section-heading button { min-height: 40px; }
+  .preview-pane { padding: 16px; }
+}
+
+/* Full-page desktop workbench: editing and reader preview stay visible together. */
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--wiki-bg, #f6f7f9);
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.editor-shell {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: calc(100vh - 52px);
+  min-height: 680px;
+  padding: 14px clamp(12px, 2.4vw, 28px) 18px;
+}
+.editor-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 18px 14px;
+}
+.workspace-split {
+  display: grid;
+  grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
+  gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.editor-column,
+#previewView {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.editor-column {
+  display: grid;
+  grid-template-columns: minmax(148px, 178px) minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  padding-right: 10px;
+  border-right: 1px solid #e2e7ee;
+}
+.editor-context {
+  grid-column: 1 / -1;
+  position: static;
+  margin: 0;
+}
+.editor-outline {
+  position: sticky;
+  top: 0;
+  grid-column: 1;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow: hidden;
+}
+.editor-form-area {
+  grid-column: 2;
+  min-width: 0;
+}
+.editor-outline-heading,
+.markdown-editor-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.editor-outline-heading h2,
+.markdown-editor-heading h2 {
+  margin: 0;
+  color: #253241;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.editor-outline-heading > span {
+  color: #7b8794;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.editor-outline-nav {
+  min-height: 0;
+  margin-top: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.editor-outline-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.editor-outline-link {
+  display: block;
+  min-height: 30px;
+  padding: 6px 7px;
+  border-left: 2px solid transparent;
+  color: #52606d;
+  font-size: 12px;
+  line-height: 1.4;
+  text-decoration: none;
+  text-wrap: pretty;
+}
+.editor-outline-link.level-3 {
+  padding-left: 17px;
+  color: #7b8794;
+  font-size: 11px;
+}
+.editor-outline-link:hover,
+.editor-outline-link:focus-visible,
+.editor-outline-link.is-active {
+  border-left-color: #2463eb;
+  background: #f2f6ff;
+  color: #1f56d8;
+  outline: none;
+}
+.editor-outline-empty {
+  margin: 0;
+  color: #9aa5b1;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.editor-mode-switch {
+  display: inline-flex;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 3px;
+  border: 1px solid #d7dee8;
+  border-radius: 7px;
+  background: #f5f7fa;
+}
+.editor-mode-switch button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 5px;
+  padding: 7px 12px;
+  background: transparent;
+  color: #697586;
+  font-size: 12px;
+}
+.editor-mode-switch button.active {
+  background: #fff;
+  color: #1f56d8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+}
+.markdown-editor-heading {
+  margin-bottom: 10px;
+}
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  color: #7b8794;
+  font-size: 11px;
+}
+.markdown-toolbar code {
+  padding: 3px 5px;
+  border: 1px solid #e0e6ee;
+  border-radius: 3px;
+  background: #f8fafc;
+  color: #52606d;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+.markdown-source-input {
+  min-height: 520px;
+  resize: none;
+  border-color: #b9c7da;
+  background: #fbfcfe;
+  font-family: Consolas, "SFMono-Regular", "Noto Sans SC", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.markdown-source-input:focus {
+  border-color: #2463eb;
+  background: #fff;
+}
+.markdown-status {
+  min-height: 28px;
+  margin-top: 8px;
+  color: #7b8794;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.markdown-status.is-warning { color: #996000; }
+.markdown-status.is-error { color: #b42318; }
+#previewView {
+  padding-left: 2px;
+}
+#previewView .preview-pane {
+  min-height: calc(100% - 42px);
+  max-height: none;
+}
+.editor-actions {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1099px) {
+  body { overflow: auto; }
+  .editor-shell {
+    height: auto;
+    min-height: 0;
+  }
+  .editor-workspace { height: auto; }
+  .workspace-split {
+    grid-template-columns: 1fr;
+    flex: none;
+  }
+  .editor-column,
+  #previewView {
+    overflow: visible;
+  }
+  .editor-column {
+    border-right: 0;
+    padding-right: 0;
+  }
+  .editor-outline { position: static; }
+  .editor-outline {
+    display: block;
+    max-height: none;
+    overflow: visible;
+  }
+  .editor-outline-nav {
+    max-height: none;
+    overflow: visible;
+  }
+  #previewView { padding: 18px 0 0; }
+  #previewView .preview-pane { min-height: 620px; }
+}
+@media (max-width: 760px) {
+  .editor-column { grid-template-columns: 1fr; }
+  .editor-outline,
+  .editor-form-area { grid-column: 1; }
+  .editor-outline { order: 1; }
+  .editor-form-area { order: 2; }
+  .editor-context { order: 0; }
+  .markdown-source-input { min-height: 360px; }
+  .editor-mode-switch button { min-height: 44px; }
+}
 </style>
 </head>
 <body>
 <header class="topbar">
-  <h1>同好会维基编辑</h1>
-  <span><a href="./wiki_guide_editor.html">使用文档管理</a> · <a href="../index.html">返回地图</a></span>
+  <div>
+    <p class="editor-eyebrow">VNFest WIKI / MAINTAIN</p>
+    <h1>同好会维基编辑</h1>
+  </div>
+  <nav><a href="./wiki_guide_editor.html">使用文档管理</a><a href="../wiki/index.html">返回 Wiki</a><a href="../index.html">返回地图</a></nav>
 </header>
 
-<main class="layout">
-  <section class="panel">
-    <h2>页面内容</h2>
-    <div class="wiki-lang-tabs" role="tablist" aria-label="Wiki content language">
-      <button type="button" id="wikiLangZhBtn" class="active" data-wiki-lang-tab="zh">中文内容</button>
-      <button type="button" id="wikiLangJaBtn" data-wiki-lang-tab="ja">日本語内容</button>
+<main class="layout editor-shell">
+  <section class="panel editor-workspace">
+    <div class="workspace-heading">
+      <div><p class="editor-eyebrow">CONTENT WORKSPACE</p><h2>页面内容</h2></div>
+      <div class="wiki-lang-tabs" role="tablist" aria-label="Wiki content language">
+        <button type="button" id="wikiLangZhBtn" class="active" data-wiki-lang-tab="zh">中文内容</button>
+        <button type="button" id="wikiLangJaBtn" data-wiki-lang-tab="ja">日本語内容</button>
+      </div>
     </div>
-    <div class="field">
-      <label for="titleInput">标题</label>
-      <input id="titleInput" maxlength="120">
-    </div>
-    <div class="field">
-      <label for="summaryInput">摘要</label>
-      <textarea id="summaryInput" maxlength="1000"></textarea>
-    </div>
-    <div class="tool-strip">
-      <button type="button" id="insertTemplateBtn">插入基础模板</button>
-      <button type="button" id="exportJsonBtn" class="secondary">导出 JSON</button>
-      <button type="button" id="toggleImportBtn" class="secondary">导入 JSON</button>
-    </div>
-    <div class="json-tools" id="jsonTools">
+
+    <div class="workspace-split">
+      <div class="editor-column">
+        <aside class="editor-context panel">
+          <div class="panel-label">编辑对象</div>
+          <div class="club-meta" id="clubMeta">加载中...</div>
+          <div class="context-divider"></div>
+          <div class="panel-label">本地草稿</div>
+          <div class="draft-box">
+            <div id="draftStatus">检查本地草稿中...</div>
+            <div class="draft-actions">
+              <button type="button" id="restoreDraftBtn" class="secondary">恢复草稿</button>
+              <button type="button" id="clearDraftBtn" class="secondary">清除草稿</button>
+            </div>
+          </div>
+          <div class="context-divider"></div>
+          <div class="panel-label">编辑提示</div>
+          <ul class="side-list">
+            <li>章节正文由段落和图片块组成，可按阅读顺序自由排列。</li>
+            <li>图片支持上传、线上 URL 或站内相对路径，单张上限 10MB。</li>
+            <li>保存后会同步更新独立 HTML 页面；只有有权限的管理员或负责人可编辑。</li>
+          </ul>
+        </aside>
+
+        <aside class="editor-outline panel" aria-label="编辑目录">
+          <div class="editor-outline-heading">
+            <div><p class="editor-eyebrow">OUTLINE</p><h2>编辑目录</h2></div>
+            <span id="editorOutlineCount">0 节</span>
+          </div>
+          <nav id="editorOutline" class="editor-outline-nav" aria-label="正文编辑目录">
+            <p class="editor-outline-empty">添加章节后会显示快速跳转。</p>
+          </nav>
+        </aside>
+
+        <div class="editor-form-area">
+          <div class="editor-mode-switch" role="tablist" aria-label="正文编辑模式">
+            <button type="button" class="active" id="editorModeVisual" data-editor-mode="visual" role="tab" aria-selected="true">可视化编辑</button>
+            <button type="button" id="editorModeMarkdown" data-editor-mode="markdown" role="tab" aria-selected="false">Markdown 纯编辑</button>
+          </div>
+
+    <div class="editor-metadata-fields">
+      <div class="field field-primary">
+        <label for="titleInput">标题</label>
+        <input id="titleInput" maxlength="120" placeholder="输入条目标题">
+      </div>
       <div class="field">
-        <label for="jsonToolsInput">内容 JSON</label>
-        <textarea id="jsonToolsInput" spellcheck="false"></textarea>
+        <label for="summaryInput">摘要 <span class="field-hint">支持 Markdown：**粗体**、*斜体*、~~删除线~~、[链接](URL)、`代码`</span></label>
+        <textarea id="summaryInput" maxlength="1000" placeholder="用一到两段话概括这个同好会或页面主题"></textarea>
       </div>
-      <div class="actions">
-        <button type="button" id="importJsonBtn">应用导入内容</button>
-        <button type="button" id="hideJsonToolsBtn" class="secondary">收起</button>
+      <div class="tool-strip">
+        <span class="tool-strip-label">快捷操作</span>
+        <button type="button" id="insertTemplateBtn">插入基础模板</button>
+        <button type="button" id="exportJsonBtn" class="secondary">导出 JSON</button>
+        <button type="button" id="toggleImportBtn" class="secondary">导入 JSON</button>
+      </div>
+      <div class="json-tools" id="jsonTools">
+        <div class="field">
+          <label for="jsonToolsInput">内容 JSON <span class="field-hint">输入时自动检查格式与基本结构</span></label>
+          <textarea id="jsonToolsInput" spellcheck="false" placeholder="粘贴或编辑 JSON"></textarea>
+        </div>
+        <div class="json-validation" id="jsonValidation" role="status" aria-live="polite">等待 JSON 内容。</div>
+        <div class="actions">
+          <button type="button" id="importJsonBtn">应用导入内容</button>
+          <button type="button" id="hideJsonToolsBtn" class="secondary">收起</button>
+        </div>
       </div>
     </div>
 
-    <h2>信息框</h2>
-    <div class="rows" id="infoboxRows"></div>
-    <div class="actions">
-      <button type="button" id="addInfoboxBtn">添加信息项</button>
+    <div id="editorView" data-editor-panel="visual">
+
+      <section class="editor-section">
+        <div class="section-heading"><div><p class="editor-eyebrow">METADATA</p><h2>信息框</h2></div><button type="button" id="addInfoboxBtn">添加信息项</button></div>
+        <div class="rows" id="infoboxRows"></div>
+      </section>
+
+      <section class="editor-section">
+        <div class="section-heading"><div><p class="editor-eyebrow">ENTRY IDENTITY</p><h2>条目头像</h2></div></div>
+        <p class="section-note">头像会显示在右侧条目资料框内，可放在资料顶部或底部；不填写 URL 则不显示。</p>
+        <div class="row-card image-row avatar-editor" id="avatarEditor">
+          <div class="upload-line"><input type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-field="file"><button type="button" data-action="upload-image">上传头像</button></div>
+          <div class="field"><label>头像 URL</label><input data-field="url" placeholder="https://... 或 ../uploads/..." value=""></div>
+          <div class="field"><label>替代文本</label><input data-field="alt" placeholder="用于无障碍和图片加载失败时显示" value=""></div>
+          <div class="field"><label>头像说明</label><input data-field="caption" placeholder="可选：头像或标志说明" value=""></div>
+          <div class="field"><label>显示位置</label><select data-field="position"><option value="top">条目资料顶部</option><option value="bottom">条目资料底部</option></select></div>
+        </div>
+      </section>
+
+      <section class="editor-section">
+        <div class="section-heading"><div><p class="editor-eyebrow">ARTICLE BODY</p><h2>正文章节</h2></div><button type="button" id="addSectionBtn">添加章节</button></div>
+        <div class="rows" id="sectionRows"></div>
+      </section>
+
+      <section class="editor-section">
+        <div class="section-heading"><div><p class="editor-eyebrow">MEDIA</p><h2>页面图片</h2></div><button type="button" id="addImageBtn">添加图片</button></div>
+        <p class="section-note">这里适合放页面头图或独立图片；正文中的图片请在对应章节内添加。</p>
+        <div class="rows" id="imageRows"></div>
+      </section>
+
+      <section class="editor-section">
+        <div class="section-heading"><div><p class="editor-eyebrow">SOURCES</p><h2>参考资料</h2></div><button type="button" id="addReferenceBtn">添加参考资料</button></div>
+        <div class="rows" id="referenceRows"></div>
+      </section>
     </div>
 
-    <h2 style="margin-top:22px;">章节</h2>
-    <div class="rows" id="sectionRows"></div>
-    <div class="actions">
-      <button type="button" id="addSectionBtn">添加章节</button>
+    <div id="markdownView" data-editor-panel="markdown" hidden>
+      <div class="markdown-editor-heading">
+        <div>
+          <p class="editor-eyebrow">SOURCE MODE</p>
+          <h2>正文 Markdown</h2>
+        </div>
+        <span class="field-hint">标题用 ## / ###，段落之间空一行</span>
+      </div>
+      <div class="markdown-toolbar" aria-label="Markdown 快捷提示">
+        <span>支持</span>
+        <code>**粗体**</code>
+        <code>*斜体*</code>
+        <code>~~删除线~~</code>
+        <code>`代码`</code>
+        <code>[链接](URL)</code>
+        <code>![图片](URL)</code>
+      </div>
+      <textarea id="markdownSourceInput" class="markdown-source-input" spellcheck="false" aria-label="正文 Markdown 源码" placeholder="## 概要\n\n在这里输入正文 Markdown。\n\n### 细节\n\n段落之间空一行。"></textarea>
+      <div class="markdown-status" id="markdownStatus" role="status" aria-live="polite">Markdown 会在切换回可视化编辑时解析为章节和内容块。</div>
+    </div>
+        </div>
+      </div>
+
+    <div id="previewView" data-editor-panel="preview">
+      <div class="preview-heading"><div><p class="editor-eyebrow">READER VIEW</p><h2>页面预览</h2></div><span id="previewLanguageLabel">中文内容</span></div>
+      <div class="preview-pane" id="previewPane">加载后显示预览。</div>
+    </div>
     </div>
 
-    <h2 style="margin-top:22px;">图片</h2>
-    <div class="rows" id="imageRows"></div>
-    <div class="actions">
-      <button type="button" id="addImageBtn">添加图片</button>
-    </div>
-
-    <h2 style="margin-top:22px;">参考资料</h2>
-    <div class="rows" id="referenceRows"></div>
-    <div class="actions">
-      <button type="button" id="addReferenceBtn">添加参考资料</button>
-    </div>
-
-    <div class="actions">
+    <div class="actions editor-actions">
       <button type="button" class="primary" id="saveBtn">保存并生成页面</button>
       <a class="button-link" id="viewPageLink" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">查看生成页面</a>
+      <span class="save-hint">保存后会更新公开页面与 Wiki 索引</span>
     </div>
-    <div class="status" id="statusText"></div>
+    <div class="status" id="statusText" aria-live="polite"></div>
   </section>
-
-  <aside class="panel">
-    <h2>编辑对象</h2>
-    <div class="club-meta" id="clubMeta">加载中...</div>
-    <h2 style="margin-top:22px;">本地草稿</h2>
-    <div class="draft-box">
-      <div id="draftStatus">检查本地草稿中...</div>
-      <div class="draft-actions">
-        <button type="button" id="restoreDraftBtn" class="secondary">恢复草稿</button>
-        <button type="button" id="clearDraftBtn" class="secondary">清除草稿</button>
-      </div>
-    </div>
-    <h2 style="margin-top:22px;">实时预览</h2>
-    <div class="preview-pane" id="previewPane">加载后显示预览。</div>
-    <h2 style="margin-top:22px;">编辑说明</h2>
-    <ul class="side-list">
-      <li>正文每一行会生成一个段落。</li>
-      <li>图片支持上传、线上 URL 或站内相对路径，单张上限 10MB。</li>
-      <li>每张图片可单独设置宽度、对齐方式和裁切方式。</li>
-      <li>信息框适合放学校、地区、成立时间、状态。</li>
-      <li>保存后会同步更新独立 HTML 页面。</li>
-      <li>只有管理员或该同好会负责人/管理员可编辑。</li>
-    </ul>
-  </aside>
 </main>
 
-<script>
+<script type="module">
+import { renderAppearanceLauncher, renderReaderArticle } from '../wiki/wiki-reader.js?v=20260817-editor-markdown';
 (function () {
   const params = new URLSearchParams(location.search);
   const clubKey = params.get('club_key') || '';
@@ -426,6 +1078,13 @@ button:disabled {
   let draftTimer = null;
   let activeWikiLang = 'zh';
   let wikiLanguageContent = { zh: null, ja: null };
+  let editorMode = 'visual';
+  let markdownByLanguage = { zh: '', ja: '' };
+  let markdownResults = { zh: null, ja: null };
+  let previewRenderFrame = 0;
+  let outlineScrollBound = false;
+  let previewAppearanceHidden = false;
+  let previewAppearancePopoverOpen = false;
 
   function setStatus(text, ok) {
     statusText.textContent = text || '';
@@ -436,6 +1095,11 @@ button:disabled {
     return String(value || '').replace(/[&<>"']/g, function (ch) {
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
     });
+  }
+
+  function safeImageUrl(value) {
+    const url = String(value || '').trim();
+    return /^\s*(?:javascript|vbscript|data:text\/html):/i.test(url) ? '' : url;
   }
 
   function compactResponseText(text) {
@@ -487,34 +1151,8 @@ button:disabled {
     document.getElementById('infoboxRows').appendChild(wrap);
   }
 
-  function addSectionRow(heading, body, level) {
-    const wrap = document.createElement('div');
-    wrap.className = 'row-card section-card';
-    wrap.innerHTML = '<div class="row-grid">' +
-      '<div class="field"><label>标题级别</label><select data-field="level"><option value="2">二级标题</option><option value="3">三级标题</option></select></div>' +
-      '<div class="field"><label>章节标题</label><input data-field="heading" value="' + escapeHTML(heading) + '"></div>' +
-      '</div>' +
-      '<div class="field"><label>正文（一行一个段落）</label><textarea data-field="body">' + escapeHTML((body || []).join('\n')) + '</textarea></div>' +
-      rowTools('删除章节');
-    document.getElementById('sectionRows').appendChild(wrap);
-    wrap.querySelector('[data-field="level"]').value = String(level || 2);
-  }
-
-  function addReferenceRow(label, url) {
-    const wrap = document.createElement('div');
-    wrap.className = 'row-card';
-    wrap.innerHTML = '<div class="row-grid">' +
-      '<input data-field="label" placeholder="显示名称" value="' + escapeHTML(label) + '">' +
-      '<input data-field="url" placeholder="链接" value="' + escapeHTML(url) + '">' +
-      rowTools('删除') +
-      '</div>';
-    document.getElementById('referenceRows').appendChild(wrap);
-  }
-
-  function addImageRow(url, caption, alt, widthPercent, align, fit, aspectRatio) {
-    const wrap = document.createElement('div');
-    wrap.className = 'row-card';
-    wrap.innerHTML = '<div class="upload-line"><input type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-field="file"><button type="button" data-action="upload-image">上传图片</button></div>' +
+  function imageControlsMarkup(url, caption, alt, widthPercent, align, fit, aspectRatio) {
+    return '<div class="upload-line"><input type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-field="file"><button type="button" data-action="upload-image">上传图片</button></div>' +
       '<div class="field"><label>图片 URL</label><input data-field="url" placeholder="https://... 或 ../images/..." value="' + escapeHTML(url) + '"></div>' +
       '<div class="field"><label>说明文字</label><input data-field="caption" placeholder="图片说明" value="' + escapeHTML(caption) + '"></div>' +
       '<div class="field"><label>替代文本</label><input data-field="alt" placeholder="用于无障碍和图片加载失败时显示" value="' + escapeHTML(alt) + '"></div>' +
@@ -531,13 +1169,120 @@ button:disabled {
         '<div class="field"><label>显示方式</label><select data-field="fit">' +
           '<option value="cover">裁切填充</option><option value="contain">完整显示</option>' +
         '</select></div>' +
-      '</div>' +
-      rowTools('删除图片');
-    document.getElementById('imageRows').appendChild(wrap);
+      '</div>';
+  }
+
+  function setImageControlDefaults(wrap, widthPercent, align, fit, aspectRatio) {
     wrap.querySelector('[data-field="width_percent"]').value = String(widthPercent || 100);
     wrap.querySelector('[data-field="aspect_ratio"]').value = aspectRatio || '16/10';
     wrap.querySelector('[data-field="align"]').value = align || 'center';
     wrap.querySelector('[data-field="fit"]').value = fit || 'cover';
+  }
+
+  function addParagraphBlock(container, text, note) {
+    const wrap = document.createElement('div');
+    wrap.className = 'content-block paragraph-block';
+    wrap.dataset.blockType = 'paragraph';
+    wrap.innerHTML = '<div class="content-block-heading"><span>段落</span><span class="content-block-hint">正文文本 · 支持 Markdown</span></div>' +
+      '<textarea data-field="text" placeholder="输入这一段正文">' + escapeHTML(text || '') + '</textarea>' +
+      '<details class="block-note"><summary>添加注释</summary><textarea data-field="note" placeholder="可选：为读者补充背景、术语或来源说明">' + escapeHTML(note || '') + '</textarea></details>' +
+      rowTools('删除块');
+    container.appendChild(wrap);
+  }
+
+  function addImageBlock(container, image) {
+    image = image || {};
+    const wrap = document.createElement('div');
+    wrap.className = 'content-block image-block image-row';
+    wrap.dataset.blockType = 'image';
+    wrap.innerHTML = '<div class="content-block-heading"><span>图片</span><span class="content-block-hint">正文中的混排图片</span></div>' +
+      imageControlsMarkup(image.url || '', image.caption || '', image.alt || '', image.width_percent || 100, image.align || 'center', image.fit || 'cover', image.aspect_ratio || '16/10') +
+      rowTools('删除块');
+    container.appendChild(wrap);
+    setImageControlDefaults(wrap, image.width_percent || 100, image.align || 'center', image.fit || 'cover', image.aspect_ratio || '16/10');
+  }
+
+  function addBlockRow(container, block) {
+    if (block && block.type === 'image') {
+      addImageBlock(container, block);
+      return;
+    }
+    addParagraphBlock(container, block && block.text ? block.text : '', block && block.note ? block.note : '');
+  }
+
+  function sectionBlocksFromSection(section) {
+    section = section || {};
+    if (Array.isArray(section.blocks) && section.blocks.length) {
+      return section.blocks.map(function (block) {
+        if (!block || typeof block !== 'object') return null;
+        if (block.type === 'image') return Object.assign({ type: 'image' }, block);
+        return { type: 'paragraph', text: String(block.text || ''), note: String(block.note || '') };
+      }).filter(Boolean);
+    }
+    const body = Array.isArray(section.body) ? section.body : String(section.body || '').split(/\r?\n/);
+    const blocks = body.map(function (text) {
+      return { type: 'paragraph', text: String(text || '').trim(), note: '' };
+    }).filter(function (block) { return block.text; });
+    (Array.isArray(section.images) ? section.images : []).forEach(function (image) {
+      blocks.push(Object.assign({ type: 'image' }, image || {}));
+    });
+    return blocks;
+  }
+
+  function addSectionRow(heading, blocks, level) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card section-card';
+    wrap.innerHTML = '<div class="row-grid">' +
+      '<div class="field"><label>标题级别</label><select data-field="level"><option value="2">二级标题</option><option value="3">三级标题</option></select></div>' +
+      '<div class="field"><label>章节标题</label><input data-field="heading" value="' + escapeHTML(heading) + '"></div>' +
+      '</div>' +
+      '<div class="section-blocks" data-role="section-blocks"><div class="section-blocks-heading"><div><strong>正文内容块</strong><span>按阅读顺序排列段落和图片</span></div><div class="block-add-actions"><button type="button" data-action="add-paragraph-block">添加段落</button><button type="button" data-action="add-image-block">添加图片</button></div></div><div class="content-block-list" data-role="block-list"></div></div>' +
+      rowTools('删除章节');
+    document.getElementById('sectionRows').appendChild(wrap);
+    wrap.querySelector('[data-field="level"]').value = String(level || 2);
+    (blocks || []).forEach(function (block) { addBlockRow(wrap.querySelector('[data-role="block-list"]'), block); });
+  }
+
+  function addReferenceRow(label, url) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card';
+    wrap.innerHTML = '<div class="row-grid">' +
+      '<input data-field="label" placeholder="显示名称" value="' + escapeHTML(label) + '">' +
+      '<input data-field="url" placeholder="链接" value="' + escapeHTML(url) + '">' +
+      rowTools('删除') +
+      '</div>';
+    document.getElementById('referenceRows').appendChild(wrap);
+  }
+
+  function addImageRow(url, caption, alt, widthPercent, align, fit, aspectRatio) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row-card image-row';
+    wrap.innerHTML = imageControlsMarkup(url, caption, alt, widthPercent, align, fit, aspectRatio) + rowTools('删除图片');
+    document.getElementById('imageRows').appendChild(wrap);
+    setImageControlDefaults(wrap, widthPercent, align, fit, aspectRatio);
+  }
+
+  function setAvatarEditor(avatar) {
+    const row = document.getElementById('avatarEditor');
+    if (!row) return;
+    avatar = avatar || {};
+    row.querySelector('[data-field="url"]').value = avatar.url || '';
+    row.querySelector('[data-field="alt"]').value = avatar.alt || '';
+    row.querySelector('[data-field="caption"]').value = avatar.caption || '';
+    row.querySelector('[data-field="position"]').value = avatar.position === 'bottom' ? 'bottom' : 'top';
+  }
+
+  function collectAvatar() {
+    const row = document.getElementById('avatarEditor');
+    if (!row) return null;
+    const url = safeImageUrl(row.querySelector('[data-field="url"]')?.value || '');
+    if (!url) return null;
+    return {
+      url,
+      alt: row.querySelector('[data-field="alt"]')?.value.trim() || '',
+      caption: row.querySelector('[data-field="caption"]')?.value.trim() || '',
+      position: row.querySelector('[data-field="position"]')?.value === 'bottom' ? 'bottom' : 'top',
+    };
   }
 
   function setControlValues(source, target) {
@@ -604,7 +1349,16 @@ button:disabled {
     isDirty = true;
     window.clearTimeout(draftTimer);
     draftTimer = window.setTimeout(saveDraftNow, 500);
-    renderPreview();
+    schedulePreviewRender();
+    updateEditorOutline();
+  }
+
+  function schedulePreviewRender() {
+    if (previewRenderFrame) return;
+    previewRenderFrame = window.requestAnimationFrame(function () {
+      previewRenderFrame = 0;
+      renderPreview();
+    });
   }
 
   function clearDraft() {
@@ -658,6 +1412,274 @@ button:disabled {
     }
   }
 
+  function normalizeMarkdownSource(value) {
+    return String(value || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\n');
+  }
+
+  function existingImageMetadata(sections, url) {
+    for (const section of (sections || [])) {
+      for (const block of sectionBlocksFromSection(section)) {
+        if (block.type === 'image' && safeImageUrl(block.url) === url) {
+          return block;
+        }
+      }
+    }
+    return null;
+  }
+
+  function sectionsToMarkdown(sections) {
+    return (Array.isArray(sections) ? sections : []).map(function (section) {
+      const level = Number(section.level) === 3 ? 3 : 2;
+      const lines = ['#'.repeat(level) + ' ' + String(section.heading || '').trim()];
+      sectionBlocksFromSection(section).forEach(function (block) {
+        if (block.type === 'image') {
+          const alt = String(block.alt || block.caption || '').replace(/[\[\]]/g, '');
+          const url = String(block.url || '').trim();
+          const caption = block.caption ? ' "' + String(block.caption).replace(/"/g, '&quot;') + '"' : '';
+          if (url) lines.push('![' + alt + '](' + url + caption + ')');
+          return;
+        }
+        const text = normalizeMarkdownSource(block.text || '').trim();
+        if (text) lines.push(text);
+        if (block.note) lines.push('<!-- wiki-note:' + encodeURIComponent(String(block.note)) + ' -->');
+      });
+      return lines.join('\n');
+    }).filter(Boolean).join('\n\n');
+  }
+
+  function parseMarkdownDocument(source, existingSections) {
+    const lines = normalizeMarkdownSource(source).split('\n');
+    const sections = [];
+    const outline = [];
+    const warnings = [];
+    const errors = [];
+    let current = null;
+    let paragraphLines = [];
+
+    function ensureSection(lineNumber) {
+      if (current) return current;
+      current = { heading: '正文', level: 2, blocks: [] };
+      sections.push(current);
+      outline.push({ heading: current.heading, level: current.level, line: lineNumber });
+      warnings.push('未发现 ## / ### 标题，已自动创建“正文”章节。');
+      return current;
+    }
+
+    function flushParagraph() {
+      if (!paragraphLines.length) return;
+      const text = paragraphLines.join('\n').trim();
+      paragraphLines = [];
+      if (text) ensureSection(0).blocks.push({ type: 'paragraph', text, note: '' });
+    }
+
+    lines.forEach(function (line, index) {
+      const trimmed = line.trim();
+      const heading = trimmed.match(/^(#{2,3})\s+(.+?)\s*#*$/);
+      if (heading) {
+        flushParagraph();
+        const level = heading[1].length === 3 ? 3 : 2;
+        const section = { heading: heading[2].trim(), level, blocks: [] };
+        sections.push(section);
+        current = section;
+        outline.push({ heading: section.heading, level, line: index });
+        return;
+      }
+      if (/^<!--\s*wiki-note:/.test(trimmed)) {
+        const noteMatch = trimmed.match(/^<!--\s*wiki-note:([^>]*)\s*-->$/);
+        if (noteMatch && current && current.blocks.length) {
+          const last = current.blocks[current.blocks.length - 1];
+          if (last.type === 'paragraph') last.note = decodeURIComponent(noteMatch[1]);
+        } else {
+          warnings.push('第 ' + (index + 1) + ' 行的注释没有对应段落。');
+        }
+        return;
+      }
+      const image = trimmed.match(/^!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)$/);
+      if (image) {
+        flushParagraph();
+        const url = safeImageUrl(image[2]);
+        if (!url) {
+          errors.push('第 ' + (index + 1) + ' 行图片地址不安全或为空。');
+          return;
+        }
+        const previous = existingImageMetadata(existingSections, url) || {};
+        ensureSection(index);
+        current.blocks.push({
+          type: 'image',
+          url,
+          alt: image[1] || previous.alt || '',
+          caption: image[3] || previous.caption || '',
+          width_percent: previous.width_percent || 100,
+          aspect_ratio: previous.aspect_ratio || '16/10',
+          align: previous.align || 'center',
+          fit: previous.fit || 'cover',
+        });
+        return;
+      }
+      if (!trimmed) {
+        flushParagraph();
+        return;
+      }
+      if (/^(?:#\s|[-*+]\s|\d+\.\s|>\s|```)/.test(trimmed)) {
+        warnings.push('第 ' + (index + 1) + ' 行包含暂不转换的块级 Markdown 语法。');
+      }
+      paragraphLines.push(line);
+    });
+    flushParagraph();
+
+    if (!sections.length) {
+      ensureSection(0);
+      warnings.push('正文为空，请至少填写一个段落。');
+    }
+    sections.forEach(function (section) {
+      if (!section.blocks.length) {
+        section.blocks.push({ type: 'paragraph', text: '', note: '' });
+        warnings.push('章节“' + section.heading + '”暂时没有正文内容。');
+      }
+    });
+    return { sections, outline, warnings: [...new Set(warnings)], errors: [...new Set(errors)] };
+  }
+
+  function setMarkdownStatus(result) {
+    const output = document.getElementById('markdownStatus');
+    if (!output) return;
+    output.className = 'markdown-status';
+    if (result.errors.length) {
+      output.classList.add('is-error');
+      output.textContent = 'Markdown 无法应用：' + result.errors.join('；');
+      return;
+    }
+    if (result.warnings.length) {
+      output.classList.add('is-warning');
+      output.textContent = 'Markdown 已解析，但有提示：' + result.warnings.join('；');
+      return;
+    }
+    output.textContent = 'Markdown 解析正常，切换回可视化编辑即可应用。';
+  }
+
+  function readMarkdownFields() {
+    const input = document.getElementById('markdownSourceInput');
+    const base = wikiLanguageContent[activeWikiLang] || {};
+    const source = input ? input.value : (markdownByLanguage[activeWikiLang] || '');
+    const result = parseMarkdownDocument(source, base.sections || []);
+    markdownByLanguage[activeWikiLang] = source;
+    markdownResults[activeWikiLang] = result;
+    setMarkdownStatus(result);
+    return {
+      title: document.getElementById('titleInput').value.trim(),
+      summary: document.getElementById('summaryInput').value.trim(),
+      infobox: base.infobox || {},
+      sections: result.errors.length ? (base.sections || []) : result.sections,
+    };
+  }
+
+  function editorScrollContainer() {
+    return document.querySelector('.editor-column');
+  }
+
+  function outlineItems() {
+    if (editorMode === 'markdown') {
+      const result = markdownResults[activeWikiLang] || parseMarkdownDocument(markdownByLanguage[activeWikiLang] || '', (wikiLanguageContent[activeWikiLang] || {}).sections || []);
+      return result.outline.map(function (item, index) {
+        return { index, heading: item.heading || '未命名章节', level: item.level, line: item.line };
+      });
+    }
+    return Array.from(document.querySelectorAll('#sectionRows > .row-card')).map(function (row, index) {
+      const heading = row.querySelector('[data-field="heading"]')?.value.trim() || '未命名章节';
+      const level = parseInt(row.querySelector('[data-field="level"]')?.value, 10) === 3 ? 3 : 2;
+      row.dataset.editorSectionIndex = String(index);
+      return { index, heading, level, row };
+    });
+  }
+
+  function updateOutlineActive() {
+    const links = Array.from(document.querySelectorAll('[data-editor-outline-index]'));
+    if (!links.length) return;
+    let activeIndex = 0;
+    if (editorMode === 'markdown') {
+      const input = document.getElementById('markdownSourceInput');
+      const line = input ? input.value.slice(0, input.selectionStart || 0).split('\n').length - 1 : 0;
+      const items = outlineItems();
+      items.forEach(function (item, index) { if ((item.line || 0) <= line) activeIndex = index; });
+    } else {
+      const scroller = editorScrollContainer();
+      const threshold = (scroller?.getBoundingClientRect().top || 0) + 100;
+      const rows = outlineItems();
+      rows.forEach(function (item, index) {
+        if (item.row && item.row.getBoundingClientRect().top <= threshold) activeIndex = index;
+      });
+    }
+    links.forEach(function (link, index) {
+      const active = index === activeIndex;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  }
+
+  function updateEditorOutline() {
+    const nav = document.getElementById('editorOutline');
+    const count = document.getElementById('editorOutlineCount');
+    if (!nav) return;
+    const items = outlineItems();
+    if (count) count.textContent = items.length + ' 节';
+    if (!items.length) {
+      nav.innerHTML = '<p class="editor-outline-empty">添加章节后会显示快速跳转。</p>';
+      return;
+    }
+    nav.innerHTML = '<ol class="editor-outline-list">' + items.map(function (item) {
+      return '<li><a href="#" class="editor-outline-link level-' + item.level + '" data-editor-outline-index="' + item.index + '">' + escapeHTML(item.heading) + '</a></li>';
+    }).join('') + '</ol>';
+    updateOutlineActive();
+  }
+
+  function focusEditorOutlineItem(index) {
+    const items = outlineItems();
+    const item = items[index];
+    if (!item) return;
+    function activateOutlineLink() {
+      document.querySelectorAll('[data-editor-outline-index]').forEach(function (link, linkIndex) {
+        const active = linkIndex === index;
+        link.classList.toggle('is-active', active);
+        if (active) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
+    }
+    if (editorMode === 'markdown') {
+      const input = document.getElementById('markdownSourceInput');
+      if (!input) return;
+      const sourceLines = normalizeMarkdownSource(input.value).split('\n');
+      let offset = 0;
+      for (let line = 0; line < (item.line || 0); line += 1) offset += sourceLines[line].length + 1;
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(offset, offset + sourceLines[item.line || 0].length);
+      const lineHeight = parseFloat(getComputedStyle(input).lineHeight) || 22;
+      input.scrollTop = Math.max(0, (item.line || 0) * lineHeight - 80);
+      activateOutlineLink();
+      return;
+    }
+    const scroller = editorScrollContainer();
+    const row = item.row;
+    const heading = row?.querySelector('[data-field="heading"]');
+    if (!scroller || !row) return;
+    const top = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 18;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    heading?.focus({ preventScroll: true });
+    activateOutlineLink();
+  }
+
+  function bindEditorOutlineScroll() {
+    if (outlineScrollBound) return;
+    const scroller = editorScrollContainer();
+    if (!scroller) return;
+    outlineScrollBound = true;
+    scroller.addEventListener('scroll', updateOutlineActive, { passive: true });
+  }
+
   function renderContent(content, club, pageUrl, exists) {
     isRendering = true;
     loadedContent = content;
@@ -674,10 +1696,18 @@ button:disabled {
       },
       ja: content.i18n?.ja || {}
     };
+    editorMode = 'visual';
+    markdownByLanguage = {
+      zh: sectionsToMarkdown(wikiLanguageContent.zh.sections),
+      ja: sectionsToMarkdown(wikiLanguageContent.ja.sections || []),
+    };
+    markdownResults = { zh: null, ja: null };
     document.getElementById('wikiLangZhBtn')?.classList.add('active');
     document.getElementById('wikiLangJaBtn')?.classList.remove('active');
     document.getElementById('titleInput').value = content.title || '';
     document.getElementById('summaryInput').value = content.summary || '';
+    document.getElementById('markdownSourceInput').value = markdownByLanguage.zh;
+    setAvatarEditor(content.avatar || {});
     document.getElementById('infoboxRows').innerHTML = '';
     document.getElementById('sectionRows').innerHTML = '';
     document.getElementById('imageRows').innerHTML = '';
@@ -687,7 +1717,7 @@ button:disabled {
       addInfoboxRow(key, value);
     });
     (content.sections || []).forEach(function (section) {
-      addSectionRow(section.heading || '', section.body || [], section.level || 2);
+      addSectionRow(section.heading || '', sectionBlocksFromSection(section), section.level || 2);
     });
     (content.images || []).forEach(function (image) {
       addImageRow(image.url || '', image.caption || '', image.alt || '', image.width_percent || 100, image.align || 'center', image.fit || 'cover', image.aspect_ratio || '16/10');
@@ -706,10 +1736,19 @@ button:disabled {
     link.href = toAdminPageUrl(pageUrl);
     link.style.display = exists ? '' : 'none';
     isRendering = false;
+    document.querySelectorAll('[data-editor-mode]').forEach(function (button) {
+      const active = button.dataset.editorMode === 'visual';
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.getElementById('editorView').hidden = false;
+    document.getElementById('markdownView').hidden = true;
+    bindEditorOutlineScroll();
+    updateEditorOutline();
     renderPreview();
   }
 
-  function collectLanguageFields() {
+  function collectVisualLanguageFields() {
     const infobox = {};
     document.querySelectorAll('#infoboxRows .row-card').forEach(function (row) {
       const key = row.querySelector('[data-field="key"]').value.trim();
@@ -718,13 +1757,18 @@ button:disabled {
     });
 
     const sections = [];
-    document.querySelectorAll('#sectionRows .row-card').forEach(function (row) {
+    document.querySelectorAll('#sectionRows > .row-card').forEach(function (row) {
       const heading = row.querySelector('[data-field="heading"]').value.trim();
       const level = parseInt(row.querySelector('[data-field="level"]').value, 10) === 3 ? 3 : 2;
-      const body = row.querySelector('[data-field="body"]').value.split(/\r?\n/).map(function (line) {
-        return line.trim();
-      }).filter(Boolean);
-      if (heading && body.length) sections.push({ heading, level, body });
+      const blocks = collectBlocks(row.querySelector('[data-role="block-list"]'));
+      if (heading && blocks.length) {
+        sections.push({
+          heading,
+          level,
+          blocks,
+          body: blocks.filter(function (block) { return block.type === 'paragraph'; }).map(function (block) { return block.text; }),
+        });
+      }
     });
 
     return {
@@ -733,6 +1777,10 @@ button:disabled {
       infobox,
       sections,
     };
+  }
+
+  function collectLanguageFields() {
+    return editorMode === 'markdown' ? readMarkdownFields() : collectVisualLanguageFields();
   }
 
   function applyLanguageFields(content) {
@@ -745,8 +1793,13 @@ button:disabled {
       addInfoboxRow(key, value);
     });
     (langContent.sections || []).forEach(function (section) {
-      addSectionRow(section.heading || '', section.body || [], section.level || 2);
+      addSectionRow(section.heading || '', sectionBlocksFromSection(section), section.level || 2);
     });
+    markdownByLanguage[activeWikiLang] = sectionsToMarkdown(langContent.sections || []);
+    markdownResults[activeWikiLang] = null;
+    const markdownInput = document.getElementById('markdownSourceInput');
+    if (markdownInput) markdownInput.value = markdownByLanguage[activeWikiLang];
+    updateEditorOutline();
   }
 
   function switchWikiLanguage(lang) {
@@ -756,7 +1809,47 @@ button:disabled {
     document.getElementById('wikiLangZhBtn')?.classList.toggle('active', lang === 'zh');
     document.getElementById('wikiLangJaBtn')?.classList.toggle('active', lang === 'ja');
     applyLanguageFields(wikiLanguageContent[lang] || {});
-    renderPreview();
+    if (editorMode === 'markdown') {
+      document.getElementById('markdownSourceInput').value = markdownByLanguage[lang] || '';
+      const result = parseMarkdownDocument(markdownByLanguage[lang] || '', (wikiLanguageContent[lang] || {}).sections || []);
+      markdownResults[lang] = result;
+      setMarkdownStatus(result);
+    }
+    schedulePreviewRender();
+  }
+
+  function setEditorMode(mode) {
+    if (mode !== 'visual' && mode !== 'markdown') return false;
+    if (mode === editorMode) {
+      updateEditorOutline();
+      return true;
+    }
+    if (mode === 'markdown') {
+      wikiLanguageContent[activeWikiLang] = collectVisualLanguageFields();
+      markdownByLanguage[activeWikiLang] = sectionsToMarkdown(wikiLanguageContent[activeWikiLang].sections || []);
+      markdownResults[activeWikiLang] = parseMarkdownDocument(markdownByLanguage[activeWikiLang], wikiLanguageContent[activeWikiLang].sections || []);
+      document.getElementById('markdownSourceInput').value = markdownByLanguage[activeWikiLang];
+      setMarkdownStatus(markdownResults[activeWikiLang]);
+    } else {
+      const fields = readMarkdownFields();
+      if (markdownResults[activeWikiLang]?.errors.length) {
+        setStatus('Markdown 仍有错误，请修正后再切换到可视化编辑。', false);
+        return false;
+      }
+      wikiLanguageContent[activeWikiLang] = fields;
+      applyLanguageFields(fields);
+    }
+    editorMode = mode;
+    document.querySelectorAll('[data-editor-mode]').forEach(function (button) {
+      const active = button.dataset.editorMode === mode;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.getElementById('editorView').hidden = mode !== 'visual';
+    document.getElementById('markdownView').hidden = mode !== 'markdown';
+    updateEditorOutline();
+    schedulePreviewRender();
+    return true;
   }
 
   function collectContent() {
@@ -771,17 +1864,8 @@ button:disabled {
       if (label || url) references.push({ label, url });
     });
 
-    const images = [];
-    document.querySelectorAll('#imageRows .row-card').forEach(function (row) {
-      const url = row.querySelector('[data-field="url"]').value.trim();
-      const caption = row.querySelector('[data-field="caption"]').value.trim();
-      const alt = row.querySelector('[data-field="alt"]').value.trim();
-      const widthPercent = parseInt(row.querySelector('[data-field="width_percent"]').value, 10) || 100;
-      const aspectRatio = row.querySelector('[data-field="aspect_ratio"]').value || '16/10';
-      const align = row.querySelector('[data-field="align"]').value || 'center';
-      const fit = row.querySelector('[data-field="fit"]').value || 'cover';
-      if (url) images.push({ url, caption, alt, width_percent: widthPercent, aspect_ratio: aspectRatio, align, fit });
-    });
+    const images = collectImageRows(document.getElementById('imageRows'));
+    const avatar = collectAvatar();
 
     return {
       club_key: clubKey,
@@ -790,56 +1874,171 @@ button:disabled {
       infobox: zhFields.infobox || {},
       sections: zhFields.sections || [],
       images,
+      ...(avatar ? { avatar } : {}),
       references,
       i18n: { ja: jaFields || {} },
     };
   }
 
-  function previewParagraphs(lines) {
-    return (lines || []).map(function (line) {
-      return '<p>' + escapeHTML(line) + '</p>';
-    }).join('');
+  function collectImageRow(row) {
+    if (!row) return null;
+    const url = safeImageUrl(row.querySelector('[data-field="url"]')?.value || '');
+    const caption = row.querySelector('[data-field="caption"]')?.value.trim() || '';
+    const alt = row.querySelector('[data-field="alt"]')?.value.trim() || '';
+    const widthPercent = parseInt(row.querySelector('[data-field="width_percent"]')?.value, 10) || 100;
+    const aspectRatio = row.querySelector('[data-field="aspect_ratio"]')?.value || '16/10';
+    const align = row.querySelector('[data-field="align"]')?.value || 'center';
+    const fit = row.querySelector('[data-field="fit"]')?.value || 'cover';
+    if (!url) return null;
+    return { type: 'image', url, caption, alt, width_percent: widthPercent, aspect_ratio: aspectRatio, align, fit };
   }
 
-  function renderPreview() {
-    const pane = document.getElementById('previewPane');
-    if (!pane) return;
-    const content = collectContent();
-    if (activeWikiLang === 'ja') {
-      Object.assign(content, content.i18n?.ja || {});
-    }
-    const title = content.title || '未命名维基页面';
-    const infoboxRows = Object.entries(content.infobox || {}).map(function ([key, value]) {
-      return '<tr><th>' + escapeHTML(key) + '</th><td>' + escapeHTML(value) + '</td></tr>';
-    }).join('');
-    const sections = (content.sections || []).map(function (section) {
-      const level = parseInt(section.level, 10) === 3 ? 3 : 2;
-      return '<section class="preview-section"><h' + level + '>' + escapeHTML(section.heading) + '</h' + level + '>' +
-        previewParagraphs(section.body) + '</section>';
-    }).join('');
-    const images = (content.images || []).map(function (image) {
+  function collectBlocks(container) {
+    if (!container) return [];
+    const blocks = [];
+    Array.from(container.children).filter(function (row) {
+      return row.classList.contains('content-block');
+    }).forEach(function (row) {
+      if (row.dataset.blockType === 'image') {
+        const image = collectImageRow(row);
+        if (image) blocks.push(image);
+        return;
+      }
+      const text = row.querySelector('[data-field="text"]')?.value.trim() || '';
+      const note = row.querySelector('[data-field="note"]')?.value.trim() || '';
+      if (text) blocks.push({ type: 'paragraph', text, note });
+    });
+    return blocks;
+  }
+
+  function collectImageRows(container) {
+    if (!container) return [];
+    const images = [];
+    Array.from(container.children).filter(function (row) { return row.classList.contains('image-row'); }).forEach(function (row) {
+      const image = collectImageRow(row);
+      if (image) {
+        delete image.type;
+        images.push(image);
+      }
+    });
+    return images;
+  }
+
+  function previewImages(images, title) {
+    return (images || []).map(function (image) {
+      const source = safeImageUrl(image.url).replace(/^\.\.\/uploads\//, '../wiki/uploads/');
+      if (!source) return '';
       const width = Math.max(25, Math.min(100, parseInt(image.width_percent, 10) || 100));
       const align = image.align === 'left' ? 'flex-start' : image.align === 'right' ? 'flex-end' : 'center';
       const fitClass = image.fit === 'contain' ? ' contain' : '';
       const ratio = image.aspect_ratio || '16/10';
       const ratioStyle = ratio !== 'auto' ? 'aspect-ratio:' + ratio + ';' : '';
       return '<figure class="preview-image' + fitClass + '" style="width:' + width + '%;justify-self:' + align + ';">' +
-        '<img src="' + escapeHTML(image.url) + '" alt="' + escapeHTML(image.alt || image.caption || title) + '" style="' + ratioStyle + '">' +
+        '<img src="' + escapeHTML(source) + '" alt="' + escapeHTML(image.alt || image.caption || title) + '" style="' + ratioStyle + '">' +
         (image.caption ? '<figcaption>' + escapeHTML(image.caption) + '</figcaption>' : '') +
         '</figure>';
     }).join('');
-    const references = (content.references || []).map(function (ref, index) {
-      const label = ref.label || ref.url || ('参考资料 ' + (index + 1));
-      return '<div class="preview-reference">' + (index + 1) + '. ' + escapeHTML(label) + '</div>';
-    }).join('');
+  }
 
-    pane.innerHTML =
-      '<h2 class="preview-title">' + escapeHTML(title) + '</h2>' +
-      (content.summary ? '<p class="preview-summary">' + escapeHTML(content.summary) + '</p>' : '') +
-      (infoboxRows ? '<table class="preview-infobox"><tbody>' + infoboxRows + '</tbody></table>' : '') +
-      images +
-      sections +
-      (references ? '<section class="preview-section"><h3>参考资料</h3>' + references + '</section>' : '');
+  function previewBlocks(blocks, title) {
+    return (blocks || []).map(function (block) {
+      if (block.type === 'image') return previewImages([block], title);
+      return block.type === 'paragraph' && block.text ? '<p>' + escapeHTML(block.text) + '</p>' : '';
+    }).join('');
+  }
+
+  function renderPreview() {
+    const pane = document.getElementById('previewPane');
+    if (!pane) return;
+    const previewScrollContainer = document.getElementById('previewView') || pane;
+    const previousScrollTop = previewScrollContainer.scrollTop;
+    const previousScrollLeft = previewScrollContainer.scrollLeft;
+    const content = collectContent();
+    const title = content.title || '未命名维基页面';
+    const activeContent = activeWikiLang === 'ja' ? Object.assign({}, content, content.i18n?.ja || {}) : content;
+    pane.innerHTML = '<div class="wiki-preview-reader wiki-reading-page" data-wiki-font="medium" data-wiki-width="standard" data-wiki-leading="standard" data-wiki-theme="light"><div class="wiki-reading-topbar">' + renderAppearanceLauncher() + '</div>' +
+      '<nav class="wiki-language-switch" role="tablist" aria-label="预览语言"><span role="tab" aria-selected="' + (activeWikiLang === 'zh' ? 'true' : 'false') + '">中文</span><span role="tab" aria-selected="' + (activeWikiLang === 'ja' ? 'true' : 'false') + '">日本語</span></nav>' +
+      renderReaderArticle(activeContent, loadedClub, activeWikiLang, { assetRoot: '../wiki/uploads/' }) +
+      '</div>';
+    const languageLabel = document.getElementById('previewLanguageLabel');
+    if (languageLabel) languageLabel.textContent = activeWikiLang === 'ja' ? '日本語内容' : '中文内容';
+    bindPreviewAppearance();
+    window.requestAnimationFrame(function () {
+      previewScrollContainer.scrollTop = previousScrollTop;
+      previewScrollContainer.scrollLeft = previousScrollLeft;
+    });
+  }
+
+  function syncPreviewAppearance() {
+    const root = document.querySelector('#previewPane .wiki-reading-page');
+    const article = root && root.querySelector('.wiki-article');
+    const rail = article && article.querySelector('[data-wiki-appearance]');
+    const launcher = root && root.querySelector('[data-appearance-launcher]');
+    if (!root || !article || !rail || !launcher) return;
+    article.classList.toggle('wiki-appearance-hidden', previewAppearanceHidden);
+    rail.classList.toggle('is-hidden', previewAppearanceHidden);
+    rail.classList.toggle('is-popover-open', previewAppearanceHidden && previewAppearancePopoverOpen);
+    rail.setAttribute('aria-hidden', previewAppearanceHidden && !previewAppearancePopoverOpen ? 'true' : 'false');
+    launcher.hidden = !previewAppearanceHidden;
+    launcher.classList.toggle('is-visible', previewAppearanceHidden);
+    launcher.setAttribute('aria-expanded', previewAppearanceHidden && previewAppearancePopoverOpen ? 'true' : 'false');
+    rail.querySelectorAll('[data-appearance-close]').forEach(function (button) { button.hidden = !(previewAppearanceHidden && previewAppearancePopoverOpen); });
+    rail.querySelectorAll('[data-appearance-hide]').forEach(function (button) { button.hidden = previewAppearanceHidden && previewAppearancePopoverOpen; });
+    rail.querySelectorAll('[data-appearance-dock]').forEach(function (button) { button.hidden = !(previewAppearanceHidden && previewAppearancePopoverOpen); });
+    rail.querySelectorAll('[data-appearance-key]').forEach(function (button) {
+      const active = root.dataset['wiki' + button.dataset.appearanceKey.charAt(0).toUpperCase() + button.dataset.appearanceKey.slice(1)] === button.dataset.appearanceValue;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function bindPreviewAppearance() {
+    const pane = document.getElementById('previewPane');
+    if (!pane) return;
+    pane.onclick = function (event) {
+      const launcher = event.target.closest('[data-appearance-launcher]');
+      if (launcher) {
+        previewAppearancePopoverOpen = true;
+        syncPreviewAppearance();
+        return;
+      }
+      if (event.target.closest('[data-appearance-hide]')) {
+        previewAppearanceHidden = true;
+        previewAppearancePopoverOpen = false;
+        syncPreviewAppearance();
+        return;
+      }
+      if (event.target.closest('[data-appearance-dock]')) {
+        previewAppearanceHidden = false;
+        previewAppearancePopoverOpen = false;
+        syncPreviewAppearance();
+        return;
+      }
+      if (event.target.closest('[data-appearance-close]')) {
+        previewAppearancePopoverOpen = false;
+        syncPreviewAppearance();
+        return;
+      }
+      const appearanceButton = event.target.closest('[data-appearance-key]');
+      const root = pane.querySelector('.wiki-reading-page');
+      if (appearanceButton && root) {
+        const key = appearanceButton.dataset.appearanceKey;
+        root.dataset['wiki' + key.charAt(0).toUpperCase() + key.slice(1)] = appearanceButton.dataset.appearanceValue;
+        syncPreviewAppearance();
+      }
+      const toggle = event.target.closest('[data-appearance-toggle]');
+      if (toggle) {
+        const rail = toggle.closest('.wiki-appearance-rail');
+        const open = rail.classList.toggle('is-open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.textContent = open ? '收起阅读设置' : '展开阅读设置';
+      }
+      if (previewAppearancePopoverOpen && !event.target.closest('[data-wiki-appearance]')) {
+        previewAppearancePopoverOpen = false;
+        syncPreviewAppearance();
+      }
+    };
+    syncPreviewAppearance();
   }
 
   function insertTemplate() {
@@ -848,34 +2047,160 @@ button:disabled {
       existing.add(input.value.trim());
     });
     [
-      ['沿革', ['这里记录同好会成立、发展和重要节点。']],
-      ['主要活动', ['这里记录例会、展会、放映、创作、汉化、读书会等活动。']],
-      ['组织结构', ['这里记录负责人、部门分工或常设工作方式。']],
-      ['相关链接', ['这里记录官网、社交媒体、招新页或公开资料。']],
+      ['沿革', [{ type: 'paragraph', text: '这里记录同好会成立、发展和重要节点。' }]],
+      ['主要活动', [{ type: 'paragraph', text: '这里记录例会、展会、放映、创作、汉化、读书会等活动。' }]],
+      ['组织结构', [{ type: 'paragraph', text: '这里记录负责人、部门分工或常设工作方式。' }]],
+      ['相关链接', [{ type: 'paragraph', text: '这里记录官网、社交媒体、招新页或公开资料。' }]],
     ].forEach(function (section) {
-      if (!existing.has(section[0])) addSectionRow(section[0], section[1]);
+      if (!existing.has(section[0])) addSectionRow(section[0], section[1], 2);
     });
     markDirty();
   }
 
+  function jsonErrorPosition(message, source) {
+    const match = String(message || '').match(/position\s+(\d+)/i);
+    const position = match ? Math.max(0, Math.min(source.length, Number(match[1]))) : source.length;
+    const before = source.slice(0, position);
+    const line = before.split(/\r?\n/).length;
+    const lastBreak = Math.max(before.lastIndexOf('\n'), before.lastIndexOf('\r'));
+    return { position, line, column: position - lastBreak };
+  }
+
+  function validateImageShape(image, path, errors, warnings) {
+    if (!image || typeof image !== 'object' || Array.isArray(image)) {
+      errors.push(path + ' 必须是对象');
+      return;
+    }
+    if (typeof image.url !== 'string' || !image.url.trim()) errors.push(path + '.url 必须是非空字符串');
+    if (image.alt !== undefined && typeof image.alt !== 'string') errors.push(path + '.alt 必须是字符串');
+    if (!String(image.alt || '').trim()) warnings.push(path + '.alt 建议填写替代文本');
+    if (image.caption !== undefined && typeof image.caption !== 'string') errors.push(path + '.caption 必须是字符串');
+    if (image.width_percent !== undefined && (!Number.isFinite(Number(image.width_percent)) || Number(image.width_percent) < 25 || Number(image.width_percent) > 100)) {
+      errors.push(path + '.width_percent 必须是 25-100 之间的数字');
+    }
+    if (image.aspect_ratio !== undefined && ['auto', '16/9', '4/3', '1/1', '3/4', '16/10'].indexOf(image.aspect_ratio) === -1) {
+      errors.push(path + '.aspect_ratio 不是支持的比例');
+    }
+    if (image.align !== undefined && ['left', 'center', 'right'].indexOf(image.align) === -1) errors.push(path + '.align 不是支持的对齐方式');
+    if (image.fit !== undefined && ['cover', 'contain'].indexOf(image.fit) === -1) errors.push(path + '.fit 不是支持的显示方式');
+  }
+
+  function validateSectionShape(section, index, errors, warnings) {
+    const path = 'sections[' + index + ']';
+    if (!section || typeof section !== 'object' || Array.isArray(section)) {
+      errors.push(path + ' 必须是对象');
+      return;
+    }
+    if (typeof section.heading !== 'string' || !section.heading.trim()) errors.push(path + '.heading 必须是非空字符串');
+    if (section.level !== undefined && [2, 3].indexOf(Number(section.level)) === -1) errors.push(path + '.level 只能是 2 或 3');
+
+    const hasBlocks = section.blocks !== undefined;
+    const hasLegacyBody = section.body !== undefined;
+    if (hasBlocks && !Array.isArray(section.blocks)) {
+      errors.push(path + '.blocks 必须是数组');
+    } else if (hasBlocks) {
+      if (!section.blocks.length) warnings.push(path + '.blocks 为空');
+      section.blocks.forEach(function (block, blockIndex) {
+        const blockPath = path + '.blocks[' + blockIndex + ']';
+        if (!block || typeof block !== 'object' || Array.isArray(block)) {
+          errors.push(blockPath + ' 必须是对象');
+          return;
+        }
+        if (block.type === 'paragraph') {
+           if (typeof block.text !== 'string' || !block.text.trim()) errors.push(blockPath + '.text 必须是非空字符串');
+           if (block.note !== undefined && typeof block.note !== 'string') errors.push(blockPath + '.note 必须是字符串');
+           else if (typeof block.note === 'string' && block.note.trim() === '') warnings.push(blockPath + '.note 为空，可删除该字段');
+         } else if (block.type === 'image') {
+          validateImageShape(block, blockPath, errors, warnings);
+        } else {
+          errors.push(blockPath + '.type 只能是 paragraph 或 image');
+        }
+      });
+    }
+    if (hasLegacyBody && !Array.isArray(section.body)) errors.push(path + '.body 必须是数组');
+    if (!hasBlocks && !hasLegacyBody) errors.push(path + ' 需要 blocks 或兼容字段 body');
+    if (!hasBlocks && hasLegacyBody && !section.body.some(function (line) { return String(line || '').trim(); })) warnings.push(path + '.body 正文为空');
+    if (section.images !== undefined) {
+      if (!Array.isArray(section.images)) errors.push(path + '.images 必须是数组');
+      else {
+        warnings.push(path + '.images 是旧版临时字段，应用后会转换为 blocks');
+        section.images.forEach(function (image, imageIndex) { validateImageShape(image, path + '.images[' + imageIndex + ']', errors, warnings); });
+      }
+    }
+  }
+
+  function validateJsonSource(source) {
+    const raw = String(source || '');
+    if (!raw.trim()) return { state: 'empty', message: '等待 JSON 内容。' };
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      const location = jsonErrorPosition(error.message, raw);
+      return { state: 'invalid', message: 'JSON 格式错误：' + error.message + '（第 ' + location.line + ' 行，第 ' + location.column + ' 列）' };
+    }
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+      return { state: 'invalid', message: 'JSON 顶层必须是对象。' };
+    }
+    const errors = [];
+    const warnings = [];
+    if (typeof parsed.title !== 'string' || !parsed.title.trim()) errors.push('title 必须是非空字符串');
+    if (parsed.summary !== undefined && typeof parsed.summary !== 'string') errors.push('summary 必须是字符串');
+    else if (!String(parsed.summary || '').trim()) warnings.push('尚未填写 summary');
+    if (!Array.isArray(parsed.sections) || parsed.sections.length === 0) errors.push('sections 必须是非空数组');
+    else parsed.sections.forEach(function (section, index) { validateSectionShape(section, index, errors, warnings); });
+    if (parsed.images !== undefined) {
+      if (!Array.isArray(parsed.images)) errors.push('images 必须是数组');
+      else parsed.images.forEach(function (image, index) { validateImageShape(image, 'images[' + index + ']', errors, warnings); });
+    }
+    if (parsed.avatar !== undefined) {
+      if (!parsed.avatar || typeof parsed.avatar !== 'object' || Array.isArray(parsed.avatar)) {
+        errors.push('avatar 必须是对象');
+      } else if (Object.keys(parsed.avatar).length) {
+        validateImageShape(parsed.avatar, 'avatar', errors, warnings);
+        if (parsed.avatar.position !== undefined && ['top', 'bottom'].indexOf(parsed.avatar.position) === -1) {
+          errors.push('avatar.position 只能是 top 或 bottom');
+        }
+      }
+    }
+    if (errors.length) return { state: 'invalid', message: '结构检查未通过：' + errors.join('；') + (warnings.length ? '。提示：' + warnings.join('；') : '') };
+    if (warnings.length) return { state: 'warning', message: 'JSON 格式正确，建议检查：' + warnings.join('；') };
+    return { state: 'valid', message: 'JSON 格式与 Wiki 基本结构检查通过，可应用或保存。' };
+  }
+
+  function renderJsonValidation() {
+    const output = document.getElementById('jsonValidation');
+    const input = document.getElementById('jsonToolsInput');
+    if (!output || !input) return;
+    const result = validateJsonSource(input.value);
+    output.textContent = result.message;
+    output.className = 'json-validation ' + (result.state === 'valid' ? 'is-valid' : result.state === 'invalid' ? 'is-invalid' : result.state === 'warning' ? 'is-warning' : '');
+  }
+
   function showJsonTools(show) {
     document.getElementById('jsonTools').style.display = show ? 'block' : 'none';
+    if (show) renderJsonValidation();
   }
 
   function exportJson() {
     document.getElementById('jsonToolsInput').value = JSON.stringify(collectContent(), null, 2);
     showJsonTools(true);
+    renderJsonValidation();
   }
 
   function importJson() {
     try {
-      const content = JSON.parse(document.getElementById('jsonToolsInput').value);
+      const source = document.getElementById('jsonToolsInput').value;
+      const validation = validateJsonSource(source);
+      renderJsonValidation();
+      if (validation.state === 'invalid') throw new Error(validation.message);
+      const content = JSON.parse(source);
       content.club_key = clubKey;
       renderContent(content, loadedClub, loadedPageUrl, loadedExists);
       markDirty();
       setStatus('JSON 内容已应用，请确认后保存。', true);
     } catch (error) {
-      setStatus('JSON 格式不正确，无法导入。', false);
+      setStatus(error.message || 'JSON 格式不正确，无法导入。', false);
     }
   }
 
@@ -914,30 +2239,45 @@ button:disabled {
   }
 
   document.addEventListener('click', async function (event) {
+    const outlineLink = event.target.closest('[data-editor-outline-index]');
+    if (outlineLink) {
+      event.preventDefault();
+      focusEditorOutlineItem(Number(outlineLink.dataset.editorOutlineIndex));
+      return;
+    }
     const action = event.target.dataset.action;
     if (action === 'remove') {
-      event.target.closest('.row-card').remove();
+      const row = event.target.closest('.content-block') || event.target.closest('.row-card');
+      if (row) row.remove();
       markDirty();
     }
     if (action === 'move-up') {
-      const row = event.target.closest('.row-card');
+      const row = event.target.closest('.content-block') || event.target.closest('.row-card');
       if (row && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
       markDirty();
     }
     if (action === 'move-down') {
-      const row = event.target.closest('.row-card');
+      const row = event.target.closest('.content-block') || event.target.closest('.row-card');
       if (row && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row);
       markDirty();
     }
     if (action === 'duplicate-row') {
-      duplicateRow(event.target.closest('.row-card'));
+      duplicateRow(event.target.closest('.content-block') || event.target.closest('.row-card'));
       markDirty();
     }
     if (action === 'upload-image') {
-      uploadImage(event.target.closest('.row-card'), event.target);
+      uploadImage(event.target.closest('.image-row'), event.target);
+    }
+    if (action === 'add-paragraph-block') {
+      addParagraphBlock(event.target.closest('[data-role="section-blocks"]').querySelector('[data-role="block-list"]'), '');
+      markDirty();
+    }
+    if (action === 'add-image-block') {
+      addImageBlock(event.target.closest('[data-role="section-blocks"]').querySelector('[data-role="block-list"]'), {});
+      markDirty();
     }
     if (event.target.id === 'addInfoboxBtn') { addInfoboxRow('', ''); markDirty(); }
-    if (event.target.id === 'addSectionBtn') { addSectionRow('新章节', ['']); markDirty(); }
+    if (event.target.id === 'addSectionBtn') { addSectionRow('新章节', [{ type: 'paragraph', text: '' }], 2); markDirty(); }
     if (event.target.id === 'addImageBtn') { addImageRow('', '', ''); markDirty(); }
     if (event.target.id === 'addReferenceBtn') { addReferenceRow('', ''); markDirty(); }
     if (event.target.id === 'insertTemplateBtn') insertTemplate();
@@ -947,12 +2287,21 @@ button:disabled {
     if (event.target.id === 'importJsonBtn') importJson();
     if (event.target.id === 'wikiLangZhBtn') switchWikiLanguage('zh');
     if (event.target.id === 'wikiLangJaBtn') switchWikiLanguage('ja');
+    const modeButton = event.target.closest('[data-editor-mode]');
+    if (modeButton) setEditorMode(modeButton.dataset.editorMode);
     if (event.target.id === 'restoreDraftBtn') restoreDraft();
     if (event.target.id === 'clearDraftBtn') {
       clearDraft();
       setStatus('本地草稿已清除', true);
     }
     if (event.target.id === 'saveBtn') {
+      if (editorMode === 'markdown') {
+        readMarkdownFields();
+        if (markdownResults[activeWikiLang]?.errors.length) {
+          setStatus('Markdown 仍有错误，修正后才能保存。', false);
+          return;
+        }
+      }
       const btn = event.target;
       btn.disabled = true;
       setStatus('保存中...', true);
@@ -987,6 +2336,11 @@ button:disabled {
   });
 
   document.addEventListener('input', function (event) {
+    if (event.target.id === 'jsonToolsInput') renderJsonValidation();
+    if (event.target.id === 'markdownSourceInput') {
+      readMarkdownFields();
+      updateEditorOutline();
+    }
     if (event.target.closest('.panel')) markDirty();
   });
 
@@ -1001,9 +2355,9 @@ button:disabled {
   });
 
   updateDraftStatus();
+  bindEditorOutlineScroll();
   load();
 })();
 </script>
-<script src="../js/page-background.js?v=20260812-centralized-preferences"></script>
 </body>
 </html>

@@ -64,14 +64,16 @@ function broadcastNotification(
     string $type,
     string $title,
     string $message = '',
-    string $link = ''
+    string $link = '',
+    string $relatedType = '',
+    int $relatedId = 0
 ): int {
     $sent = 0;
     try {
         $db = getDB();
         $stmt = $db->query("SELECT id FROM users WHERE status = 'active'");
         while ($row = $stmt->fetch()) {
-            if (createNotification((int)$row['id'], $type, $title, $message, $link)) {
+            if (createNotification((int)$row['id'], $type, $title, $message, $link, $relatedType, $relatedId)) {
                 $sent++;
             }
         }
@@ -91,13 +93,13 @@ function backfillAnnouncements(int $userId): int {
     $count = 0;
     try {
         $db = getDB();
-        $stmt = $db->query("SELECT id, title FROM announcements WHERE status = 'published' AND is_persistent = 1");
+        $stmt = $db->query("SELECT id, title, content FROM announcements WHERE status = 'published' AND is_persistent = 1");
         while ($ann = $stmt->fetch()) {
             if (createNotification(
                 (int)$userId,
                 'system',
                 '📢 全站公告：' . $ann['title'],
-                '',
+                (string)($ann['content'] ?? ''),
                 '',
                 'announcement',
                 (int)$ann['id']

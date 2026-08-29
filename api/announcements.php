@@ -31,7 +31,7 @@ switch ($action) {
             exit();
         }
         $db = getDB();
-        $stmt = $db->query("SELECT id, title, type, status, is_persistent, created_by, created_at, published_at FROM announcements ORDER BY created_at DESC");
+        $stmt = $db->query("SELECT id, title, content, type, status, is_persistent, created_by, created_at, published_at FROM announcements ORDER BY created_at DESC");
         $list = $stmt->fetchAll();
         echo json_encode(['success' => true, 'announcements' => $list], JSON_UNESCAPED_UNICODE);
         break;
@@ -148,12 +148,13 @@ switch ($action) {
 
         // 广播通知给所有活跃用户
         $typeLabel = ['info' => '信息', 'warning' => '警告', 'important' => '重要', 'update' => '更新'];
-        $contentPreview = mb_substr($announce['content'], 0, 500);
-        if (mb_strlen($announce['content']) > 500) $contentPreview .= '…';
         $sent = broadcastNotification(
             'system',
             '📢 全站公告：' . $announce['title'],
-            $contentPreview
+            (string)$announce['content'],
+            '',
+            'announcement',
+            $id
         );
 
         echo json_encode(['success' => true, 'message' => '公告已发布', 'notified' => $sent], JSON_UNESCAPED_UNICODE);

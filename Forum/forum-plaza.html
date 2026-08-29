@@ -9,6 +9,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
   <title>论坛广场 — VNFest</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
   <script src="../js/theme-runtime.js?v=20260702-theme"></script>
   <script src="../js/vote-common.js"></script>
   <link rel="stylesheet" href="../css/theme-tokens.css?v=20260809-theme">
@@ -261,35 +263,131 @@
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
       html { scroll-behavior: auto; }
     }
+
+    /* Shared VNFest header layout: keep every forum control on one row. */
+    .topbar.forum-topbar.vn-topbar {
+      min-width: 0;
+      align-items: center;
+      flex-wrap: nowrap !important;
+      gap: clamp(4px, 1vw, 16px);
+    }
+    .topbar.forum-topbar.vn-topbar .forum-topbar-leading {
+      min-width: 0;
+      flex: 0 1 auto !important;
+      width: auto !important;
+    }
+    .topbar.forum-topbar.vn-topbar .vn-topbar-brand {
+      min-height: 40px;
+    }
+    .topbar.forum-topbar.vn-topbar .forum-topbar-actions {
+      display: flex !important;
+      min-width: 0;
+      width: auto !important;
+      flex: 1 1 auto !important;
+      max-width: none;
+      flex-wrap: nowrap !important;
+      gap: clamp(4px, .6vw, 10px);
+    }
+    .topbar.forum-topbar.vn-topbar .topbar-search {
+      min-width: 0;
+      flex: 1 1 220px;
+    }
+    .topbar.forum-topbar.vn-topbar .topbar-search input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      min-height: 40px;
+    }
+    .topbar.forum-topbar.vn-topbar .notice-bell,
+    .topbar.forum-topbar.vn-topbar .theme-toggle,
+    .topbar.forum-topbar.vn-topbar .forum-map-link {
+      flex: 0 0 auto;
+      min-height: 40px;
+    }
+    @media (max-width: 680px) {
+      .topbar.forum-topbar.vn-topbar {
+        align-items: center;
+        gap: 4px;
+        padding: 8px;
+      }
+      .topbar.forum-topbar.vn-topbar .forum-topbar-leading,
+      .topbar.forum-topbar.vn-topbar .forum-topbar-actions {
+        box-sizing: border-box;
+        flex-basis: auto !important;
+        width: auto !important;
+      }
+      .topbar.forum-topbar.vn-topbar .forum-topbar-actions {
+        justify-content: flex-end;
+        margin-left: 0;
+      }
+      .topbar.forum-topbar.vn-topbar .topbar-search {
+        flex: 1 1 132px;
+      }
+      .topbar.forum-topbar.vn-topbar .vn-topbar-brand {
+        min-height: 44px;
+      }
+      .topbar.forum-topbar.vn-topbar .topbar-search input {
+        width: 100%;
+        min-height: 44px;
+        padding-right: 6px;
+      }
+      .topbar.forum-topbar.vn-topbar .notice-bell,
+      .topbar.forum-topbar.vn-topbar .theme-toggle,
+      .topbar.forum-topbar.vn-topbar .forum-map-link {
+        min-height: 44px;
+      }
+      .topbar.forum-topbar.vn-topbar .forum-map-link {
+        margin-left: auto;
+      }
+    }
+    @media (max-width: 420px) {
+      .topbar.forum-topbar.vn-topbar .vn-topbar-brand {
+        max-width: 112px;
+      }
+      .topbar.forum-topbar.vn-topbar .vn-topbar-sub {
+        font-size: 12px;
+      }
+      .topbar.forum-topbar.vn-topbar .vn-topbar-divider {
+        margin-left: 8px;
+        margin-right: 8px;
+      }
+      .topbar.forum-topbar.vn-topbar .topbar-search input {
+        padding-left: 26px;
+      }
+    }
   </style>
   <link rel="stylesheet" href="./assets/css/forum-runtime.css?v=20260810-forum11">
 </head>
 <body data-forum-page="plaza">
-  <header class="topbar">
-    <div class="topbar-left">
+  <header class="topbar vn-topbar forum-topbar" data-page-header data-header-manual>
+    <div class="topbar-left vn-topbar-leading forum-topbar-leading">
       <button class="forum-nav-toggle" id="forumNavToggle" type="button" aria-label="打开论坛导航" aria-controls="forumSidebar" aria-expanded="false">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <a class="topbar-brand" href="./forum-plaza.html" aria-current="page" aria-label="返回论坛广场">论坛</a>
+      <a class="vn-topbar-brand" href="../index.html?guest=1" aria-label="返回地图">
+        <span class="vn-topbar-name">VNFest</span>
+        <span class="vn-topbar-divider" aria-hidden="true"></span>
+        <span class="vn-topbar-sub">论坛广场</span>
+      </a>
     </div>
-    <div class="topbar-right">
+    <nav class="topbar-right vn-topbar-actions forum-topbar-actions" aria-label="页面操作">
       <label class="topbar-search" aria-label="搜索帖子">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="search" id="forumSearch" placeholder="搜索帖子…" autocomplete="off" />
       </label>
-      <button class="notice-bell" id="forumNoticeButton" type="button" aria-label="通知" aria-expanded="false">
+      <button class="notice-bell vn-topbar-action is-icon" id="forumNoticeButton" type="button" aria-label="通知" aria-expanded="false">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="badge" id="forumNoticeBadge" hidden>0</span>
       </button>
-      <button class="theme-toggle topbar-btn" id="themeToggle" title="切换主题" aria-label="切换主题">
+      <button class="theme-toggle topbar-btn vn-topbar-action is-icon" id="themeToggle" title="切换主题" aria-label="切换主题">
         <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
-      <a class="topbar-btn forum-map-link" data-forum-map-link data-forum-nav-feedback="map" href="../index.html?guest=1" aria-label="返回地图">
+      <a class="topbar-btn forum-map-link vn-topbar-action" data-forum-map-link data-forum-nav-feedback="map" href="../index.html?guest=1" aria-label="返回地图">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15M15 6v15"/></svg>
         <span class="forum-map-link-label">返回地图</span>
       </a>
-    </div>
+    </nav>
   </header>
 
   <div class="forum-shell">

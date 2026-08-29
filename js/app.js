@@ -3145,6 +3145,8 @@ function switchViewMode(mode) {
     window.location.href = './star_map.html';
     return;
   }
+  // 移动端不保留列表模式：禁止进入列表视图
+  if (mode === 'list' && isMobileListLayout()) return;
   if (mode === State.viewMode) {
     var root = document.documentElement;
     var listView = document.getElementById('listModeView');
@@ -3273,7 +3275,8 @@ function renderListAnnouncements() {
       const date = item.dataset.time || '';
       const dateDisplay = date ? date.split(' ')[0] : '';
       const content = item.dataset.content || '';
-      return '<div class="list-ann-item" data-title="' + Utils.escapeHTML(title) + '" data-content="' + Utils.escapeHTML(content) + '" data-time="' + date + '">' +
+      const id = item.dataset.id || '';
+      return '<div class="list-ann-item" data-id="' + Utils.escapeHTML(id) + '" data-title="' + Utils.escapeHTML(title) + '" data-content="' + Utils.escapeHTML(content) + '" data-time="' + date + '">' +
         '<div class="ann-title">' + Utils.escapeHTML(title) + '</div>' +
         '<div class="ann-date">' + dateDisplay + '</div></div>';
     }).join('');
@@ -3281,7 +3284,13 @@ function renderListAnnouncements() {
     // 绑定点击事件（复用公告详情弹窗）
     listEl.querySelectorAll('.list-ann-item').forEach(el => {
       el.addEventListener('click', function () {
-        // Announcement detail popup is handled within the notification IIFE
+        if (typeof window.openVnfNotificationCenter !== 'function') return;
+        window.openVnfNotificationCenter({
+          announcementId: Number(this.dataset.id || 0),
+          title: this.dataset.title || '',
+          announcementContent: this.dataset.content || '',
+          time: this.dataset.time || ''
+        });
       });
     });
   } else {
@@ -3717,6 +3726,8 @@ function renderGroupList(rows) {
     const clubId = parseInt(item.id);
     const member = getClubMembership(clubId, item.country);
     const isMember = member && member.status === 'active';
+    const membershipStatus = item.membership_status || (member && member.status) || null;
+    const isPending = membershipStatus === 'pending' && !isMember;
 
     let infoHtml, infoText;
     if (isMember || !isHidden) {
@@ -3747,6 +3758,7 @@ function renderGroupList(rows) {
       detectedUrl: '',
       infoHidden: isHidden,
       canApply: canApply,
+      membershipStatus: membershipStatus,
       type: type,
       rawType: item.type,
       verifyMeta: verifyMeta,
@@ -3760,9 +3772,11 @@ function renderGroupList(rows) {
 
     const statusBadge = isMember
       ? '<span style="font-size:11px;color:#4CAF50;white-space:nowrap">' + __('listBound') + '</span>'
-      : canApply
-        ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
-        : '';
+      : isPending
+        ? '<span style="font-size:11px;color:#ff9800;white-space:nowrap">绑定审核中</span>'
+        : canApply
+          ? `<button class="apply-mini-btn" data-club='${clubData}' type="button" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--md-primary);color:#fff;cursor:pointer;white-space:nowrap">${__('listApply')}</button>`
+          : '';
 
     const province = Utils.escapeHTML(getClubProvinceLabel(item));
 
@@ -4202,6 +4216,16 @@ function showClubDetail(club) {
     }
   }
 
+  if (club.membershipStatus === 'pending') {
+    contactHtml += `
+      <div class="club-detail-section">
+        <div class="club-detail-card" style="border:1px solid rgba(255,152,0,0.35);background:rgba(255,152,0,0.06);color:#ff9800;font-size:13px;padding:10px 12px;">
+          绑定申请审核中，联系方式暂时可见。
+        </div>
+      </div>
+    `;
+  }
+
   // ——— 操作区（纵向按钮） ———
   const actionBtns = [];
 
@@ -4606,6 +4630,46 @@ function closeMembershipApplyModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function apiClubToDetailClub(row, country) {
+  return {
+    id: row.id,
+    name: row.name || row.display_name || '',
+    school: row.school || '',
+    info: row.info || '',
+    originalInfo: row.info || '',
+    detectedUrl: '',
+    infoHidden: row.info_hidden === true,
+    canApply: row.can_apply === true,
+    membershipStatus: row.membership_status || null,
+    type: row.type,
+    rawType: row.type,
+    verifyMeta: row.verified ? __('detailRegistered') : '',
+    province: row.province || '',
+    provinces: row.provinces || [],
+    prefecture: row.prefecture || row.province || '',
+    remark: row.remark || '',
+    country: row.country || country || 'china',
+    logo_url: row.logo_url || '',
+    external_links: row.external_links || ''
+  };
+}
+
+async function refreshClubDetailAfterMembershipApply(clubId, country) {
+  try {
+    if (country === 'japan') {
+      await loadJapanData();
+    } else {
+      await reloadBandoriData();
+    }
+    const rows = country === 'japan' ? State.japanRows : State.bandoriRows;
+    const row = (rows || []).find(function(c) { return String(c.id) === String(clubId); });
+    if (row) showClubDetail(apiClubToDetailClub(row, country));
+    if (State.viewMode === 'list') renderListView(); else renderCurrentDetail();
+  } catch (e) {
+    console.warn('刷新同好会可见性失败', e);
+  }
+}
+
 async function submitMembershipApply() {
   const modal = document.getElementById('membershipApplyModal');
   const msg = document.getElementById('membershipApplyMessage');
@@ -4683,11 +4747,13 @@ async function submitMembershipApply() {
     if (result.success) {
       msg.innerHTML = '' + (result.message || '申请已提交');
       btn.textContent = '已完成';
-      setTimeout(() => {
-        closeMembershipApplyModal();
-        btn.disabled = false;
-        btn.textContent = '提交申请';
-      }, 1500);
+      refreshClubDetailAfterMembershipApply(clubId, country).finally(() => {
+        setTimeout(() => {
+          closeMembershipApplyModal();
+          btn.disabled = false;
+          btn.textContent = '提交申请';
+        }, 1200);
+      });
     } else {
       msg.innerHTML = '' + (result.message || '申请失败');
       btn.disabled = false;
@@ -5556,7 +5622,7 @@ function ensureJiangsuModule() {
   if (jiangsuModulePromise) return jiangsuModulePromise;
   jiangsuModulePromise = new Promise(function (resolve, reject) {
     const script = document.createElement('script');
-      script.src = './js/jiangsu.js?v=20260814-jiangsu-v7';
+      script.src = './js/jiangsu.js?v=20260814-announce-v1';
     script.async = false;
     script.onload = function () {
       if (window.jiangsu) resolve();
@@ -8283,6 +8349,8 @@ init();
                 '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
                 '" data-title="' + escapeHtml(n.title) +
                 '" data-message="' + escapeHtml(n.message || '') +
+                '" data-related-type="' + escapeHtml(n.related_type || '') +
+                '" data-related-id="' + (n.related_id || 0) +
                 '" data-time="' + (n.created_at || '') + '">' +
                 '<span class="notif-dot"></span>' +
                 '<div class="notif-icon ' + getNotifIconClass(n.type) + '">' + getNotifIcon(n.type) + '</div>' +
@@ -8402,6 +8470,7 @@ init();
     var centerData = [];
     var centerDetailPanel = document.getElementById('notifCenterDetail');
     var centerActiveId = null;
+    var pendingCenterFocus = null;
 
     function renderNotifMarkdown(text) {
         if (!text) return '';
@@ -8503,8 +8572,52 @@ init();
         centerList.querySelectorAll('.notif-item').forEach(function (it) { it.classList.remove('active'); });
     }
 
-    function openNotifCenter() {
+    function focusCenterNotification(options) {
+        if (!options || !centerList) return;
+        var target = Array.from(centerList.querySelectorAll('.notif-item')).find(function (item) {
+            if (options.notificationId && Number(item.dataset.id) === Number(options.notificationId)) return true;
+            if (options.announcementId) {
+                var relatedType = item.getAttribute('data-related-type') || '';
+                var relatedId = Number(item.getAttribute('data-related-id') || 0);
+                if (relatedType === 'announcement' && relatedId === Number(options.announcementId)) return true;
+                if (options.title && item.dataset.title === options.title) return true;
+            }
+            return false;
+        });
+        if (target) {
+            var id = parseInt(target.dataset.id, 10) || 0;
+            if (!target.classList.contains('read') && id > 0) {
+                markNotificationRead(id).then(function (data) {
+                    if (data.success) {
+                        target.classList.add('read');
+                        applyMutationUnreadCount(data);
+                    }
+                });
+            }
+            showCenterDetail(
+                target.dataset.title || '',
+                options.announcementContent || target.dataset.message || '',
+                target.dataset.type || 'system',
+                target.dataset.time || '',
+                id
+            );
+            return;
+        }
+        // 公告可能尚未生成通知记录（例如访客或旧公告），仍在完整中心中显示全文。
+        if (options.announcementContent) {
+            showCenterDetail(
+                options.title || '全站公告',
+                options.announcementContent,
+                'system',
+                options.time || '',
+                0
+            );
+        }
+    }
+
+    function openNotifCenter(options) {
         if (!centerOverlay) return;
+        pendingCenterFocus = options && typeof options === 'object' ? options : null;
         closeNotifPanel();
         centerOverlay.style.display = '';
         requestAnimationFrame(function () {
@@ -8514,6 +8627,17 @@ init();
         var modal = centerOverlay.querySelector('.notif-center-modal');
         if (modal) modal.classList.remove('showing-detail');
         clearCenterDetail();
+        // 在通知请求失败（例如访客或旧公告没有通知记录）时，仍先展示公告全文。
+        // 请求成功后 loadCenterPage 会再将对应通知定位到列表右侧详情。
+        if (pendingCenterFocus && pendingCenterFocus.announcementContent) {
+            showCenterDetail(
+                pendingCenterFocus.title || '全站公告',
+                pendingCenterFocus.announcementContent,
+                'system',
+                pendingCenterFocus.time || '',
+                0
+            );
+        }
         loadCenterPage(1);
         document.body.style.overflow = 'hidden';
     }
@@ -8524,6 +8648,7 @@ init();
         if (modal) modal.classList.remove('showing-detail');
         setTimeout(function () { centerOverlay.style.display = 'none'; document.body.style.overflow = ''; }, 200);
     }
+    window.openVnfNotificationCenter = openNotifCenter;
     function switchCenterFilter(filter) {
         centerCurrentFilter = filter;
         centerSelected = {};
@@ -8541,6 +8666,11 @@ init();
             centerData = data.notifications || [];
             renderCenter(centerData, data.total_pages, page);
             updateBadge(data.unread_count);
+            if (pendingCenterFocus) {
+                var focus = pendingCenterFocus;
+                pendingCenterFocus = null;
+                focusCenterNotification(focus);
+            }
         }).catch(function () {
             centerList.innerHTML = '<div class="notif-empty" style="padding:60px 0;"><span>通知加载失败，请稍后重试</span></div>';
             centerPagination.innerHTML = '';
@@ -8562,6 +8692,8 @@ init();
                 '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
                 '" data-title="' + escapeHtml(n.title) +
                 '" data-message="' + escapeHtml(n.message || '') +
+                '" data-related-type="' + escapeHtml(n.related_type || '') +
+                '" data-related-id="' + (n.related_id || 0) +
                 '" data-time="' + (n.created_at || '') + '">' +
                 '<label class="notif-center-cb" onclick="event.stopPropagation()"><input type="checkbox" class="notif-cb" value="' + n.id + '"' + checked + '></label>' +
                 '<span class="notif-dot"></span>' +
@@ -8749,23 +8881,16 @@ init();
             var item = e.target.closest('.notif-item');
             if (!item) return;
             var id = parseInt(item.dataset.id);
-            var title = item.dataset.title || '';
-            var message = item.dataset.message || '';
-            var type = item.dataset.type || 'system';
-            var time = item.dataset.time || '';
             // mark read
-            if (item.classList.contains('read')) {
-                // already read, just show detail
-                openNotifDetail(title, message, type, time);
-                return;
+            if (!item.classList.contains('read')) {
+                markNotificationRead(id).then(function (data) {
+                    if (data.success) {
+                        item.classList.add('read');
+                        applyMutationUnreadCount(data);
+                    }
+                });
             }
-            markNotificationRead(id).then(function (data) {
-                if (data.success) {
-                    item.classList.add('read');
-                    applyMutationUnreadCount(data);
-                }
-            });
-            openNotifDetail(title, message, type, time);
+            openNotifCenter({ notificationId: id });
         });
     }
     // center close
@@ -8975,7 +9100,14 @@ init();
         var title = item.dataset.title || '';
         var content = item.dataset.content || '';
         var time = item.dataset.time || '';
-        openAnnounceDetail(title, content, time);
+        if (typeof window.openVnfNotificationCenter === 'function') {
+            window.openVnfNotificationCenter({
+                announcementId: Number(item.dataset.id || 0),
+                title: title,
+                announcementContent: content,
+                time: time
+            });
+        }
     });
 
     // 监听登录状态

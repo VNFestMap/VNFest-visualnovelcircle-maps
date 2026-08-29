@@ -2020,6 +2020,9 @@ body {
 }
 .jiangsu-city-path {
   fill: var(--jiangsu-map-fill);
+  stroke: #ffffff !important;
+  stroke-opacity: 1 !important;
+  shape-rendering: geometricPrecision;
 }
 .jiangsu-backdrop {
   fill: transparent;
@@ -2039,14 +2042,16 @@ body {
   transition: stroke 160ms ease, filter 160ms ease;
 }
 .jiangsu-city:hover .jiangsu-city-path {
-  stroke: var(--md-primary-strong);
+  stroke: #ffffff !important;
+  stroke-opacity: 1 !important;
   fill: var(--jiangsu-map-fill);
   filter: none;
 }
 .jiangsu-city.selected .jiangsu-city-path {
   fill: var(--md-primary);
   stroke-width: 2.6; /* 屏幕像素 */
-  stroke: var(--md-primary-strong);
+  stroke: #ffffff !important;
+  stroke-opacity: 1 !important;
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--md-primary) 35%, transparent));
 }
 
@@ -2070,7 +2075,10 @@ body {
 .jiangsu-province-outline {
   pointer-events: none;
   vector-effect: non-scaling-stroke;
-  opacity: 0.9;
+  stroke: #ffffff !important;
+  stroke-opacity: 1 !important;
+  opacity: 1;
+  shape-rendering: geometricPrecision;
 }
 
 /* 江苏省级详情面板中的可发现展开入口 */
@@ -3100,7 +3108,8 @@ body {
 .group-list {
   margin-top: 12px;
   max-height: calc(100vh - 262px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   padding-right: 4px;
@@ -3644,6 +3653,8 @@ body {
 .group-ext-links {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   gap: 4px 10px;
   margin-top: 4px;
   font-size: 11px;
@@ -3653,7 +3664,10 @@ body {
 .group-ext-link {
   color: var(--md-primary);
   text-decoration: none;
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .group-ext-link:hover {
@@ -4525,34 +4539,9 @@ body {
         font-size: 11px;
     }
 
+    /* 移动端不保留列表模式：隐藏地图/列表切换按钮 */
     .user-info-card .display-switch-container {
-        order: 2;
-        flex: 1 1 100%;
-        width: 100%;
-        max-width: none;
-        align-items: stretch;
-        margin-left: 0;
-        gap: 2px;
-    }
-
-    .user-info-card .mode-switch {
-        width: 100%;
-        border-radius: 9px;
-    }
-
-    .user-info-card .mode-tab {
-        flex: 1;
-        justify-content: center;
-        padding: 5px 10px;
-        min-height: 28px;
-    }
-
-    .user-info-card .mode-tab-icon {
-        font-size: 13px;
-    }
-
-    .user-info-card .mode-tab-label {
-        font-size: 11px;
+        display: none !important;
     }
 
     .user-info-card .user-nav-row {
@@ -4601,7 +4590,7 @@ body {
         width: 26px;
         height: 26px;
         margin-left: 0;
-        border-radius: 8px;
+        border-radius: 50%;
         background: var(--md-surface-container);
     }
 
@@ -11267,9 +11256,10 @@ textarea:focus-visible,
   border-radius: 18px;
 }
 
-#introCard::before,
-#selectedCard::before,
-.list-content::before,
+#selectedCard {
+  border-top-color: var(--md-outline-variant);
+}
+
 .calendar-modal-card::before,
 .notif-center-modal::before {
   content: "";
@@ -12576,6 +12566,37 @@ textarea:focus-visible,
 }
 
 /* =============================================
+   移动端申请绑定：三列单行布局
+   ============================================= */
+@media (max-width: 720px) {
+  .membership-apply-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .membership-apply-tab {
+    min-width: 0;
+    min-height: 48px;
+    flex: initial;
+    padding: 6px 2px;
+    font-size: clamp(10px, 3vw, 12px);
+    line-height: 1.1;
+    white-space: nowrap;
+    text-overflow: clip;
+  }
+}
+
+@media (max-width: 380px) {
+  .membership-apply-tab {
+    padding-inline: 1px;
+    font-size: 10px;
+  }
+}
+
+/* =============================================
    移动端列表模式 — club card 排版重写
    覆盖所有冲突规则，统一在此一处
    ============================================= */
@@ -12732,4 +12753,107 @@ textarea:focus-visible,
 #submitGalonlyBtnDrawer:active,
 #listSubmitGalonlyBtn:active {
   transform: translateY(0) scale(0.985);
+}
+
+/* =============================================
+   申请绑定按钮：分段控件视觉优化
+   ============================================= */
+.membership-apply-tabs {
+  gap: 3px;
+  padding: 4px;
+  border-color: color-mix(in srgb, var(--md-outline-variant) 72%, var(--md-primary));
+  background: color-mix(in srgb, var(--md-surface-container) 92%, var(--md-surface));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--md-surface) 58%, transparent) inset,
+    0 4px 14px color-mix(in srgb, var(--md-primary) 7%, transparent);
+}
+
+.membership-apply-tab {
+  min-width: 0;
+  min-height: 44px;
+  padding-inline: clamp(4px, 1.2vw, 10px);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--md-on-surface-variant);
+  font-size: clamp(11px, 1.35vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 120ms ease;
+}
+
+.membership-apply-tab:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--md-primary) 24%, transparent);
+  background: color-mix(in srgb, var(--md-primary-container) 46%, transparent);
+  color: var(--md-primary);
+}
+
+.membership-apply-tab:focus-visible {
+  z-index: 1;
+  outline: 3px solid color-mix(in srgb, var(--md-primary) 28%, transparent);
+  outline-offset: 2px;
+}
+
+.membership-apply-tab.active {
+  border-color: color-mix(in srgb, var(--md-primary) 46%, var(--md-outline-variant));
+  background: var(--md-primary-container);
+  color: var(--md-primary);
+  animation: membershipApplyTabActivate 220ms var(--ease-spring) both;
+  box-shadow:
+    0 1px 3px color-mix(in srgb, var(--md-primary) 14%, transparent),
+    0 1px 0 color-mix(in srgb, var(--md-surface) 66%, transparent) inset;
+}
+
+.membership-apply-tab.active:hover {
+  border-color: color-mix(in srgb, var(--md-primary) 58%, var(--md-outline-variant));
+  background: color-mix(in srgb, var(--md-primary-container) 88%, var(--md-primary));
+}
+
+.membership-apply-tab:active {
+  transform: scale(0.985);
+}
+
+@media (max-width: 720px) {
+  .membership-apply-tabs {
+    gap: 4px;
+  }
+
+  .membership-apply-tab {
+    min-height: 48px;
+    padding-inline: 2px;
+    font-size: clamp(10px, 3vw, 12px);
+  }
+}
+
+@keyframes membershipApplyTabActivate {
+  0% {
+    opacity: 0.78;
+    filter: saturate(0.84);
+  }
+
+  100% {
+    opacity: 1;
+    filter: saturate(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .membership-apply-tab {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .membership-apply-tab {
+    padding-inline: 1px;
+    font-size: 10px;
+  }
 }

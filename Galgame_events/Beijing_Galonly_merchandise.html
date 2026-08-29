@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <!-- 2026-08 北京 GalOnly 2.0 两阶段参展更新备注：
+       阶段二（制品审核）接收原阶段一的「参展展示图」（16:10 裁剪上传）；
+       每个制品条目支持上传多张图片（images，上限 6 张），便于逐项审核。
+       2026-08 更新：宣传图（参展展示图）改为 A4 竖版比例（210:297），输出 960×1358。
+       前端样式统一由 css/galonly-poster-theme.css 约束，控件复用页面既有类。 -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>制品审核表单 · 北京 GalOnly</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
+  <script src="../js/theme-runtime.js?v=20260813-beijing-booth"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131b;
+      --panel: rgba(25, 30, 42, .92);
+      --panel-soft: rgba(255, 255, 255, .055);
+      --text: #f6f7fb;
+      --muted: #a6afc2;
+      --line: rgba(255, 255, 255, .12);
+      --accent: #ffb86b;
+      --accent-strong: #ff8f70;
+      --danger: #ff8d8d;
+      --success: #8ee7b1;
+      --shadow: 0 22px 70px rgba(0, 0, 0, .32);
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); }
+    body {
+      min-height: 100vh; margin: 0; color: var(--text);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255, 170, 111, .17), transparent 35rem),
+        radial-gradient(circle at 100% 20%, rgba(137, 170, 255, .13), transparent 32rem),
+        var(--bg);
+    }
+    a { color: inherit; }
+    button, input, select, textarea { font: inherit; outline-color: var(--accent); }
+    .page-shell { width: min(880px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 72px; }
+    .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 14px; margin-bottom: 26px; }
+    .back-link:hover { color: var(--text); }
+    .hero { margin-bottom: 22px; }
+    .eyebrow { margin: 0 0 8px; color: var(--accent); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(26px, 4.5vw, 38px); line-height: 1.15; letter-spacing: -.035em; }
+    .hero-event { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+    .panel { padding: clamp(20px, 4vw, 32px); border: 1px solid var(--line); border-radius: 22px; background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(18px); }
+    [hidden] { display: none !important; }
+    .notice { margin: 0 0 18px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); background: var(--panel-soft); line-height: 1.65; }
+    .notice.warning { color: #ffe0b6; border-color: rgba(255, 184, 107, .38); background: rgba(255, 184, 107, .08); }
+    .notice.error { color: var(--danger); border-color: rgba(255, 141, 141, .38); background: rgba(255, 141, 141, .08); }
+    .notice.success { color: var(--success); border-color: rgba(142, 231, 177, .38); background: rgba(142, 231, 177, .08); }
+    .form-grid { display: grid; gap: 22px; }
+    .field { display: grid; gap: 9px; }
+    .field label, .field legend { font-weight: 700; font-size: 15px; }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    input[type="text"], select, textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: rgba(0, 0, 0, .18); }
+    textarea { min-height: 84px; resize: vertical; line-height: 1.6; }
+    input::placeholder, textarea::placeholder { color: #7d879a; }
+    .item-card { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: var(--panel-soft); }
+    .item-card .item-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .item-card .item-title { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .item-remove { padding: 6px 14px; border: 1px solid rgba(255, 141, 141, .4); border-radius: 10px; color: var(--danger); background: rgba(255, 141, 141, .08); cursor: pointer; font-size: 12px; }
+    .item-remove:hover { filter: brightness(1.15); }
+    .btn-add { min-height: 44px; padding: 9px 16px; border: 1px dashed rgba(255, 184, 107, .5); border-radius: 12px; color: var(--accent); background: rgba(255, 184, 107, .06); cursor: pointer; font-weight: 700; }
+    .btn-add:hover { background: rgba(255, 184, 107, .12); }
+    .upload-box { display: grid; gap: 10px; padding: 16px; border: 1px dashed rgba(255, 255, 255, .24); border-radius: 15px; background: rgba(255, 255, 255, .025); }
+    .upload-box input[type="file"] { width: 100%; color: var(--muted); }
+    .upload-status { min-height: 1.3em; color: var(--muted); font-size: 13px; }
+    .file-list { display: grid; gap: 8px; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(0, 0, 0, .18); font-size: 13px; }
+    .file-item .file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-remove { width: 26px; height: 26px; padding: 0; flex: 0 0 26px; border: 0; border-radius: 50%; color: #fff; background: rgba(190, 55, 55, .85); cursor: pointer; font-size: 13px; }
+    .preview-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .image-preview-item { position: relative; overflow: hidden; width: 112px; height: 84px; border: 1px solid var(--line); border-radius: 12px; background: #080a0f; }
+    .image-preview-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .image-preview-remove { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(0, 0, 0, .7); cursor: pointer; font-size: 13px; }
+    .image-preview-remove:hover { background: rgba(190, 55, 55, .9); }
+    /* 2026-08 性能修复：预览用缩略图，原图通过此入口查看/下载 */
+    .preview-view-original {
+      position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 7px;
+      color: #fff; background: rgba(0, 0, 0, .68); font-size: 11px; text-decoration: none; z-index: 1;
+    }
+    .preview-view-original:hover { background: rgba(0, 0, 0, .9); }
+    .display-preview-item { position: relative; overflow: hidden; width: min(100%, 300px); aspect-ratio: 210 / 297; border: 1px solid var(--line); border-radius: 12px; background: #080a0f; }
+    .display-preview-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .display-preview-label { position: absolute; left: 8px; bottom: 8px; padding: 3px 7px; border-radius: 7px; color: #fff; background: rgba(0, 0, 0, .68); font-size: 12px; }
+    .display-preview-remove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: rgba(0, 0, 0, .7); cursor: pointer; font-size: 13px; }
+    .display-preview-remove:hover { background: rgba(190, 55, 55, .9); }
+    .modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(0, 0, 0, .78); }
+    .modal.active { display: flex; }
+    .modal-card { width: min(700px, 100%); padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #171b25; }
+    .modal-card h2 { margin: 0 0 14px; font-size: 18px; }
+    .crop-area { max-height: 65vh; overflow: hidden; background: #080a0f; }
+    .crop-area img { display: block; max-width: 100%; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+    .separator { height: 1px; background: var(--line); }
+    .error-msg { display: none; padding: 12px 14px; border: 1px solid rgba(255, 141, 141, .38); border-radius: 12px; color: var(--danger); background: rgba(255, 141, 141, .08); line-height: 1.6; }
+    .btn-submit { width: 100%; min-height: 50px; padding: 12px 18px; border: 0; border-radius: 13px; color: #1a1510; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); font-weight: 800; cursor: pointer; box-shadow: 0 12px 30px rgba(255, 143, 112, .2); }
+    .btn-submit:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-submit:disabled { color: #78746f; background: #45423f; cursor: not-allowed; box-shadow: none; }
+    .consent { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
+    @media (max-width: 620px) {
+      .page-shell { width: min(100% - 20px, 880px); padding-top: 18px; }
+      .panel { padding: 18px 14px; border-radius: 18px; }
+    }
+  </style>
+  <link rel="stylesheet" href="../css/galonly-poster-theme.css">
+</head>
+<body>
+  <main class="page-shell">
+    <a class="back-link" href="galgameonly_list.html">&larr; 返回活动列表</a>
+    <header class="hero">
+      <p class="eyebrow">Beijing GalOnly · Merchandise Review</p>
+      <h1>制品审核专用表单</h1>
+      <p class="hero-event" id="event-name-display">正在读取活动信息…</p>
+    </header>
+
+    <section class="panel">
+      <div class="notice" id="loading-msg">正在加载申请信息…</div>
+      <div class="notice error" id="error-msg" hidden></div>
+      <div class="notice success" id="revision-msg" hidden></div>
+
+      <div id="form-area" hidden>
+          <div class="notice warning">
+           请在 <strong>2026 年 9 月 19 日前</strong>提交您计划在展会上<strong>展示、售卖的物品的内容</strong>，或包含多个制品的<strong>菜单</strong>。审核将依据《摊位商品与展示规则》逐项审查（R18 或擦边内容、盗版或过度使用官方素材、主要画面使用 AI 生成技术等）。通过审核的制品才允许现场展示或售卖。9 月 19 日后仅允许追加个别制品，请在 <strong>2026 年 10 月 1 日前</strong>向摊位组报备并提交审核。
+        </div>
+
+        <form id="merchandise-form" class="form-grid" novalidate>
+          <div class="field">
+            <label>制品 / 菜单列表 <span class="required" style="color:var(--accent);">*</span></label>
+            <div class="hint">逐项填写计划展示或售卖的制品；也可以在下方上传包含完整制品名单的 Excel / Word 文件。</div>
+            <div id="items-container" class="form-grid" style="gap:14px;"></div>
+            <button class="btn-add" type="button" id="add-item-btn">＋ 添加一项制品</button>
+          </div>
+
+          <div class="field">
+            <label for="attachment-input">制品名单表（Excel / Word 等文件）</label>
+            <div class="upload-box">
+              <div class="hint">可上传制品名单表（Excel、Word、PDF），支持多文件，单个不超过 20MB。</div>
+              <input id="attachment-input" type="file" accept=".xlsx,.xls,.docx,.doc,.pdf" multiple>
+              <div class="upload-status" id="attachment-upload-status"></div>
+              <div class="file-list" id="attachment-list" hidden></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="display-image-input">参展展示图（宣传图）</label>
+            <div class="upload-box">
+              <div class="hint">请上传一张宣传图并裁剪为 A4 竖版比例（210:297），用于活动摊位展示；未上传时将根据第一项制品的第一张图片自动生成。</div>
+              <input id="display-image-input" type="file" accept="image/jpeg,image/png,image/webp">
+              <div class="upload-status" id="display-upload-status"></div>
+              <div class="preview-grid" id="display-preview-container" hidden></div>
+            </div>
+          </div>
+
+          <div class="separator"></div>
+          <div class="error-msg" id="error-msg-form" role="alert"></div>
+          <button class="btn-submit" id="btn-submit" type="submit">提交制品表单</button>
+          <p class="consent">首轮制品审核材料提交截止：2026 年 9 月 19 日。9 月 19 日后仅允许追加个别制品，须在 2026 年 10 月 1 日前报备并提交审核；若被打回，可在打回当天起三天内修改并重新提交。</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="displayCropModal" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+    <div class="modal-card">
+      <h2 id="crop-title">调整参展展示图</h2>
+      <div class="crop-area"><img id="displayCropImage" alt="展示图裁剪预览"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" id="displayCropCancel">取消</button>
+        <button class="btn-secondary" type="button" id="displayCropConfirm">确认裁剪并上传</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var eventId = 0;
+    var applicationId = 0;
+    var eventData = null;
+    var items = [];
+    var attachments = []; // [{path, name}]
+    var uploadedDisplayImagePath = '';
+    var cropperDisplayInstance = null;
+
+    function setVisible(id, visible) { var n = $(id); if (n) n.hidden = !visible; }
+    function showError(id, message) { var n = $(id); n.textContent = message || ''; n.style.display = message ? 'block' : 'none'; }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    function validAttachment(file) {
+      return /.(xlsx|xls|docx|doc|pdf)$/i.test(file.name) && file.size <= 20 * 1024 * 1024;
+    }
+
+    function uploadAttachmentFile(file) {
+      var formData = new FormData();
+      formData.append('file', file, file.name);
+      formData.append('event_id', eventId);
+      return fetch('../api/galonly.php?action=upload_file', {
+        method: 'POST', credentials: 'include', body: formData
+      }).then(function (response) { return response.json(); }).then(function (data) {
+        if (!data.success || !data.path) throw new Error(data.message || '文件上传失败');
+        return { path: data.path, name: data.name || file.name };
+      });
+    }
+
+    function validImage(file) {
+      return ['image/jpeg', 'image/png', 'image/webp'].indexOf(file.type) !== -1 && file.size <= 10 * 1024 * 1024;
+    }
+
+    function uploadImage(file, fileName) {
+      var formData = new FormData();
+      formData.append('file', file, fileName || file.name);
+      formData.append('event_id', eventId);
+      return fetch('../api/galonly.php?action=upload_image', {
+        method: 'POST', credentials: 'include', body: formData
+      }).then(function (response) { return response.json(); }).then(function (data) {
+        if (!data.success || !data.path) throw new Error(data.message || '图片上传失败');
+        return data.path;
+      });
+    }
+
+    // ===== 制品条目图片（每项上限 6 张） =====
+    function handleItemImageUpload(row, event) {
+      var files = Array.prototype.slice.call(event.target.files || []);
+      if (!files.length) return;
+      var remaining = 6 - (row.images || []).length;
+      if (remaining <= 0) {
+        row.statusEl.textContent = '该项图片已达上限（6 张）。';
+        row.statusEl.style.color = 'var(--danger)';
+        event.target.value = '';
+        return;
+      }
+      var invalid = files.find(function (file) { return !validImage(file); });
+      if (invalid) {
+        row.statusEl.textContent = invalid.name + ' 格式或大小不符合要求（仅 JPG / PNG / WebP，单个不超过 10MB）。';
+        row.statusEl.style.color = 'var(--danger)';
+        event.target.value = '';
+        return;
+      }
+      row.statusEl.textContent = '正在上传图片…';
+      row.statusEl.style.color = 'var(--muted)';
+      var uploads = files.slice(0, remaining);
+      uploads.reduce(function (promise, file) {
+        return promise.then(function () {
+          return uploadImage(file).then(function (path) {
+            row.images.push(path);
+            renderItemImages(row);
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        row.statusEl.textContent = '图片上传完成。';
+        row.statusEl.style.color = 'var(--success)';
+        event.target.value = '';
+      }).catch(function (error) {
+        row.statusEl.textContent = error.message || '图片上传失败，请重试。';
+        row.statusEl.style.color = 'var(--danger)';
+        event.target.value = '';
+      });
+    }
+
+    // 2026-08 性能修复：预览一律使用 WebP 缩略图（上传时服务端生成），原图保留供查看/下载
+    function thumbUrl(path) {
+      if (!path) return '';
+      var m = String(path).match(/^uploads\/galonly\/(\d+)\/([^/]+)$/);
+      if (!m) return path;
+      var stem = m[2].replace(/\.[^.]+$/, '');
+      return 'uploads/galonly/' + m[1] + '/thumbs/' + stem + '.webp';
+    }
+
+    // 设置预览 img：优先缩略图；旧图无缩略图时加载原图；加载失败回退原图
+    function setPreviewImage(img, path, altText) {
+      var original = '../' + String(path).replace(/^\/+/, '');
+      img.alt = altText || '预览图';
+      img.decoding = 'async';
+      img.loading = 'lazy';
+      var thumb = thumbUrl(path);
+      if (thumb && thumb !== path) {
+        img.src = '../' + thumb;
+        img.onerror = function () {
+          if (img.src.indexOf('/thumbs/') !== -1) img.src = original;
+        };
+      } else {
+        img.src = original;
+      }
+      return original;
+    }
+
+    function renderItemImages(row) {
+      var container = row.imagesEl;
+      container.innerHTML = '';
+      container.hidden = (row.images || []).length === 0;
+      row.images.forEach(function (path, index) {
+        var item = document.createElement('div');
+        item.className = 'image-preview-item';
+        var image = document.createElement('img');
+        var original = setPreviewImage(image, path, '制品图片 ' + (index + 1));
+        var view = document.createElement('a');
+        view.className = 'preview-view-original';
+        view.href = original;
+        view.target = '_blank';
+        view.rel = 'noopener';
+        view.title = '查看原图';
+        view.textContent = '原图';
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'image-preview-remove';
+        remove.setAttribute('aria-label', '移除制品图片');
+        remove.textContent = '×';
+        remove.addEventListener('click', function () {
+          row.images.splice(index, 1);
+          renderItemImages(row);
+        });
+        item.appendChild(image);
+        item.appendChild(view);
+        item.appendChild(remove);
+        container.appendChild(item);
+      });
+    }
+
+    function handleAttachmentUpload(event) {
+      var files = Array.prototype.slice.call(event.target.files || []);
+      if (!files.length) return;
+      var invalid = files.find(function (file) { return !validAttachment(file); });
+      if (invalid) {
+        $('attachment-upload-status').textContent = invalid.name + ' 格式或大小不符合要求（仅 Excel / Word / PDF，单个不超过 20MB）。';
+        $('attachment-upload-status').style.color = 'var(--danger)';
+        event.target.value = '';
+        return;
+      }
+      $('attachment-upload-status').textContent = '正在上传文件…';
+      $('attachment-upload-status').style.color = 'var(--muted)';
+      files.reduce(function (promise, file) {
+        return promise.then(function () {
+          return uploadAttachmentFile(file).then(function (item) { attachments.push(item); renderAttachmentList(); });
+        });
+      }, Promise.resolve()).then(function () {
+        $('attachment-upload-status').textContent = '文件上传完成。';
+        $('attachment-upload-status').style.color = 'var(--success)';
+        event.target.value = '';
+      }).catch(function (error) {
+        $('attachment-upload-status').textContent = error.message || '文件上传失败，请重试。';
+        $('attachment-upload-status').style.color = 'var(--danger)';
+        event.target.value = '';
+      });
+    }
+
+    function renderAttachmentList() {
+      var list = $('attachment-list');
+      list.innerHTML = '';
+      list.hidden = attachments.length === 0;
+      attachments.forEach(function (item, index) {
+        var row = document.createElement('div');
+        row.className = 'file-item';
+        var name = document.createElement('span');
+        name.className = 'file-name';
+        name.textContent = item.name || item.path.split('/').pop();
+        var remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'file-remove';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', '移除文件');
+        remove.addEventListener('click', function () { attachments.splice(index, 1); renderAttachmentList(); });
+        row.appendChild(name);
+        row.appendChild(remove);
+        list.appendChild(row);
+      });
+    }
+
+    function createItemRow(item) {
+      item = item || { name: '', category: '', description: '', images: [] };
+      var container = $('items-container');
+      var card = document.createElement('div');
+      card.className = 'item-card';
+
+      var head = document.createElement('div');
+      head.className = 'item-head';
+      var title = document.createElement('span');
+      title.className = 'item-title';
+      title.textContent = '制品 #' + (items.length + 1);
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'item-remove';
+      remove.textContent = '移除该项';
+      remove.addEventListener('click', function () {
+        items.splice(items.indexOf(row), 1);
+        card.remove();
+        refreshItemTitles();
+      });
+      head.appendChild(title);
+      head.appendChild(remove);
+
+      var nameField = document.createElement('div');
+      nameField.className = 'field';
+      var nameLabel = document.createElement('label');
+      nameLabel.textContent = '制品名称';
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.maxLength = 120;
+      nameInput.placeholder = '例如：XX 主题徽章 / 游戏本体 / 原创画集';
+      nameInput.value = item.name || '';
+      nameInput.addEventListener('input', function () { row.name = nameInput.value; });
+      nameField.appendChild(nameLabel);
+      nameField.appendChild(nameInput);
+
+      var catField = document.createElement('div');
+      catField.className = 'field';
+      var catLabel = document.createElement('label');
+      catLabel.textContent = '类别';
+      var catInput = document.createElement('input');
+      catInput.type = 'text';
+      catInput.maxLength = 60;
+      catInput.placeholder = '例如：周边 / 制品 / 游戏 / 画集';
+      catInput.value = item.category || '';
+      catInput.addEventListener('input', function () { row.category = catInput.value; });
+      catField.appendChild(catLabel);
+      catField.appendChild(catInput);
+
+      var descField = document.createElement('div');
+      descField.className = 'field';
+      var descLabel = document.createElement('label');
+      descLabel.textContent = '内容描述';
+      var descInput = document.createElement('textarea');
+      descInput.maxLength = 1000;
+      descInput.placeholder = '简要描述制品内容、规格、售价（如有）等';
+      descInput.value = item.description || '';
+      descInput.addEventListener('input', function () { row.description = descInput.value; });
+      descField.appendChild(descLabel);
+      descField.appendChild(descInput);
+
+      // 制品图片上传区（每项上限 6 张）
+      var imgField = document.createElement('div');
+      imgField.className = 'field';
+      var imgLabel = document.createElement('label');
+      imgLabel.textContent = '制品图片';
+      var uploadBox = document.createElement('div');
+      uploadBox.className = 'upload-box';
+      var imgHint = document.createElement('div');
+      imgHint.className = 'hint';
+      imgHint.textContent = '可上传该制品的图片（JPG / PNG / WebP，单张不超过 10MB，每项最多 6 张），便于审核逐项查看。';
+      var imgInput = document.createElement('input');
+      imgInput.type = 'file';
+      imgInput.accept = 'image/jpeg,image/png,image/webp';
+      imgInput.multiple = true;
+      var imgStatus = document.createElement('div');
+      imgStatus.className = 'upload-status';
+      var imagesEl = document.createElement('div');
+      imagesEl.className = 'preview-grid';
+      imagesEl.hidden = true;
+      uploadBox.appendChild(imgHint);
+      uploadBox.appendChild(imgInput);
+      uploadBox.appendChild(imgStatus);
+      uploadBox.appendChild(imagesEl);
+      imgField.appendChild(imgLabel);
+      imgField.appendChild(uploadBox);
+      imgInput.addEventListener('change', function (event) { handleItemImageUpload(row, event); });
+
+      card.appendChild(head);
+      card.appendChild(nameField);
+      card.appendChild(catField);
+      card.appendChild(descField);
+      card.appendChild(imgField);
+      container.appendChild(card);
+
+      var row = {
+        card: card, name: item.name, category: item.category, description: item.description,
+        images: Array.isArray(item.images) ? item.images.slice(0, 6) : [],
+        input: nameInput, statusEl: imgStatus, imagesEl: imagesEl
+      };
+      items.push(row);
+      renderItemImages(row);
+      return row;
+    }
+
+    function refreshItemTitles() {
+      var cards = $('items-container').querySelectorAll('.item-card');
+      cards.forEach(function (card, idx) {
+        var title = card.querySelector('.item-title');
+        if (title) title.textContent = '制品 #' + (idx + 1);
+      });
+    }
+
+    function collectItems() {
+      return items.map(function (row) {
+        return {
+          name: (row.name || '').trim(),
+          category: (row.category || '').trim(),
+          description: (row.description || '').trim(),
+          images: (row.images || []).slice(0, 6)
+        };
+      }).filter(function (it) { return it.name !== ''; });
+    }
+
+    // ===== 参展展示图（16:10 裁剪，自阶段一移至阶段二） =====
+    function handleDisplayImageUpload(event) {
+      var file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      if (!validImage(file)) {
+        showUploadStatus('display-upload-status', '图片格式或大小不符合要求。', 'var(--danger)');
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () { openDisplayCropModal(reader.result); };
+      reader.readAsDataURL(file);
+    }
+
+    function showUploadStatus(id, message, color) {
+      var node = $(id);
+      node.textContent = message || '';
+      node.style.color = color || '';
+    }
+
+    function openDisplayCropModal(source) {
+      var modal = $('displayCropModal');
+      var image = $('displayCropImage');
+      if (cropperDisplayInstance) cropperDisplayInstance.destroy();
+      image.src = source;
+      modal.classList.add('active');
+      image.onload = function () {
+        if (typeof Cropper !== 'function') {
+          showUploadStatus('display-upload-status', '裁剪组件加载失败，请刷新后重试。', 'var(--danger)');
+          return;
+        }
+        cropperDisplayInstance = new Cropper(image, {
+          aspectRatio: 210 / 297, viewMode: 1, dragMode: 'move', autoCropArea: 1,
+          cropBoxMovable: false, cropBoxResizable: false, toggleDragModeOnDblclick: false
+        });
+      };
+    }
+
+    function closeDisplayCropModal() {
+      $('displayCropModal').classList.remove('active');
+      if (cropperDisplayInstance) cropperDisplayInstance.destroy();
+      cropperDisplayInstance = null;
+    }
+
+    function confirmDisplayCrop() {
+      if (!cropperDisplayInstance) return;
+      var canvas = cropperDisplayInstance.getCroppedCanvas({ width: 960, height: 1358, imageSmoothingQuality: 'high' });
+      closeDisplayCropModal();
+      showUploadStatus('display-upload-status', '正在上传展示图…', 'var(--muted)');
+      canvas.toBlob(function (blob) {
+        if (!blob) {
+          showUploadStatus('display-upload-status', '展示图裁剪失败，请重试。', 'var(--danger)');
+          return;
+        }
+        uploadImage(blob, 'beijing_display_image.webp').then(function (path) {
+          uploadedDisplayImagePath = path;
+          renderDisplayImagePreview();
+          showUploadStatus('display-upload-status', '展示图上传完成。', 'var(--success)');
+        }).catch(function (error) {
+          showUploadStatus('display-upload-status', error.message || '展示图上传失败，请重试。', 'var(--danger)');
+        });
+      }, 'image/webp', 0.82);
+    }
+
+    function renderDisplayImagePreview() {
+      var container = $('display-preview-container');
+      container.innerHTML = '';
+      container.hidden = !uploadedDisplayImagePath;
+      if (!uploadedDisplayImagePath) return;
+      var item = document.createElement('div');
+      item.className = 'display-preview-item';
+      var image = document.createElement('img');
+      image.src = '../' + uploadedDisplayImagePath;
+      image.alt = '参展展示图';
+      var label = document.createElement('span');
+      label.className = 'display-preview-label';
+      label.textContent = '参展展示图';
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'display-preview-remove';
+      remove.setAttribute('aria-label', '移除参展展示图');
+      remove.textContent = '×';
+      remove.addEventListener('click', function () { uploadedDisplayImagePath = ''; renderDisplayImagePreview(); });
+      item.appendChild(image);
+      item.appendChild(label);
+      item.appendChild(remove);
+      container.appendChild(item);
+    }
+
+    // 2026-08 性能修复：优先用 createImageBitmap 在浏览器后台线程解码（不卡主线程）；老浏览器回退 Image
+    function decodeImageForCanvas(src) {
+      if (typeof createImageBitmap === 'function' && typeof fetch === 'function') {
+        return fetch(src).then(function (r) { return r.blob(); }).then(function (b) { return createImageBitmap(b); });
+      }
+      return new Promise(function (resolve, reject) {
+        var image = new Image();
+        image.onload = function () { resolve(image); };
+        image.onerror = function () { reject(new Error('decode failed')); };
+        image.src = src;
+      });
+    }
+
+    function autoCreateDisplayImage() {
+      if (uploadedDisplayImagePath) return Promise.resolve('');
+      var firstImage = '';
+      items.some(function (row) {
+        if (row.images && row.images.length) { firstImage = row.images[0]; return true; }
+        return false;
+      });
+      if (!firstImage) return Promise.resolve('');
+      return new Promise(function (resolve) {
+        decodeImageForCanvas('../' + firstImage).then(function (bitmap) {
+          // A4 竖版宣传图（210:297）
+          var targetRatio = 210 / 297;
+          var sourceWidth = bitmap.width;
+          var sourceHeight = bitmap.height;
+          var cropWidth = sourceWidth;
+          var cropHeight = sourceHeight;
+          var cropX = 0;
+          var cropY = 0;
+          if (sourceWidth / sourceHeight > targetRatio) {
+            cropWidth = Math.round(sourceHeight * targetRatio);
+            cropX = Math.round((sourceWidth - cropWidth) / 2);
+          } else {
+            cropHeight = Math.round(sourceWidth / targetRatio);
+            cropY = Math.round((sourceHeight - cropHeight) / 2);
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = 960;
+          canvas.height = 1358;
+          canvas.getContext('2d').drawImage(bitmap, cropX, cropY, cropWidth, cropHeight, 0, 0, 960, 1358);
+          if (bitmap.close) bitmap.close();
+          canvas.toBlob(function (blob) {
+            if (!blob) return resolve('');
+            uploadImage(blob, 'beijing_auto_display.webp').then(resolve).catch(function () { resolve(''); });
+          }, 'image/webp', 0.82);
+        }).catch(function () { resolve(''); });
+      });
+    }
+
+    function submitForm() {
+      showError('error-msg-form', '');
+      var collected = collectItems();
+      if (collected.length === 0 && attachments.length === 0) {
+        showError('error-msg-form', '请至少填写一个制品，或上传包含制品名单的文件。');
+        return;
+      }
+      if (!applicationId) {
+        showError('error-msg-form', '缺少申请信息，请从活动列表或状态页进入。');
+        return;
+      }
+      var btn = $('btn-submit');
+      btn.disabled = true;
+      btn.textContent = '提交中…';
+      autoCreateDisplayImage().then(function (autoPath) {
+        var payload = {
+          application_id: applicationId,
+          merchandise_items: collected,
+          merchandise_attachments: attachments.map(function (a) { return a.path; }),
+          display_image: autoPath || uploadedDisplayImagePath || null
+        };
+        return fetch('../api/galonly.php?action=submit_merchandise', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }).then(function (response) { return response.json(); }).then(function (data) {
+        if (!data.success) throw new Error(data.message || '提交失败。');
+        window.location.href = 'Galonly_status.html?event_id=' + eventId + '&application_id=' + applicationId;
+      }).catch(function (error) {
+        showError('error-msg-form', error.message || '提交失败，请稍后重试。');
+        btn.disabled = false;
+        btn.textContent = '提交制品表单';
+      });
+    }
+
+    function renderExisting(app) {
+      var list = app.merchandise_items || [];
+      if (list.length) {
+        list.forEach(function (it) {
+          createItemRow({ name: it.name || '', category: it.category || '', description: it.description || '', images: it.images || [] });
+        });
+      } else {
+        createItemRow({});
+        createItemRow({});
+      }
+      attachments = (app.merchandise_attachments || []).map(function (p) {
+        return { path: p, name: String(p).split('/').pop() };
+      });
+      renderAttachmentList();
+      uploadedDisplayImagePath = app.display_image || '';
+      renderDisplayImagePreview();
+      if (app.status === 'phase2_revision' && app.phase2_feedback) {
+        setVisible('revision-msg', true);
+        $('revision-msg').innerHTML = '您的制品表单被打回修改（资格保留）：<div style="margin-top:8px;">' + escapeHtml(app.phase2_feedback) + '</div>';
+        $('btn-submit').textContent = '修改后重新提交';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var params = new URLSearchParams(window.location.search);
+      eventId = parseInt(params.get('event_id'), 10) || 0;
+      applicationId = parseInt(params.get('application_id') || params.get('app_id') || '0', 10) || 0;
+      if (!eventId || !applicationId) {
+        setVisible('loading-msg', false);
+        showError('error-msg', '缺少活动或申请参数，请从活动列表 / 状态页进入。');
+        return;
+      }
+
+      fetch('../api/auth.php?action=me', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (auth) {
+          if (!(auth.success || auth.logged_in) || !(auth.user || auth.id)) {
+            window.location.href = '../login.html?redirect=' + encodeURIComponent(window.location.href);
+            return null;
+          }
+          return Promise.all([
+            fetch('../api/galonly.php?action=list_events', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return { success: false }; }),
+            fetch('../api/galonly.php?action=get_merchandise&event_id=' + eventId + '&application_id=' + applicationId, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return { success: false }; })
+          ]);
+        })
+        .then(function (results) {
+          if (!results) return;
+          var eventsData = results[0];
+          var merchData = results[1];
+          if (eventsData.success && eventsData.events) {
+            var ev = eventsData.events.find(function (e) { return String(e.id) === String(eventId); });
+            if (ev) $('event-name-display').textContent = (ev.name || ev.event_name || ('活动 #' + eventId));
+          }
+          if (!merchData.success || !merchData.application) {
+            setVisible('loading-msg', false);
+            showError('error-msg', merchData.message || '申请信息加载失败。');
+            return;
+          }
+          var app = merchData.application;
+          if (app.status !== 'approved' && app.status !== 'phase2_pending' && app.status !== 'phase2_revision') {
+            setVisible('loading-msg', false);
+            showError('error-msg', '当前申请状态无法提交制品表单。若已通过第一阶段，请从活动列表「提交制品」进入。');
+            return;
+          }
+          if (app.status === 'phase2_pending') {
+            setVisible('loading-msg', false);
+            showError('error-msg', '您的制品表单已提交，正在制品审核中，请耐心等待结果。');
+            return;
+          }
+          if (app.status === 'phase2_revision' && !app.within_deadline) {
+            setVisible('loading-msg', false);
+            showError('error-msg', '已超出打回后的 3 天修改期限，不合规制品本次不得放入菜单。');
+            return;
+          }
+          setVisible('loading-msg', false);
+          setVisible('form-area', true);
+          renderExisting(app);
+        })
+        .catch(function (err) {
+          setVisible('loading-msg', false);
+          showError('error-msg', err.message || '页面加载失败，请稍后重试。');
+        });
+
+      $('add-item-btn').addEventListener('click', function () { createItemRow({}); });
+      $('attachment-input').addEventListener('change', handleAttachmentUpload);
+      $('display-image-input').addEventListener('change', handleDisplayImageUpload);
+      $('displayCropCancel').addEventListener('click', closeDisplayCropModal);
+      $('displayCropConfirm').addEventListener('click', confirmDisplayCrop);
+      $('displayCropModal').addEventListener('click', function (event) {
+        if (event.target === this) closeDisplayCropModal();
+      });
+      $('merchandise-form').addEventListener('submit', function (event) { event.preventDefault(); submitForm(); });
+    });
+  }());
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script src="../js/page-background.js?v=20260813-beijing-booth"></script>
+</body>
+</html>

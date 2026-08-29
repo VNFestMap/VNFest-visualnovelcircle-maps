@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摊主手册 · GalOnly</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
+  <script src="../js/theme-runtime.js?v=20260813-beijing-booth"></script>
+  <style>
+    :root { color-scheme: dark; --bg:#10131b; --panel:rgba(25,30,42,.92); --panel-soft:rgba(255,255,255,.055); --text:#f6f7fb; --muted:#a6afc2; --line:rgba(255,255,255,.12); --accent:#ffb86b; --accent-strong:#ff8f70; --shadow:0 22px 70px rgba(0,0,0,.32); }
+    * { box-sizing:border-box; }
+    html { min-height:100%; background:var(--bg); }
+    body { min-height:100vh; margin:0; color:var(--text); font-family:"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+      background: radial-gradient(circle at 12% 0%, rgba(255,170,111,.17), transparent 35rem), radial-gradient(circle at 100% 20%, rgba(137,170,255,.13), transparent 32rem), var(--bg); }
+    a { color:inherit; }
+    .page-shell { width:min(760px, calc(100% - 32px)); margin:0 auto; padding:28px 0 72px; }
+    .back-link { display:inline-flex; align-items:center; gap:8px; color:var(--muted); text-decoration:none; font-size:14px; margin-bottom:26px; }
+    .back-link:hover { color:var(--text); }
+    .hero { margin-bottom:22px; }
+    .eyebrow { margin:0 0 8px; color:var(--accent); font-size:12px; letter-spacing:.16em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,38px); line-height:1.15; letter-spacing:-.035em; }
+    .hero-event { margin:10px 0 0; color:var(--muted); font-size:15px; }
+    .panel { padding:clamp(20px,4vw,32px); border:1px solid var(--line); border-radius:22px; background:var(--panel); box-shadow:var(--shadow); backdrop-filter:blur(18px); line-height:1.8; }
+    .placeholder { padding:26px; border:1px dashed rgba(255,184,107,.45); border-radius:16px; color:var(--muted); background:rgba(255,184,107,.05); text-align:center; }
+    .placeholder .big { font-size:34px; margin-bottom:10px; }
+    .placeholder strong { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <a class="back-link" href="galgameonly_list.html">&larr; 返回活动列表</a>
+    <header class="hero">
+      <p class="eyebrow">Beijing GalOnly · Stall Owner Manual</p>
+      <h1>摊主手册</h1>
+      <p class="hero-event" id="event-name-display">正在读取活动信息…</p>
+    </header>
+    <section class="panel">
+      <div class="placeholder">
+        <div class="big">🎫</div>
+        <div>《摊主手册》筹备中，将于活动前在此页公布，包含摊位布置、时间安排、现场须知等内容。</div>
+      </div>
+    </section>
+  </main>
+  <script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var eventId = params.get('event_id');
+    if (eventId) {
+      fetch('../api/galonly.php?action=list_events', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success && data.events) {
+            var ev = data.events.find(function (e) { return String(e.id) === String(eventId); });
+            if (ev) document.getElementById('event-name-display').textContent = ev.name || ev.event_name || ('活动 #' + eventId);
+          }
+        }).catch(function () {});
+    }
+  }());
+  </script>
+  <script src="../js/page-background.js?v=20260813-beijing-booth"></script>
+</body>
+</html>

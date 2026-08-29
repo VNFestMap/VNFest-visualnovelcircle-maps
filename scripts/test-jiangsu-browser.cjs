@@ -72,7 +72,10 @@ async function inspectViewport(viewportName) {
           selectedCityFill: '',
           selectedFillContrast: false,
           mobileBadgeCompact: false,
+          badgeDiameterWithinTarget: false,
           badgeStrokeWhite: false,
+          cityStrokeWhite: false,
+          provinceOutlineStrokeWhite: false,
           changzhouBadgeVisible: false,
           changzhouBadgeInside: false,
           wuxiBadgeInside: false,
@@ -119,12 +122,25 @@ async function inspectViewport(viewportName) {
         const previousTheme = document.documentElement.getAttribute('data-theme');
         document.documentElement.setAttribute('data-theme', 'dark');
         const badgeCircleStyle = firstBadgeCircle ? getComputedStyle(firstBadgeCircle) : null;
+        const badgeDiameter = firstBadgeCircle?.getBoundingClientRect().width || 0;
         result.mobileBadgeCompact = window.innerWidth > 520
           || !firstBadgeCircle
-          || firstBadgeCircle.getBoundingClientRect().width <= 19;
+          || badgeDiameter <= 10.5;
+        result.badgeDiameterWithinTarget = !firstBadgeCircle
+          || badgeDiameter <= (window.innerWidth <= 520 ? 10.5 : 16);
         result.badgeStrokeWhite = Boolean(badgeCircleStyle)
           && badgeCircleStyle.stroke === 'rgb(255, 255, 255)'
           && badgeCircleStyle.strokeOpacity === '1';
+        result.cityStrokeWhite = cityPaths.length === 13 && cityPaths.every((path) => {
+          const style = getComputedStyle(path);
+          return style.stroke === 'rgb(255, 255, 255)' && style.strokeOpacity === '1';
+        });
+        const provinceOutline = document.querySelector('.jiangsu-province-outline');
+        const provinceOutlineStyle = provinceOutline ? getComputedStyle(provinceOutline) : null;
+        result.provinceOutlineStrokeWhite = Boolean(provinceOutlineStyle)
+          && provinceOutlineStyle.stroke === 'rgb(255, 255, 255)'
+          && provinceOutlineStyle.strokeOpacity === '1'
+          && provinceOutlineStyle.opacity === '1';
         if (previousTheme) document.documentElement.setAttribute('data-theme', previousTheme);
         else document.documentElement.removeAttribute('data-theme');
         const badgePoint = (id) => {
@@ -260,6 +276,10 @@ async function inspectViewport(viewportName) {
   if (!result.cityLabelsRemoved) failedChecks.push('city labels are still rendered under badges');
   if (!result.uniformCityFill) failedChecks.push('Jiangsu city fills are not uniform');
   if (!result.selectedFillContrast) failedChecks.push('selected Jiangsu city does not switch to the deep-orange fill');
+  if (!result.badgeDiameterWithinTarget) failedChecks.push('Jiangsu badge circles are still larger than the compact target');
+  if (!result.badgeStrokeWhite) failedChecks.push('Jiangsu badge rings are not pure white in dark mode');
+  if (!result.cityStrokeWhite) failedChecks.push('Jiangsu city boundary strokes are not pure white in dark mode');
+  if (!result.provinceOutlineStrokeWhite) failedChecks.push('Jiangsu province outline is not pure white and opaque in dark mode');
   if (!result.changzhouBadgeVisible || !result.changzhouBadgeInside) failedChecks.push('Changzhou badge is missing, hidden, or outside its path');
   if (!result.wuxiBadgeInside || !result.wuxiBadgeSafe) failedChecks.push('Wuxi badge is outside or too close to the path boundary');
   if (result.cityStrokeWidth !== '1.5px') failedChecks.push(`city stroke width ${result.cityStrokeWidth}`);

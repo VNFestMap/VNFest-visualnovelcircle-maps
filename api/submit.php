@@ -50,6 +50,26 @@ if (!$input) {
     exit;
 }
 
+// 同好会提交需要登录：审批通过后需要自动为该用户绑定对应同好会身份
+require_once __DIR__ . '/../includes/auth.php';
+$submitUser = requireLogin();
+
+// 申请人角色：其他/成员/管理员/负责人 → external/member/manager/representative
+$applicantRole = (string)($input['applicant_role'] ?? ($input['role'] ?? 'external'));
+$roleMap = [
+    'other' => 'external',
+    'external' => 'external',
+    'member' => 'member',
+    'manager' => 'manager',
+    'representative' => 'representative',
+];
+$applicantRole = $roleMap[$applicantRole] ?? 'external';
+
+$input['user_id'] = (int)$submitUser['id'];
+$input['applicant_role'] = $applicantRole;
+$input['submitter_username'] = $submitUser['username'] ?? '';
+$input['submitter_nickname'] = $submitUser['nickname'] ?? '';
+
 // 读取已有提交记录
 $submissions = [];
 if (file_exists($submissions_file)) {

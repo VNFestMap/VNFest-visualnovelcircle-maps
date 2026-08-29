@@ -776,6 +776,9 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span> 审核中心
         <span class="nav-badge" id="navPendingBadge" style="display:none;">0</span>
       </button>
+      <button class="nav-item" data-module="galonly-reviewers" onclick="switchModule('galonly-reviewers')" id="galonlyReviewersNav" style="display:none;">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><path d="M2 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/><path d="M8.5 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/></svg></span> 摊位审核成员
+      </button>
       <button class="nav-item" data-module="clubs" onclick="switchModule('clubs')">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V5l6-4 6 4v9"/><path d="M6 14v-4h4v4"/></svg></span> 同好会总览
       </button>
@@ -890,6 +893,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
             <span class="panel-title">用户列表</span>
             <div class="flex gap-sm">
               <input type="text" class="search-input" placeholder="搜索用户名/昵称..." id="userSearch" oninput="filterUsers()">
+              <input type="text" class="search-input" placeholder="搜索要添加为审核成员的用户..." id="reviewerUserSearch" style="max-width:220px;" oninput="searchReviewerCandidates(this.value)">
               <select id="userRoleFilter" onchange="filterUsers()" style="padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-pill);font-size:12px;background:var(--color-surface-alt);color:var(--color-text);">
                 <option value="all">全部角色</option>
                 <option value="super_admin">超级管理员</option>
@@ -904,11 +908,11 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
             <table class="data-table" id="usersTable">
               <thead>
                 <tr>
-                  <th>用户</th><th>角色</th><th>邮箱</th><th>状态</th><th>注册时间</th><th>操作</th>
+                  <th>用户</th><th>角色</th><th>审核成员</th><th>邮箱</th><th>状态</th><th>注册时间</th><th>操作</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="6" class="text-center text-muted" style="padding:40px;">
+                <tr><td colspan="7" class="text-center text-muted" style="padding:40px;">
                   需要后端接口：GET api/users.php?action=list<br>
                   <span class="text-sm">此模块的 UI 已就绪，等待 API 对接</span>
                 </td></tr>
@@ -946,6 +950,43 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
                 <tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== MODULE: GALONLY REVIEWERS ====== -->
+      <section class="module-panel" id="module-galonly-reviewers" data-component="GalOnly Reviewers" data-od-id="galonly-reviewers">
+        <div class="panel-card">
+          <div class="panel-header">
+            <span class="panel-title">摊位审核成员（总审 / 陪审）</span>
+            <button class="btn btn-primary btn-sm" onclick="saveGalonlyReviewers()">保存审核成员</button>
+          </div>
+          <div class="panel-body">
+            <p class="text-sm text-muted" style="margin-bottom:14px;line-height:1.7;">
+              GalOnly 摊位审核采用两阶段多人投票制：<strong>陪审</strong>可浏览摊位详情并给出「通过 / 驳回 + 意见」；<strong>总审</strong>在参考意见后确定最终审核结果（阶段一：通过进入第二阶段 / 驳回可修改；阶段二：通过 / 打回修改 / 驳回 / 拼摊）。本名单对全部 GalOnly 活动生效。<br><br>
+              <strong>身份规则：</strong>总审/陪审是「审核成员」身份组的细分权限，只能从已开启审核成员身份的用户中分配；请先在「用户管理」中为用户开启「审核成员」身份（关闭该身份会联动清除其总审/陪审权限）。
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+              <div>
+                <h4 style="margin-bottom:8px;font-size:14px;">总审成员</h4>
+                <div id="chiefList" style="display:grid;gap:8px;margin-bottom:10px;"></div>
+                <div style="display:flex;gap:8px;">
+                  <select id="chiefCandidate" class="search-input" style="flex:1;min-width:0;"></select>
+                  <button class="btn btn-ghost btn-sm" onclick="addReviewer('chief')">添加</button>
+                </div>
+              </div>
+              <div>
+                <h4 style="margin-bottom:8px;font-size:14px;">陪审成员</h4>
+                <div id="juryList" style="display:grid;gap:8px;margin-bottom:10px;"></div>
+                <div style="display:flex;gap:8px;">
+                  <select id="juryCandidate" class="search-input" style="flex:1;min-width:0;"></select>
+                  <button class="btn btn-ghost btn-sm" onclick="addReviewer('jury')">添加</button>
+                </div>
+              </div>
+            </div>
+            <div class="text-sm text-muted" style="margin-top:12px;line-height:1.7;">
+              候选下拉默认列出已标记审核员 / 超级管理员的用户；可在「用户管理」右上角搜索框检索其它用户并从中选择（输入即搜索）。
+            </div>
           </div>
         </div>
       </section>
@@ -1112,6 +1153,7 @@ let editingAnnounceId = null;
 
 // Review data
 let clubSubmissions = [];
+const MEMBERSHIP_GRANT_API = '../api/membership.php?action=grant_from_submission';
 let eventSubmissions = [];
 let publicationSubmissions = [];
 let membershipPending = [];
@@ -1229,8 +1271,8 @@ async function checkAuth() {
     if ((ROLE_LEVEL[data.user.role] ?? -1) < 2) { alert('权限不足'); window.location.href = '../index.html'; return false; }
     currentUser = data.user;
     isSuperAdmin = data.user.role === 'super_admin';
-    // 用户管理 / 操作日志仅超级管理员可用（与后端 API 权限对齐）
-    document.querySelectorAll('.nav-item[data-module="users"], .nav-item[data-module="logs"]').forEach(function(n) {
+    // 用户管理 / 操作日志 / 摊位审核成员仅超级管理员可用（与后端 API 权限对齐）
+    document.querySelectorAll('.nav-item[data-module="users"], .nav-item[data-module="logs"], .nav-item[data-module="galonly-reviewers"]').forEach(function(n) {
       n.style.display = isSuperAdmin ? '' : 'none';
     });
     // Update sidebar user info
@@ -1251,6 +1293,7 @@ async function checkAuth() {
 const MODULE_META = {
   dashboard:     { breadcrumb: '数据看板', title: '数据概览' },
   review:        { breadcrumb: '内容管理', title: '审核中心' },
+  'galonly-reviewers': { breadcrumb: '内容管理', title: '摊位审核成员' },
   users:         { breadcrumb: '内容管理', title: '用户管理' },
   clubs:         { breadcrumb: '内容管理', title: '同好会总览' },
   announcements: { breadcrumb: '系统运维', title: '公告中心' },
@@ -1280,6 +1323,7 @@ function switchModule(mod) {
 async function loadModuleData(mod) {
   if (mod === 'dashboard') await loadDashboard();
   else if (mod === 'review') await loadReviewData();
+  else if (mod === 'galonly-reviewers') await loadGalonlyReviewers();
   else if (mod === 'clubs') await loadClubsOverview();
   else if (mod === 'users') loadUsers();
   else if (mod === 'announcements') await loadAnnouncements();
@@ -1531,6 +1575,11 @@ async function saveClubSubmissions() {
     });
   } catch { showToast('保存失败', 'error'); }
 }
+function applicantRoleText(role) {
+  const map = { external: '其他', member: '成员', manager: '管理员', representative: '负责人' };
+  return map[role] || map[(role === 'other' ? 'external' : '')] || role || '未填写';
+}
+
 async function approveClub(id) {
   const idx = clubSubmissions.findIndex(s => s.id === id);
   if (idx === -1) return;
@@ -1547,11 +1596,41 @@ async function approveClub(id) {
     const r = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clubData) });
     const data = await r.json();
     if (data.success) {
+      const newClubId = data.id ?? data.data?.id;
+      let grantWarning = '';
+
+      // 新提交已记录 user_id + applicant_role，审批通过后自动绑定身份
+      if (newClubId && sub.user_id && sub.applicant_role) {
+        try {
+          const grantResp = await fetch(MEMBERSHIP_GRANT_API, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: sub.user_id,
+              club_id: newClubId,
+              country: sub.country || 'china',
+              role: sub.applicant_role,
+              contact_account: sub.submitter || ''
+            })
+          });
+          const grantResult = await grantResp.json();
+          if (grantResult.success) {
+            clubSubmissions[idx].membership_id = grantResult.membership_id;
+          } else {
+            grantWarning = '；自动绑定身份失败：' + (grantResult.message || '未知错误');
+          }
+        } catch (grantErr) {
+          console.error('自动绑定身份失败:', grantErr);
+          grantWarning = '；自动绑定身份请求失败，请手动在成员管理中处理';
+        }
+      }
+
       clubSubmissions[idx].status = 'approved';
       clubSubmissions[idx].approved_at = new Date().toISOString();
       await saveClubSubmissions();
       flashCardInPlace('club', id, 'approved');
-      showToast('已通过：' + sub.name, 'success');
+      showToast('已通过：' + sub.name + grantWarning, grantWarning ? 'error' : 'success');
       scheduleReviewReload();
     } else { showToast('审批失败：' + (data.message || ''), 'error'); }
   } catch { showToast('网络错误', 'error'); }
@@ -2007,6 +2086,8 @@ function renderClubReviewCards() {
         ${item.created_at ? `<div class="row"><span class="label">成立时间</span>${formatDate(item.created_at)}</div>` : ''}
         ${item.remark ? `<div class="row" style="margin-top:6px;white-space:pre-wrap;"><span class="label">群简介/备注</span>${escapeHtml(item.remark)}</div>` : ''}
         <div class="row"><span class="label">提交者联系方式</span>${escapeHtml(item.submitter || '匿名')}</div>
+        <div class="row"><span class="label">提交账号</span>${escapeHtml(item.submitter_nickname || item.submitter_username || '（历史匿名提交）')}</div>
+        <div class="row"><span class="label">申请身份</span>${escapeHtml(applicantRoleText(item.applicant_role || item.role))}</div>
         <div class="row"><span class="label">提交时间</span>${submitTime}</div>
       </div>
       <div class="review-card-actions">${buildInlineActions(actions)}</div>
@@ -2165,6 +2246,124 @@ function renderFeedbackReviewCards() {
 }
 
 /* ================================================================
+   GALONLY REVIEWERS (总审 / 陪审成员管理, 仅 super_admin)
+   ================================================================ */
+let galonlyChiefIds = [];
+let galonlyJuryIds = [];
+let galonlyCandidates = [];
+
+async function loadGalonlyReviewers() {
+  try {
+    const r = await fetch('../api/galonly.php?action=list_reviewers', { credentials: 'same-origin' });
+    const data = await r.json();
+    if (!data.success) { showToast(data.message || '加载失败', 'error'); return; }
+    galonlyCandidates = data.candidates || [];
+    galonlyChiefIds = (data.reviewers || []).filter(x => x.role === 'chief').map(x => parseInt(x.user_id, 10));
+    galonlyJuryIds = (data.reviewers || []).filter(x => x.role === 'jury').map(x => parseInt(x.user_id, 10));
+    renderReviewerLists();
+  } catch (e) {
+    showToast('加载失败：' + e.message, 'error');
+  }
+}
+
+function reviewerDisplayName(uid) {
+  const c = galonlyCandidates.find(x => parseInt(x.id, 10) === uid);
+  if (c) return (c.nickname || c.username || ('用户#' + uid)) + ' (ID ' + uid + ')';
+  return '用户 #' + uid;
+}
+
+function fillCandidateSelect(id, exclude) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const excludeSet = {};
+  (exclude || []).forEach(uid => { excludeSet[uid] = true; });
+  const opts = galonlyCandidates
+    .filter(c => !excludeSet[parseInt(c.id, 10)])
+    .map(c => '<option value="' + c.id + '">' + escapeHtml(c.nickname || c.username || ('用户#' + c.id)) + ' (ID ' + c.id + ')</option>');
+  sel.innerHTML = '<option value="">请选择用户</option>' + opts.join('');
+}
+
+function renderReviewerLists() {
+  const chiefList = document.getElementById('chiefList');
+  const juryList = document.getElementById('juryList');
+  if (chiefList) {
+    chiefList.innerHTML = galonlyChiefIds.length
+      ? galonlyChiefIds.map((uid, i) =>
+          '<div class="review-card pending" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;">' +
+          '<span style="font-size:13px;">' + escapeHtml(reviewerDisplayName(uid)) + '</span>' +
+          '<button class="btn btn-ghost btn-sm" onclick="removeReviewer(\'chief\',' + i + ')">移除</button></div>').join('')
+      : '<div class="empty-state" style="padding:14px;">暂无总审成员</div>';
+  }
+  if (juryList) {
+    juryList.innerHTML = galonlyJuryIds.length
+      ? galonlyJuryIds.map((uid, i) =>
+          '<div class="review-card pending" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;">' +
+          '<span style="font-size:13px;">' + escapeHtml(reviewerDisplayName(uid)) + '</span>' +
+          '<button class="btn btn-ghost btn-sm" onclick="removeReviewer(\'jury\',' + i + ')">移除</button></div>').join('')
+      : '<div class="empty-state" style="padding:14px;">暂无陪审成员</div>';
+  }
+  fillCandidateSelect('chiefCandidate', galonlyChiefIds);
+  fillCandidateSelect('juryCandidate', galonlyJuryIds);
+}
+
+function addReviewer(role) {
+  const sel = document.getElementById(role === 'chief' ? 'chiefCandidate' : 'juryCandidate');
+  if (!sel) return;
+  const uid = parseInt(sel.value, 10);
+  if (!uid) { showToast('请先选择用户', 'error'); return; }
+  const target = role === 'chief' ? galonlyChiefIds : galonlyJuryIds;
+  const other = role === 'chief' ? galonlyJuryIds : galonlyChiefIds;
+  if (target.indexOf(uid) !== -1) { showToast('该用户已在' + (role === 'chief' ? '总审' : '陪审') + '名单中', 'error'); return; }
+  if (other.indexOf(uid) !== -1) { showToast('该用户已在另一名单中，不能重复添加', 'error'); return; }
+  target.push(uid);
+  renderReviewerLists();
+}
+
+function removeReviewer(role, idx) {
+  const target = role === 'chief' ? galonlyChiefIds : galonlyJuryIds;
+  target.splice(idx, 1);
+  renderReviewerLists();
+}
+
+let reviewerSearchTimer = null;
+function searchReviewerCandidates(query) {
+  clearTimeout(reviewerSearchTimer);
+  reviewerSearchTimer = setTimeout(() => {
+    const q = (query || '').trim();
+    fetch('../api/users.php?action=list&per_page=20&search=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.users)) {
+          const found = data.users.map(u => ({ id: u.id, nickname: u.nickname, username: u.username, role: u.display_role || u.role }));
+          galonlyCandidates = galonlyCandidates.concat(found);
+          const seen = {};
+          galonlyCandidates = galonlyCandidates.filter(c => (seen[c.id] ? false : (seen[c.id] = true)));
+          renderReviewerLists();
+          if (found.length === 0) showToast('未找到匹配用户', 'error');
+        }
+      })
+      .catch(() => {});
+  }, 350);
+}
+
+async function saveGalonlyReviewers() {
+  try {
+    const r = await fetch('../api/galonly.php?action=save_reviewers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ event_id: 0, chief_ids: galonlyChiefIds, jury_ids: galonlyJuryIds })
+    });
+    const data = await r.json();
+    if (!data.success) { showToast(data.message || '保存失败', 'error'); return; }
+    showToast('审核成员已保存', 'success');
+    await loadGalonlyReviewers();
+  } catch (e) {
+    showToast('保存失败：' + e.message, 'error');
+  }
+}
+
+/* ================================================================
    USER MANAGEMENT (needs api/users.php)
    ================================================================ */
 function loadUsers() {
@@ -2211,6 +2410,9 @@ function loadUsers() {
       return '<tr>' +
         '<td><strong>' + escapeHtml(u.nickname || u.username || '未知') + '</strong><br><span class="text-muted" style="font-size:11px;">@' + escapeHtml(u.username || '') + ' · ID ' + u.id + '</span></td>' +
         '<td><select onchange="updateUserRole(' + u.id + ', this.value)" style="padding:4px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface-alt);color:var(--color-text);font-size:12px;">' + roleOptions + '</select></td>' +
+        '<td><label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">' +
+          '<input type="checkbox" onchange="toggleAuditIdentity(' + u.id + ', this.checked)" ' + (u.is_audit ? 'checked' : '') + ' style="accent-color:var(--color-primary);width:15px;height:15px;">' +
+          '<span style="color:' + (u.is_audit ? 'var(--color-success)' : 'var(--color-text-muted)') + ';">' + (u.is_audit ? '审核成员' : '普通用户') + '</span></label></td>' +
         '<td>' + escapeHtml(u.email || '—') + '</td>' +
         '<td><span style="color:' + statusColor + ';">' + statusLabel + '</span></td>' +
         '<td>' + escapeHtml(formatDate(u.created_at) || '—') + '</td>' +
@@ -2232,6 +2434,28 @@ async function updateUserRole(userId, role) {
     });
     const data = await r.json();
     showToast(data.message || (data.success ? '角色已更新' : '更新失败'), data.success ? 'success' : 'error');
+    if (data.success) loadUsers();
+  } catch (e) {
+    showToast('网络错误，更新失败', 'error');
+  }
+}
+
+async function toggleAuditIdentity(userId, on) {
+  if (!on) {
+    if (!confirm('关闭「审核成员」身份将同时移除该用户的总审/陪审细分权限（联动清除），确认关闭？')) {
+      loadUsers();
+      return;
+    }
+  }
+  try {
+    const r = await fetch('../api/users.php?action=update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ id: userId, is_audit: on ? 1 : 0 })
+    });
+    const data = await r.json();
+    showToast(data.message || (data.success ? (on ? '已开启审核成员身份' : '已关闭审核成员身份') : '更新失败'), data.success ? 'success' : 'error');
     if (data.success) loadUsers();
   } catch (e) {
     showToast('网络错误，更新失败', 'error');
@@ -2475,7 +2699,7 @@ function renderAnnouncements(list) {
     }
     actions += '<button class="action-btn" onclick="navigator.clipboard.writeText(\'' + escapeHtml(a.content || '').replace(/'/g, "\\'") + '\').then(function(){showToast(\'已复制\',\'success\')}).catch(function(){showToast(\'复制失败\',\'error\')})">复制</button> ';
     actions += '<button class="action-btn danger" onclick="deleteAnnouncement(' + a.id + ')">删除</button>';
-    let contentPreview = renderAdminMarkdown((a.content || '').slice(0, 200));
+    let contentPreview = renderAdminMarkdown(a.content || '');
     return `<div class="announce-card ${typeCls}">
       <div class="card-left">
         <div class="card-top">
@@ -2674,6 +2898,7 @@ const LOG_ACTION_LABELS = [
   [/^membership\.kick/, '移出同好会成员'],
   [/^membership\.change_role/, '修改同好会成员角色'],
   [/^membership\.transfer/, '转移同好会负责人'],
+  [/^membership\.grant_from_submission/, '同好会提交审核自动绑定身份'],
   [/^membership\./, '同好会成员操作'],
   [/^galonly\.submit_staff/, '提交 Staff 申请'],
   [/^galonly\.update_staff$/, '修改 Staff 申请'],
@@ -2767,7 +2992,7 @@ function exportData(module, format) {
       .then(r => r.json())
       .then(d => {
         const annData = (d.announcements || []).map(a => ({
-          title: a.title, type: a.type, status: a.status, content: (a.content || '').slice(0, 200),
+          title: a.title, type: a.type, status: a.status, content: a.content || '',
           persistent: a.is_persistent ? '是' : '否', date: a.published_at || a.created_at
         }));
         downloadExport(annData, 'vnfest_announcements', format);

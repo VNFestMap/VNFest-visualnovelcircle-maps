@@ -110,6 +110,7 @@ wiki/uploads/*
 !*.example.zip
 # AstrBot 插件发布包（Bot 接入页下载入口，需要随仓库分发）
 !downloads/astrbot_plugin_galgamemap_beta0.5.zip
+!downloads/astrbot_plugin_galgamemap_beta0.6.zip
 
 # Local reference materials
 参考/

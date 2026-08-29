@@ -1,0 +1,218 @@
+/* ===========================================================================
+   VNFest WIKI · 每日日报（Daily Digest）
+   仅补充日报特有的「中间内容」样式；顶层框架、侧栏、卡片外壳全部复用
+   ../wiki.css 的 wiki-* 变量与布局类，配色随 WIKI 主题（浅/纸/暗）自动切换。
+   =========================================================================== */
+
+/* 期号导航（读者页顶部：上一期 / 今天 / 下一期） */
+.vn-daily-layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.vn-daily-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--wiki-border-soft);
+}
+
+.vn-daily-nav .vn-daily-nav-date {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--wiki-muted);
+  white-space: nowrap;
+}
+
+.vn-daily-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* 单条情报 */
+.vn-daily-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--wiki-border-soft);
+}
+
+.vn-daily-item:last-child {
+  border-bottom: 0;
+}
+
+.vn-daily-item h3 {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--wiki-text);
+}
+
+.vn-daily-index {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--wiki-link);
+  font-weight: 700;
+}
+
+.vn-daily-item p.vn-daily-summary {
+  margin: 0 0 8px;
+  padding-left: 2.2em;
+  color: var(--wiki-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.vn-daily-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  padding-left: 2.2em;
+  font-size: 12.5px;
+  color: var(--wiki-muted);
+}
+
+.vn-daily-meta .vn-daily-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--wiki-text);
+}
+
+.vn-daily-src {
+  color: var(--wiki-link);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  word-break: break-all;
+}
+
+.vn-daily-src:hover {
+  border-bottom-color: currentColor;
+}
+
+/* 往期查询：日期列表 */
+.vn-archive-list {
+  display: grid;
+  gap: 12px;
+}
+
+.vn-archive-card {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--wiki-border-soft);
+  text-decoration: none;
+  color: inherit;
+}
+
+.vn-archive-card:last-child {
+  border-bottom: 0;
+}
+
+.vn-archive-date {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--wiki-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.vn-archive-week {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--wiki-muted);
+}
+
+.vn-archive-card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--wiki-link);
+}
+
+.vn-archive-card p {
+  margin: 0;
+  color: var(--wiki-muted);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.vn-archive-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.vn-archive-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--wiki-border-soft);
+  border-radius: 999px;
+  background: var(--wiki-panel);
+  color: var(--wiki-muted);
+  font-size: 12px;
+}
+
+.vn-archive-empty {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--wiki-muted);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .vn-daily-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vn-daily-nav {
+    padding: 12px 14px;
+  }
+
+  .vn-daily-nav-links {
+    margin-left: 0;
+  }
+
+  .vn-archive-card {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .vn-daily-item p.vn-daily-summary,
+  .vn-daily-meta {
+    padding-left: 0;
+  }
+}
+
+/* 按钮（与资料公开库模块同款；共享 wiki.css 未定义，故在日报内补充） */
+.wiki-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--wiki-border);
+  background: var(--wiki-surface);
+  color: var(--wiki-link);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.wiki-button.primary {
+  border-color: var(--wiki-link);
+  background: color-mix(in srgb, var(--wiki-link) 12%, var(--wiki-surface));
+  color: var(--wiki-link);
+  font-weight: 700;
+}

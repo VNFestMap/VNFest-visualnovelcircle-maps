@@ -7,15 +7,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VNFest WIKI</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
   <link rel="stylesheet" href="./wiki.css">
 </head>
 <body class="wiki-index-body">
-  <header class="wiki-header wiki-site-header">
-    <a href="../index.html">Galgame 同好会地图</a>
-    <span>VNFest WIKI</span>
-    <a class="wiki-guide-entry" href="./guide/#/platform/getting-started" data-wiki-guide-link>
-      <span data-wiki-guide-label>使用文档</span>
+  <header class="wiki-header wiki-site-header vn-topbar" data-page-header data-header-manual>
+    <a class="vn-topbar-brand" href="../index.html?guest=1" aria-label="返回地图">
+      <span class="vn-topbar-name">VNFest</span>
+      <span class="vn-topbar-divider" aria-hidden="true"></span>
+      <span class="vn-topbar-sub">WIKI</span>
     </a>
+    <nav class="vn-topbar-actions" aria-label="页面操作">
+      <a class="vn-topbar-action" href="../index.html?guest=1">返回地图</a>
+      <a class="wiki-guide-entry vn-topbar-action" href="./guide/#/platform/getting-started" data-wiki-guide-link>
+      <span data-wiki-guide-label>使用文档</span>
+      </a>
+    </nav>
   </header>
 
   <main class="wiki-index-page wiki-encyclopedia-layout">
@@ -32,6 +40,7 @@
         <a href="#all-pages">全部页面</a>
         <a href="#wiki-library">文档库</a>
         <a href="#publication-library">资料公开库</a>
+        <a href="#daily-report">每日日报</a>
         <a href="#maintenance">维护中心</a>
       </nav>
     </aside>
@@ -76,6 +85,25 @@
             <div class="wiki-index-card-meta">资料库补充 · 即时发布</div>
             <h3><a href="./publications.html">资料公开库</a></h3>
             <p>为同好会提供 PDF 或页面图片上传、实时生成 3D 翻页阅读入口的公开资料库。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="wiki-index-country wiki-article-shell" id="daily-report">
+        <div class="wiki-index-section-heading">
+          <h2>每日日报</h2>
+          <span>Notion 自动抓取</span>
+        </div>
+        <div class="wiki-entry-list">
+          <article class="wiki-library-card wiki-entry" data-search="每日日报 每日简报 早报 galgame 行业 新闻 情报 notion 往期 查询">
+            <div class="wiki-index-card-meta">情报速览 · 每天一期，三分钟读完</div>
+            <h3><a href="./daily/index.html">每日日报</a></h3>
+            <p>每天从 Notion 信息台抓取的日本 Galgame 行业简报，支持本期关键词搜索，并可查询、跳转往期各天日报。</p>
+            <p style="margin-top:8px">
+              <a class="wiki-text-link" href="./daily/index.html">进入今日日报 →</a>
+              &nbsp;·&nbsp;
+              <a class="wiki-text-link" href="./daily/archive.html">查询往期日报 →</a>
+            </p>
           </article>
         </div>
       </section>

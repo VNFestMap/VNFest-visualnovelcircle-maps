@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../../js/page-i18n.js?v=20260813-language"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>往期日报查询 - VNFest WIKI</title>
+  <link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+  <link rel="stylesheet" href="../wiki.css">
+  <link rel="stylesheet" href="./daily.css?v=20260827-daily-align-222833">
+</head>
+<body class="wiki-index-body" data-daily-mode="archive">
+  <header class="wiki-header wiki-site-header">
+    <a href="../../index.html">Galgame 同好会地图</a>
+    <a href="../index.html">VNFest WIKI</a>
+    <a href="./index.html">每日日报</a>
+    <span>往期查询</span>
+  </header>
+
+  <main class="wiki-index-page wiki-encyclopedia-layout vn-daily-layout">
+    <aside class="wiki-index-sidebar" aria-label="往期日报目录">
+      <div class="wiki-sidebar-card">
+        <p class="wiki-index-kicker">Archive</p>
+        <h1>往期日报</h1>
+        <p>按日期查询历史日报，点击任意一期跳转到当天的完整简报。</p>
+      </div>
+      <nav class="wiki-nav wiki-index-toc" aria-label="页面目录">
+        <a href="./index.html">返回今日日报</a>
+        <a href="../index.html">返回 Wiki 首页</a>
+        <a href="../../index.html">返回地图</a>
+      </nav>
+    </aside>
+
+    <section class="wiki-index-main">
+      <section class="wiki-index-hero wiki-article-shell">
+        <div>
+          <p class="wiki-index-kicker">往期查询</p>
+          <h2>全部日报</h2>
+          <p>汇总所有已抓取的日本 Galgame 行业日报，按日期从新到旧排列，可按日期、标题、摘要或品牌检索。</p>
+        </div>
+        <div class="wiki-index-stats" aria-label="统计">
+          <div><strong id="statArchiveCount">-</strong><span>日报期数</span></div>
+        </div>
+      </section>
+
+      <section class="wiki-index-tools wiki-article-shell" aria-label="检索">
+        <label class="wiki-search-label" for="archiveSearch">搜索往期</label>
+        <input id="archiveSearch" type="search" placeholder="搜索日期、标题、摘要或品牌（如 COCORO、Navel）" autocomplete="off">
+        <p>结果点击后跳转到对应日期的日报详情页。</p>
+      </section>
+
+      <section class="wiki-index-country wiki-article-shell" id="archive-section">
+        <div class="wiki-index-section-heading">
+          <h2>往期列表</h2>
+          <span id="archiveStatus">加载中</span>
+        </div>
+        <div class="vn-archive-list" id="archiveList">
+          <p class="vn-archive-empty">正在加载...</p>
+        </div>
+      </section>
+    </section>
+
+  </main>
+
+  <script src="./daily.js"></script>
+</body>
+</html>

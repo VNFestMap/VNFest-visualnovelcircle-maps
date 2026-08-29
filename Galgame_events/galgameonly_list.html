@@ -9,6 +9,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="../js/theme-runtime.js?v=20260702-theme"></script>
 <title>高校专属通道</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
@@ -289,6 +291,8 @@ a{color:var(--accent);text-decoration:none}
 /* Staff-specific badges */
 .staff-pooled{background:var(--pooled-bg);color:var(--pooled);border:1px solid var(--pooled-border)}
 .staff-confirmed{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+/* Booth phase-2 revision badge */
+.status-revision{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning-border)}
 
 /* Full / disabled badges */
 .badge-full{
@@ -978,7 +982,8 @@ html,
     if (ev.booth_count !== undefined) metaParts.push('<span>' + ev.booth_count + ' 个摊位</span>');
 
     /* booth row */
-    var boothBadge = getBoothStatusBadgeHtml(ev.user_application_status);
+    var isBeijingEvent = String(ev.event_code || '').toLowerCase() === 'beijing';
+    var boothBadge = getBoothStatusBadgeHtml(ev.user_application_status, isBeijingEvent);
     var boothButtons = getBoothButtonHtml(ev, loggedIn);
 
     /* staff row */
@@ -1020,13 +1025,26 @@ html,
   }
 
   /* ========== BOOTH STATUS BADGE ========== */
-  function getBoothStatusBadgeHtml(status) {
+  function getBoothStatusBadgeHtml(status, isBeijing) {
     if (!status) return '<span class="status-badge status-none">未申请</span>';
+    if (!isBeijing) {
+      /* 上海等活动保持原有流程文案 */
+      switch (status) {
+        case 'pending':  return '<span class="status-badge status-pending">审核中</span>';
+        case 'approved': return '<span class="status-badge status-approved">已通过</span>';
+        case 'rejected': return '<span class="status-badge status-rejected">已拒绝</span>';
+        default:         return '<span class="status-badge status-none">未申请</span>';
+      }
+    }
     switch (status) {
-      case 'pending':  return '<span class="status-badge status-pending">审核中</span>';
-      case 'approved': return '<span class="status-badge status-approved">已通过</span>';
-      case 'rejected': return '<span class="status-badge status-rejected">已拒绝</span>';
-      default:         return '<span class="status-badge status-none">未申请</span>';
+      case 'pending':          return '<span class="status-badge status-pending">审核中</span>';
+      case 'approved':         return '<span class="status-badge status-approved">预选通过</span>';
+      case 'rejected':         return '<span class="status-badge status-rejected">已驳回</span>';
+      case 'phase2_pending':   return '<span class="status-badge status-pending">制品审核中</span>';
+      case 'phase2_revision':  return '<span class="status-badge status-revision">打回修改</span>';
+      case 'confirmed':        return '<span class="status-badge status-approved">正式摊主</span>';
+      case 'shared':           return '<span class="status-badge staff-pooled">拼摊</span>';
+      default:                 return '<span class="status-badge status-none">未申请</span>';
     }
   }
 
@@ -1039,9 +1057,12 @@ html,
     var deadline = ev.deadline;
     var maxApp = ev.max_applicants;
     var fullBadge = ev.is_full;
-    var boothSubmitPage = String(ev.event_code || '').toLowerCase() === 'beijing'
-      ? 'Beijing_Galonly_submit.html'
-      : 'Shanghai_Galonly_submit.html';
+    var isBeijing = String(ev.event_code || '').toLowerCase() === 'beijing';
+    var boothSubmitPage = isBeijing ? 'Beijing_Galonly_submit.html' : 'Shanghai_Galonly_submit.html';
+    var guidelinesPage = isBeijing ? 'Beijing_Galonly_guidelines.html' : null;
+
+    var statusHref = 'Galonly_status.html?event_id=' + eventId + (appId ? '&application_id=' + appId : '');
+    var statusBtn = '<a class="btn btn-edit" href="' + statusHref + '" aria-label="查询申请状态">查询状态</a>';
 
     if (!status && (regOpen === 0 || regOpen === '0')) {
       return '<span class="btn btn-disabled">申请已关闭</span>';
@@ -1062,19 +1083,55 @@ html,
     }
 
     if (!status) {
-      /* not applied */
+      /* not applied: Beijing goes through the notice page first */
+      if (isBeijing && guidelinesPage) {
+        return '<a class="btn btn-apply" href="' + guidelinesPage + '?event_id=' + eventId + '" aria-label="申请摊位">申请摊位</a>';
+      }
       return '<a class="btn btn-apply" href="' + boothSubmitPage + '?event_id=' + eventId + '" aria-label="申请摊位">申请摊位</a>';
     }
 
-    if (status === 'pending' || status === 'rejected') {
+    if (!isBeijing) {
+      /* 上海等活动保持原有流程按钮 */
+      if (status === 'pending' || status === 'rejected') {
+        var legacyEdit = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
+        return '<a class="btn btn-edit" href="' + legacyEdit + '" aria-label="编辑摊位申请">编辑</a>'
+          + '<button class="btn btn-delete" onclick="deleteBoothApplication(' + appId + ',this)" aria-label="删除摊位申请">删除</button>';
+      }
+      if (status === 'approved') {
+        var legacyView = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
+        return '<a class="btn btn-edit" href="' + legacyView + '" aria-label="查看摊位申请">编辑</a>';
+      }
+      return '';
+    }
+
+    if (status === 'pending') {
       var editHref = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
-      return '<a class="btn btn-edit" href="' + editHref + '" aria-label="编辑摊位申请">编辑</a>'
+      return statusBtn
+        + '<a class="btn btn-edit" href="' + editHref + '" aria-label="编辑摊位申请">编辑</a>'
         + '<button class="btn btn-delete" onclick="deleteBoothApplication(' + appId + ',this)" aria-label="删除摊位申请">删除</button>';
     }
 
     if (status === 'approved') {
+      /* phase 1 passed: unlock merchandise form (Beijing) */
+      var merchBtn = '<a class="btn btn-apply" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="提交制品表单">提交制品</a>';
       var editHref2 = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
-      return '<a class="btn btn-edit" href="' + editHref2 + '" aria-label="查看摊位申请">编辑</a>';
+      return merchBtn + statusBtn + '<a class="btn btn-edit" href="' + editHref2 + '" aria-label="编辑摊位申请">编辑</a>';
+    }
+
+    if (status === 'phase2_pending' || status === 'phase2_revision' || status === 'shared') {
+      return statusBtn;
+    }
+
+    if (status === 'confirmed') {
+      return '<a class="btn btn-apply" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="查看确认函">确认函</a>'
+        + statusBtn;
+    }
+
+    if (status === 'rejected') {
+      var editHref3 = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
+      return statusBtn
+        + '<a class="btn btn-edit" href="' + editHref3 + '" aria-label="编辑摊位申请">编辑</a>'
+        + '<button class="btn btn-delete" onclick="deleteBoothApplication(' + appId + ',this)" aria-label="删除摊位申请">删除</button>';
     }
 
     return '';

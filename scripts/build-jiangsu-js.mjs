@@ -227,11 +227,11 @@ function renderModule(data, input) {
         var strokeWidth = 1.5;
         // 手机端地图区域更紧凑，徽章保持可读但减少相互遮挡。
         var isCompactViewport = width <= 520;
-        var badgeRadius = (isCompactViewport ? 8.5 : 11) / zoomK;
-        var badgeRadiusLarge = (isCompactViewport ? 10 : 13) / zoomK;
-        var fontSize = (isCompactViewport ? 8.5 : 11) / zoomK;
-        var fontSizeLarge = (isCompactViewport ? 7.5 : 9.5) / zoomK;
-        var badgeStrokeWidth = (isCompactViewport ? 1.65 : 1.8) / zoomK;
+        var badgeRadius = (isCompactViewport ? 4.5 : 7.5) / zoomK;
+        var badgeRadiusLarge = (isCompactViewport ? 5.5 : 8.5) / zoomK;
+        var fontSize = (isCompactViewport ? 5.5 : 8.5) / zoomK;
+        var fontSizeLarge = (isCompactViewport ? 5 : 7.5) / zoomK;
+        var badgeStrokeWidth = (isCompactViewport ? 1 : 1.4) / zoomK;
         var badgeRecords = [];
 
         features.forEach(function (feature) {
@@ -246,7 +246,9 @@ function renderModule(data, input) {
                 .attr('class', 'jiangsu-city-path')
                 .attr('d', feature.d)
                 .attr('stroke', '#ffffff')
+                .attr('stroke-opacity', 1)
                 .attr('stroke-width', strokeWidth)
+                .attr('shape-rendering', 'geometricPrecision')
                 .attr('fill', cityFill);
 
             var box = { x: VIEW_BOX[2] / 2, y: VIEW_BOX[3] / 2, width: 0, height: 0 };
@@ -273,7 +275,9 @@ function renderModule(data, input) {
                 .attr('class', 'jiangsu-province-outline')
                 .attr('d', PROVINCE_OUTLINE)
                 .attr('fill', 'none')
-                .attr('stroke', 'var(--md-outline)')
+                .attr('stroke', '#ffffff')
+                .attr('stroke-opacity', 1)
+                .attr('opacity', 1)
                 .attr('stroke-width', 1.4);
         }
 

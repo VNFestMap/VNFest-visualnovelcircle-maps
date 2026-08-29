@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../js/page-i18n.js?v=20260813-language"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../js/theme-runtime.js?v=20260702-theme"></script>
+<title>摊位申请须知 · 北京视觉小说Only 第二届</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes tableRowIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================
+   Design tokens — shared (theme-independent)
+   ============================================================ */
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 100px;
+  --font-display: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+  --font-body: 'Jost', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --transition-theme: background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* ============================================================
+   Design tokens — dark theme
+   ============================================================ */
+[data-theme="dark"] {
+  --bg: oklch(18% 0.035 275);
+  --surface: oklch(24% 0.04 272);
+  --surface-raised: oklch(30% 0.045 270);
+  --fg: oklch(93% 0.003 80);
+  --fg-soft: oklch(84% 0.015 275);
+  --fg-muted: oklch(75% 0.03 270);
+  --fg-dim: oklch(65% 0.04 268);
+  --border: oklch(30% 0.045 270 / 0.35);
+  --border-light: oklch(38% 0.05 268 / 0.35);
+  --accent: oklch(72% 0.07 290);
+  --accent-fill: oklch(58% 0.08 290);
+  --accent-muted: oklch(72% 0.05 290 / 0.15);
+  --accent-ghost: oklch(72% 0.04 290 / 0.08);
+  --shell: oklch(18% 0.035 275 / 0.85);
+  --nav-hover-bg: rgba(236,234,233,0.06);
+  --success: oklch(72% 0.12 155);
+  --success-bg: oklch(72% 0.08 155 / 0.12);
+  --warning: oklch(80% 0.12 85);
+  --warning-bg: oklch(80% 0.08 85 / 0.12);
+  --danger: oklch(70% 0.14 25);
+  --danger-bg: oklch(70% 0.10 25 / 0.12);
+}
+
+/* ============================================================
+   Design tokens — light theme
+   ============================================================ */
+[data-theme="light"] {
+  --bg: oklch(98% 0.005 270);
+  --surface: oklch(100% 0 0);
+  --surface-raised: oklch(97% 0.008 270);
+  --fg: oklch(18% 0.01 270);
+  --fg-soft: oklch(28% 0.015 270);
+  --fg-muted: oklch(43% 0.03 270);
+  --fg-dim: oklch(55% 0.03 270);
+  --border: oklch(88% 0.01 260);
+  --border-light: oklch(92% 0.01 260);
+  --accent: oklch(44% 0.14 42);
+  --accent-fill: oklch(78% 0.1 65);
+  --accent-muted: oklch(44% 0.10 42 / 0.12);
+  --accent-ghost: oklch(44% 0.08 42 / 0.06);
+  --shell: oklch(100% 0 0 / 0.88);
+  --nav-hover-bg: rgba(0,0,0,0.04);
+  --success: oklch(45% 0.12 155);
+  --success-bg: oklch(92% 0.06 155);
+  --warning: oklch(55% 0.12 85);
+  --warning-bg: oklch(95% 0.06 85);
+  --danger: oklch(45% 0.14 25);
+  --danger-bg: oklch(95% 0.04 25);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--bg);transition:var(--transition-theme)}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--fg);
+  min-height:100vh;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  transition:var(--transition-theme);
+}
+a{color:var(--accent);text-decoration:none}
+
+/* ============================================================
+   Header — fixed, glass-morphism
+   ============================================================ */
+.poster-header{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:var(--shell);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  padding:0 36px;
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  transition:var(--transition-theme);
+  animation: slideDown 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.poster-header .header-left{display:flex;align-items:center;gap:0}
+.poster-header .site-title{
+  font-family:var(--font-display);
+  font-weight:700;font-size:18px;
+  color:var(--fg);letter-spacing:0.5px;
+  transition:var(--transition-theme);
+}
+.poster-header .header-divider{
+  width:1px;height:18px;
+  background:var(--border-light);
+  margin:0 14px;
+  transition:var(--transition-theme);
+}
+.poster-header .page-label{
+  font-family:var(--font-body);
+  font-size:13px;font-weight:500;
+  color:var(--fg-muted);
+  letter-spacing:0.02em;
+  transition:var(--transition-theme);
+}
+.poster-header .header-nav{display:flex;align-items:center;gap:4px}
+.poster-header .header-nav a{
+  font-size:12px;font-weight:500;letter-spacing:0.02em;
+  color:var(--fg-dim);
+  padding:7px 18px;border-radius:var(--radius-full);
+  transition:all 0.2s;
+}
+.poster-header .header-nav a:hover{color:var(--fg);background:var(--nav-hover-bg)}
+.poster-header .header-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ============================================================
+   Theme toggle button
+   ============================================================ */
+.theme-toggle{
+  width:32px;height:32px;
+  display:grid;place-items:center;
+  border:1px solid var(--border-light);
+  border-radius:50%;
+  background:transparent;
+  color:var(--fg-dim);
+  font-size:14px;line-height:1;
+  cursor:pointer;
+  transition:all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-left:4px;
+  font-family:inherit;
+}
+.theme-toggle:active{transform:rotate(180deg) scale(0.85)}
+.theme-toggle:hover{
+  color:var(--fg);
+  border-color:var(--fg-dim);
+  background:var(--nav-hover-bg);
+}
+
+/* ============================================================
+   Main container
+   ============================================================ */
+.main-container{
+  max-width:780px;margin:0 auto;
+  padding:80px 24px 48px;
+}
+
+/* ============================================================
+   Back link
+   ============================================================ */
+.back-link{
+  display:inline-block;
+  font-size:13px;
+  color:var(--fg-dim);
+  text-decoration:none;
+  margin-bottom:20px;
+  transition:color 0.2s;
+  animation: slideInLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.back-link:hover{color:var(--accent)}
+
+/* ============================================================
+   Footer logo strip
+   ============================================================ */
+.footer-logo-strip{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  padding:36px 24px 48px;
+  flex-wrap:wrap;
+  opacity:0.55;
+  transition:opacity 0.3s;
+}
+.footer-logo-strip:hover{
+  opacity:0.8;
+}
+.footer-logo-strip img{
+  height:40px;
+  width:auto;
+  object-fit:contain;
+  filter:grayscale(40%);
+  transition:filter 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.footer-logo-strip img:hover{
+  filter:grayscale(0%);
+  transform:scale(1.08);
+}
+[data-theme="light"] .footer-logo-strip img{
+  filter:grayscale(30%) brightness(0.85);
+}
+[data-theme="light"] .footer-logo-strip img:hover{
+  filter:grayscale(0%) brightness(1);
+}
+.footer-logo-divider{
+  width:1px;
+  height:28px;
+  background:var(--border);
+  flex-shrink:0;
+}
+
+/* ============================================================
+   Hero section (compact)
+   ============================================================ */
+.hero-section{
+  margin-bottom:36px;
+  animation: fadeSlideUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+.hero-title{
+  font-family:var(--font-display);
+  font-size:clamp(26px, 4vw, 36px);
+  font-weight:700;
+  color:var(--fg);
+  letter-spacing:-0.02em;
+  margin-bottom:8px;
+  transition:var(--transition-theme);
+}
+.hero-subtitle{
+  font-size:15px;font-weight:400;
+  color:var(--fg-muted);
+  line-height:1.5;
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Content cards (sections)
+   ============================================================ */
+.content-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:28px 32px;
+  margin-bottom:16px;
+  transition:var(--transition-theme);
+  opacity:0;
+  animation:fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.content-card::before{
+  content:'';display:none;
+}
+
+.section-number{
+  font-family:var(--font-display);
+  font-size:12px;font-weight:600;
+  color:var(--accent);
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+  transition:var(--transition-theme);
+}
+.section-title{
+  font-family:var(--font-display);
+  font-size:20px;font-weight:700;
+  color:var(--fg);
+  letter-spacing:-0.01em;
+  margin-bottom:16px;
+  transition:var(--transition-theme);
+}
+
+/* Lists inside cards */
+.content-card ul{
+  list-style:none;
+  padding:0;
+}
+.content-card ul li{
+  position:relative;
+  padding:6px 0 6px 20px;
+  font-size:14px;
+  color:var(--fg-soft);
+  line-height:1.65;
+  transition:var(--transition-theme);
+}
+.content-card ul li::before{
+  content:'';
+  position:absolute;
+  left:2px;top:14px;
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--accent-muted);
+  border:1.5px solid var(--accent);
+  transition:var(--transition-theme);
+}
+
+/* Highlighted info items */
+.content-card .info-highlight{
+  background:var(--accent-ghost);
+  border:1px solid var(--accent-muted);
+  border-radius:var(--radius-sm);
+  padding:12px 16px;
+  margin-top:12px;
+  font-size:13px;
+  color:var(--fg-muted);
+  line-height:1.6;
+  transition:var(--transition-theme);
+}
+.content-card .info-highlight strong{
+  color:var(--fg-soft);
+  font-weight:600;
+}
+
+/* ============================================================
+   Position table
+   ============================================================ */
+.table-wrapper{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  margin-top:4px;
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  transition:var(--transition-theme);
+}
+.position-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.position-table thead th{
+  background:var(--surface-raised);
+  color:var(--fg-muted);
+  font-weight:600;
+  font-size:11px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  padding:12px 16px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  transition:var(--transition-theme);
+}
+.position-table tbody td{
+  padding:10px 16px;
+  color:var(--fg-soft);
+  border-bottom:1px solid var(--border);
+  transition:var(--transition-theme);
+  vertical-align:top;
+}
+.position-table tbody tr{
+  opacity:0;
+  animation:tableRowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.position-table tbody tr:last-child td{border-bottom:none}
+.position-table tbody tr:hover{background:var(--accent-ghost)}
+.position-table .col-idx{
+  width:48px;
+  color:var(--fg-dim);
+  font-weight:500;
+  text-align:center;
+}
+.position-table .col-name{
+  font-weight:600;
+  color:var(--fg);
+  white-space:nowrap;
+}
+.position-table .col-desc{
+  color:var(--fg-muted);
+  min-width:180px;
+}
+
+/* ============================================================
+   Contact info card
+   ============================================================ */
+.contact-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:4px;
+}
+.contact-item{
+  background:var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  transition:var(--transition-theme);
+}
+.contact-item:hover{
+  border-color:var(--border-light);
+  background:var(--accent-ghost);
+}
+.contact-label{
+  font-size:11px;
+  font-weight:600;
+  color:var(--fg-dim);
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  margin-bottom:4px;
+  transition:var(--transition-theme);
+}
+.contact-value{
+  font-size:15px;
+  font-weight:600;
+  color:var(--fg);
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Sticky CTA area
+   ============================================================ */
+.cta-area{
+  position:sticky;
+  bottom:0;
+  background:var(--shell);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--border);
+  padding:16px 32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+  z-index:50;
+  transition:var(--transition-theme);
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+}
+.cta-checkbox-row{
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;
+  font-size:14px;
+  color:var(--fg-soft);
+  user-select:none;
+  transition:var(--transition-theme);
+}
+.cta-checkbox-row:hover{color:var(--fg)}
+.cta-checkbox-row input[type="checkbox"]{
+  accent-color:var(--accent-fill);
+  width:18px;height:18px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.cta-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--accent-fill);
+  color:var(--bg);
+  font-family:inherit;
+  font-size:15px;font-weight:600;
+  padding:12px 32px;
+  border:none;border-radius:var(--radius-full);
+  cursor:pointer;
+  text-decoration:none;
+  letter-spacing:0.02em;
+  transition:
+    var(--transition-theme),
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease,
+    filter 0.25s ease;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.cta-btn:hover:not(.disabled){
+  filter:brightness(1.1);
+  transform:translateY(-2px);
+}
+.cta-btn:active:not(.disabled){
+  transform:scale(0.96) translateY(0);
+  transition:transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cta-btn.disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  pointer-events:none;
+}
+
+/* ============================================================
+   Transition classes for theme switching
+   ============================================================ */
+html,
+.poster-header,
+.content-card,
+.cta-area,
+.table-wrapper,
+.position-table thead th,
+.position-table tbody td,
+.contact-item,
+.contact-grid,
+.theme-toggle {
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+/* Prevent horizontal overflow on all small screens */
+@media (max-width: 768px) {
+  body { overflow-x: hidden; }
+}
+
+/* ---- Tablet / large mobile (<=768px) ---- */
+@media (max-width: 768px) {
+  /* Header — compact, 50px height */
+  .poster-header {
+    padding: 0 16px;
+    height: 50px;
+  }
+  .poster-header .site-title {
+    font-size: 16px;
+  }
+  .poster-header .header-divider {
+    margin: 0 10px;
+    height: 16px;
+  }
+  .poster-header .page-label {
+    font-size: 12px;
+  }
+  .poster-header .header-nav {
+    gap: 2px;
+  }
+  .poster-header .header-nav a {
+    font-size: 12px;
+    padding: 10px 14px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Theme toggle — touch-friendly 38px */
+  .theme-toggle {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
+    margin-left: 6px;
+  }
+
+  /* Main container — tighter side padding, no max-width */
+  .main-container {
+    max-width: none;
+    padding: 68px 16px 32px;
+  }
+
+  /* Back link — 44px tap target */
+  .back-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Footer logo — smaller on mobile */
+  .footer-logo-strip {
+    gap: 16px;
+    padding: 24px 16px 36px;
+  }
+  .footer-logo-strip img {
+    height: 32px;
+  }
+  .footer-logo-divider {
+    height: 22px;
+  }
+
+  /* Hero */
+  .hero-section {
+    margin-bottom: 28px;
+  }
+  .hero-title {
+    font-size: clamp(22px, 5vw, 28px);
+    margin-bottom: 6px;
+  }
+  .hero-subtitle {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Content cards — reduced padding */
+  .content-card {
+    padding: 20px 16px;
+    margin-bottom: 12px;
+  }
+  .section-number {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  .content-card ul li {
+    font-size: 14px;
+    padding: 5px 0 5px 18px;
+    line-height: 1.6;
+  }
+  .content-card ul li::before {
+    top: 13px;
+    width: 5px;
+    height: 5px;
+  }
+  .content-card .info-highlight {
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  /* Table — card layout on tablets and phones */
+  .table-wrapper {
+    position: relative;
+    overflow: visible;
+    margin-top: 2px;
+    border: 0;
+  }
+  .table-wrapper::after {
+    display: none;
+  }
+  .position-table {
+    display: block;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .position-table thead {
+    display: none;
+  }
+  .position-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .position-table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+  }
+  .position-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .position-table tbody tr:hover {
+    background: var(--surface-raised);
+  }
+  .position-table tbody td {
+    padding: 0;
+    border-bottom: 0;
+    font-size: 13px;
+  }
+  .position-table .col-idx {
+    width: auto;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--accent-ghost);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .position-table .col-name {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.45;
+    align-self: center;
+  }
+  .position-table .col-desc {
+    grid-column: 1 / -1;
+    min-width: 0;
+    line-height: 1.65;
+  }
+
+  /* Contact grid — single column */
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .contact-item {
+    padding: 12px 14px;
+  }
+  .contact-value {
+    font-size: 14px;
+  }
+
+  /* CTA area — stacked layout */
+  .cta-area {
+    padding: 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .cta-checkbox-row {
+    font-size: 14px;
+    gap: 10px;
+    justify-content: center;
+    padding: 4px 0;
+    min-height: 44px;
+  }
+  .cta-checkbox-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+  .cta-btn {
+    width: 100%;
+    padding: 14px 24px;
+    min-height: 48px;
+    font-size: 15px;
+  }
+}
+
+/* ---- Mobile (<=480px) ---- */
+@media (max-width: 480px) {
+  /* Header — hide page-label, compact nav */
+  .poster-header {
+    padding: 0 12px;
+    height: 48px;
+  }
+  .poster-header .site-title {
+    font-size: 15px;
+    letter-spacing: 0.3px;
+  }
+  .poster-header .header-divider {
+    margin: 0 6px;
+    height: 14px;
+  }
+  .poster-header .page-label {
+    display: none;
+  }
+  .poster-header .header-nav {
+    gap: 0;
+  }
+  .poster-header .header-nav a {
+    font-size: 11px;
+    padding: 10px 10px;
+    letter-spacing: 0;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    margin-left: 4px;
+  }
+
+  /* Main container */
+  .main-container {
+    padding: 62px 12px 24px;
+  }
+
+  /* Back link */
+  .back-link {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  /* Hero */
+  .hero-section {
+    margin-bottom: 24px;
+  }
+  .hero-title {
+    font-size: clamp(20px, 5.5vw, 24px);
+    margin-bottom: 5px;
+  }
+  .hero-subtitle {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Content cards */
+  .content-card {
+    padding: 16px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+  }
+  .section-number {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .section-title {
+    font-size: 17px;
+    margin-bottom: 10px;
+  }
+  .content-card ul li {
+    font-size: 13.5px;
+    padding: 4px 0 4px 16px;
+    line-height: 1.55;
+  }
+  .content-card ul li::before {
+    left: 1px;
+    top: 12px;
+    width: 5px;
+    height: 5px;
+  }
+  .content-card .info-highlight {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    border-radius: 6px;
+  }
+
+  /* Table cards */
+  .position-table {
+    font-size: 12.5px;
+  }
+  .position-table tbody {
+    gap: 9px;
+  }
+  .position-table tbody tr {
+    padding: 11px;
+    gap: 7px 9px;
+  }
+  .position-table .col-idx {
+    min-width: 26px;
+    height: 23px;
+    font-size: 11.5px;
+  }
+  .position-table .col-name {
+    font-size: 13px;
+  }
+  .position-table .col-desc {
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+
+  /* Contact */
+  .contact-item {
+    padding: 11px 12px;
+  }
+  .contact-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .contact-value {
+    font-size: 14px;
+  }
+
+  /* CTA */
+  .cta-area {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+  .cta-checkbox-row {
+    font-size: 13px;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .cta-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+    min-height: 48px;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ---- Small mobile (<=375px) ---- */
+@media (max-width: 375px) {
+  /* Header */
+  .poster-header {
+    padding: 0 10px;
+    height: 48px;
+  }
+  .poster-header .site-title {
+    font-size: 14px;
+  }
+  .poster-header .header-divider {
+    margin: 0 4px;
+    height: 12px;
+  }
+  .poster-header .header-nav a {
+    font-size: 10px;
+    padding: 10px 8px;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  /* Main container */
+  .main-container {
+    padding: 58px 10px 20px;
+  }
+
+  /* Hero */
+  .hero-title {
+    font-size: 21px;
+  }
+  .hero-subtitle {
+    font-size: 12.5px;
+  }
+
+  /* Content cards */
+  .content-card {
+    padding: 14px 12px;
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .section-number {
+    font-size: 10px;
+  }
+  .content-card ul li {
+    font-size: 13px;
+    padding: 3px 0 3px 15px;
+  }
+  .content-card .info-highlight {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* Table */
+  .position-table {
+    font-size: 12px;
+  }
+  .position-table tbody {
+    gap: 8px;
+  }
+  .position-table tbody tr {
+    padding: 10px;
+  }
+  .position-table .col-idx {
+    min-width: 24px;
+    height: 22px;
+    font-size: 11px;
+  }
+  .position-table .col-name {
+    font-size: 12.5px;
+  }
+  .position-table .col-desc {
+    font-size: 12px;
+  }
+
+  /* Contact */
+  .contact-item {
+    padding: 10px 10px;
+  }
+  .contact-value {
+    font-size: 13px;
+  }
+  .contact-label {
+    font-size: 9px;
+  }
+
+  /* CTA */
+  .cta-area {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .cta-checkbox-row {
+    font-size: 12.5px;
+    gap: 6px;
+  }
+  .cta-checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+  .cta-btn {
+    padding: 13px 16px;
+    font-size: 13.5px;
+  }
+}
+</style>
+</head>
+ <body>
+
+<!-- HEADER -->
+<header class="poster-header" role="banner">
+  <div class="header-left">
+    <span class="site-title">GalOnly</span>
+    <span class="header-divider"></span>
+    <span class="page-label">摊位申请须知 · 北京</span>
+  </div>
+  <nav class="header-nav" role="navigation" aria-label="主导航">
+    <a href="galgameonly_list.html">活动列表</a>
+    <button class="theme-toggle" id="themeToggle" title="切换主题"></button>
+  </nav>
+</header>
+
+<!-- MAIN -->
+<main class="main-container" role="main">
+
+  <a class="back-link" href="galgameonly_list.html">&larr; 返回活动列表</a>
+
+  <!-- Hero -->
+  <div class="hero-section">
+    <h1 class="hero-title">摊位申请须知</h1>
+    <p class="hero-subtitle">北京视觉小说Only 第二届 · 请仔细阅读以下须知，再前往填写摊位报名表</p>
+  </div>
+
+  <!-- Section 1: 报名信息 -->
+  <div class="content-card" style="animation-delay: 0.15s">
+    <div class="section-number">01</div>
+    <h2 class="section-title">报名时间与条件</h2>
+    <ul>
+      <li>即日起可填写完整报名表申请摊位，预计摊位上限 45-50 个；摊位申请截止至 <strong>2026 年 9 月 12 日</strong>，或至摊位数量达到上限为止，以先到者为准。</li>
+      <li>高校摊主：必须通过 VNFest-GalOnly 高校专属通道申请，并附带过往制品或部分参展制品图、菜单预览等。</li>
+      <li>非高校摊主：填写完整的报名表，并附带过往制品或部分参展制品图、菜单预览等。</li>
+      <li>高校可免费申摊：基础摊位含一张 1.2×0.4m 桌子，赠两张摊主证；可选择花费较低的费用升级为 1.2×0.6m 桌子（不额外赠送摊主证）。</li>
+      <li>申请时请提供 QQ 号与手机号（用于审核联系与现场紧急联系），并回答是否需要电源、是否有参展经历等问询。</li>
+      <li>活动地点：北京市朝阳区 北投购物公园（北京市朝阳区安定路5号院20号楼）。</li>
+    </ul>
+  </div>
+
+  <!-- Section 2: 摊位类型 -->
+  <div class="content-card" style="animation-delay: 0.25s">
+    <div class="section-number">02</div>
+    <h2 class="section-title">摊位类型（摊位具体呈现形式，四选一）</h2>
+    <div class="table-wrapper">
+      <table class="position-table">
+        <thead>
+          <tr>
+            <th class="col-idx">序号</th>
+            <th class="col-name">摊位类型</th>
+            <th class="col-desc">说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col-idx">A</td>
+            <td class="col-name">只贩售同人制品</td>
+            <td class="col-desc">摊位仅用于贩售以视觉小说为主题的原创同人制品</td>
+          </tr>
+          <tr>
+            <td class="col-idx">B</td>
+            <td class="col-name">只进行活动</td>
+            <td class="col-desc">摊位仅开展活动，如卡牌体验、游戏试玩、作品展示等，不进行贩售</td>
+          </tr>
+          <tr>
+            <td class="col-idx">C</td>
+            <td class="col-name">二者均有，贩售为主</td>
+            <td class="col-desc">贩售与活动均开展，以贩售同人制品为主</td>
+          </tr>
+          <tr>
+            <td class="col-idx">D</td>
+            <td class="col-name">二者均有，活动为主</td>
+            <td class="col-desc">贩售与活动均开展，以卡牌、试玩、展示等活动为主</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 3: 审核流程 -->
+  <div class="content-card" style="animation-delay: 0.35s">
+    <div class="section-number">03</div>
+    <h2 class="section-title">审核流程（两阶段）</h2>
+    <p style="margin-bottom:12px;color:var(--fg-muted);"><strong>第一阶段：报名与信息/资质审核</strong>（摊位申请截止：2026 年 9 月 12 日）</p>
+    <ul>
+      <li>审核内容：是否与「视觉小说/Galgame」主题相关；社团/个人信息是否真实有效；过往有无参展经验；联系方式（QQ、手机号）与电源、升级摊位等需求问询是否填写完整。</li>
+      <li>通过：恭喜！进入第二阶段，锁定预选资格。</li>
+      <li>驳回可修改：信息不全或主题不符。请根据反馈，可在驳回当天起三天内修改并重新提交。</li>
+      <li>驳回：超出修改期限，则很遗憾本次不能参展。</li>
+    </ul>
+    <p style="margin:16px 0 12px;color:var(--fg-muted);"><strong>第二阶段：锁定资格 → 制品与菜单审核</strong>（首轮材料提交截止：2026 年 9 月 19 日）</p>
+    <ul>
+      <li>通过第一阶段后，您将获得预选摊位名额，并解锁制品审核专用表单，提交计划在展会上展示、售卖的物品的内容或包含多个制品的菜单；参展展示图请在第二阶段随制品表单一并提交。</li>
+      <li>审核依据《摊位商品与展示规则》逐项审查：是否含 R18 或擦边内容、是否有盗版或过度使用官方素材、是否在主要画面使用 AI 生成技术等。</li>
+      <li>通过：恭喜，您已经是本届活动正式的摊主了！请耐心等待摊位位置的分配。</li>
+      <li>打回修改：部分制品不合规，但资格保留。我们会明确告知哪款制品、因何原因未通过，可在打回当天起三天内修改并重新提交。</li>
+      <li>驳回：超出修改期限，则不合规制品本次不得放入菜单，不能参展。若多数制品仍不合规，将取消摊位参展资格。</li>
+      <li>拼摊：若摊位提交制品过少，因摊位数量有限，将保留您的摊主身份，并推荐您与其他摊位拼摊。</li>
+    </ul>
+    <div class="info-highlight">
+      首轮制品审核材料请在 <strong>2026 年 9 月 19 日前</strong>提交。通过审核的制品才允许现场展示或售卖，且必须与审核通过的制品信息或菜单所示信息一致。9 月 19 日后如需调整，仅允许追加个别制品；请在 <strong>2026 年 10 月 1 日前</strong>向摊位组报备并提交审核，追加制品须审核通过后方可现场展示或售卖。未能通过审核却现场售卖的制品，将全部没收并交由主办方保管至活动结束。
+    </div>
+  </div>
+
+  <!-- Section 4: 商品与展示规则 -->
+  <div class="content-card" style="animation-delay: 0.45s">
+    <div class="section-number">04</div>
+    <h2 class="section-title">商品与展示规则</h2>
+    <ul>
+      <li>所有制品内容必须来自以 Galgame/视觉小说体裁为原作的作品，且在 Galgame/视觉小说社群内具有一定认同；不得含有零创游戏及其他争议作品的内容。</li>
+      <li>严禁 R18 与不适宜内容：活动现场严禁展示、售卖任何包含色情、过度暴露、暴力、血腥、恐怖或其它令公众感到明显不适内容的制品。</li>
+      <li>禁止盗版与侵权行为：严禁盗版、盗印、抄袭、未经授权使用官方素材的贩售制品（包括直接翻印官方图片、文本制作周边等）。</li>
+      <li>守法合规：所有商品必须符合中华人民共和国法律法规，严禁任何违法违禁品。</li>
+      <li>陈列规则：含不适宜元素的封面、内页等周边，必须以完全不可见的形式封装（如塑封），严禁在摊位任何可见区域出现。</li>
+      <li>AI 生成特别规定：不得在任何制品及摊位发放物料的创作过程中使用 AI 生成技术进行主要画面创作；如使用 AI 辅助文字创作等，建议标注（鼓励性倡议，非强制）。</li>
+    </ul>
+  </div>
+
+  <!-- Section 5: 现场检查与责任 -->
+  <div class="content-card" style="animation-delay: 0.55s">
+    <div class="section-number">05</div>
+    <h2 class="section-title">现场检查与责任声明</h2>
+    <div class="info-highlight">
+      主办方工作人员有权在活动期间对现场所有摊位商品进行随机或定向检查。违规制品处理：首次发现，要求立即下架并暂扣违规制品至活动结束，并记录摊位信息；拒不配合，主办方有权采取强制清退摊位等措施，并列入未来活动黑名单。<br><br>
+      场内所有交易均属摊主与消费者之间的自愿民事行为，主办方不介入任何定价、售后、退款等交易纠纷；同人制品版权责任由摊主自行承担，若因制品产生版权纠纷，主办方有权处置纠纷，并保留追究其扰乱活动秩序责任的权利。
+    </div>
+  </div>
+
+  <div class="footer-logo-strip">
+    <img src="logo_vnfest.png" alt="VNFest">
+  </div>
+
+</main>
+
+<!-- Sticky CTA -->
+<div class="cta-area" id="ctaArea">
+  <label class="cta-checkbox-row">
+    <input type="checkbox" id="agreeCheckbox">
+    <span>我已阅读并理解以上摊位申请须知</span>
+  </label>
+  <a class="cta-btn disabled" id="ctaBtn" href="#" aria-disabled="true">我已阅读，前往填写报名表</a>
+</div>
+
+<script src="../js/page-background.js?v=20260812-centralized-preferences"></script>
+<script>
+(function() {
+  'use strict';
+
+  /* ========== THEME（与主站 themePreference 同步） ========== */
+  function updateToggleIcon(theme) {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+    btn.setAttribute('aria-label', theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式');
+  }
+  var toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      if (window.VNFTheme && typeof window.VNFTheme.toggle === 'function') {
+        window.VNFTheme.toggle();
+      }
+    });
+  }
+  if (window.VNFTheme && typeof window.VNFTheme.subscribe === 'function') {
+    window.VNFTheme.subscribe(function(detail) {
+      updateToggleIcon(detail.theme);
+    });
+  }
+
+  /* ========== URL PARAMS ========== */
+  var urlParams = new URLSearchParams(window.location.search);
+  var eventId = urlParams.get('event_id');
+
+  /* ========== CTA BUTTON ========== */
+  var checkbox = document.getElementById('agreeCheckbox');
+  var ctaBtn = document.getElementById('ctaBtn');
+
+  var formUrl = 'Beijing_Galonly_submit.html';
+  if (eventId) {
+    formUrl += '?event_id=' + encodeURIComponent(eventId);
+  }
+
+  function updateCtaState() {
+    if (checkbox.checked) {
+      ctaBtn.classList.remove('disabled');
+      ctaBtn.setAttribute('aria-disabled', 'false');
+      ctaBtn.href = formUrl;
+    } else {
+      ctaBtn.classList.add('disabled');
+      ctaBtn.setAttribute('aria-disabled', 'true');
+      ctaBtn.href = '#';
+    }
+  }
+
+  checkbox.addEventListener('change', updateCtaState);
+
+  ctaBtn.addEventListener('click', function(e) {
+    if (ctaBtn.classList.contains('disabled')) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>
+</body>
+</html>

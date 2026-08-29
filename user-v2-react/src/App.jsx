@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ConfigProvider, Layout, Menu, Card, Avatar, Progress, Badge, Tag,
   Statistic, Button, Input, Upload, Empty, Drawer, Switch, Select,
@@ -11,7 +11,7 @@ import {
   MailOutlined, UploadOutlined, CameraOutlined,
   MenuOutlined, CopyOutlined, LinkOutlined,
   TagOutlined, SettingOutlined, FundOutlined, BookOutlined,
-  ReloadOutlined,
+  ReloadOutlined, TranslationOutlined, SunOutlined, MoonOutlined,
 } from '@ant-design/icons';
 import { buildTheme, darkTokens, lightTokens } from './theme-tokens';
 import zhCN from 'antd/locale/zh_CN';
@@ -194,6 +194,10 @@ export default function App() {
   const [language, setLanguage] = useState(() => (
     window.VNFLanguage?.getLanguage?.() === 'ja' ? 'ja' : 'zh'
   ));
+  const [remountKey, setRemountKey] = useState(0);
+  const prevLanguageRef = useRef(
+    window.VNFLanguage?.getLanguage?.() === 'ja' ? 'ja' : 'zh'
+  );
   const [themePreference, setThemePreference] = useState(() => (
     window.VNFTheme?.getPreference?.() || localStorage.getItem('themePreference') || 'system'
   ));
@@ -309,11 +313,22 @@ export default function App() {
 
   useEffect(() => {
     if (!window.VNFLanguage || typeof window.VNFLanguage.subscribe !== 'function') return undefined;
+    // page-i18n 对 React 托管页面在 ja→zh 时不写回 DOM（其 DOM 翻译是单向的），
+    // 而 React 的 VDOM 文本始终是中文，diff 不会更新已被就地改写为日文的文本节点，
+    // 因此需要在 ja→zh 时强制重挂载，让 React 用 VDOM（中文）重建 DOM。
+    const applyLanguage = (next) => {
+      const lang = next === 'ja' ? 'ja' : 'zh';
+      if (prevLanguageRef.current === 'ja' && lang === 'zh') {
+        setRemountKey((key) => key + 1);
+      }
+      prevLanguageRef.current = lang;
+      setLanguage(lang);
+    };
     const unsubscribe = window.VNFLanguage.subscribe((detail) => {
-      setLanguage(detail?.language === 'ja' ? 'ja' : 'zh');
+      applyLanguage(detail?.language);
     });
     window.VNFLanguage.ready?.then?.(() => {
-      setLanguage(window.VNFLanguage.getLanguage() === 'ja' ? 'ja' : 'zh');
+      applyLanguage(window.VNFLanguage.getLanguage());
     });
     return unsubscribe;
   }, []);
@@ -552,9 +567,9 @@ export default function App() {
   return (
     <ConfigProvider theme={themeConfig} locale={antdLocale}>
       {contextHolder}
-      <Layout style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
-        <header className="vn-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <Layout key={remountKey} style={{ display: 'flex', flexDirection: 'column', height: '100dvh' }}>
+        <header className="vn-topbar" data-page-header>
+          <div className={isMobile ? undefined : 'vn-topbar-leading'}>
             <a className="vn-topbar-brand" href="./index.html?guest=1">
               <span className="vn-topbar-name">VNFest</span>
               <span className="vn-topbar-divider" />
@@ -569,9 +584,39 @@ export default function App() {
               />
             )}
           </div>
-          <Space>
+          <Space className={isMobile ? undefined : 'vn-topbar-actions'} size={4}>
+            {isMobile && (
+              <Tooltip title={language === 'ja' ? '切换到中文' : '切换到日本語'}>
+                <Button
+                  className="vn-topbar-action vn-topbar-quick is-icon"
+                  type="text"
+                  icon={<TranslationOutlined />}
+                  onClick={() => {
+                    const next = language === 'ja' ? 'zh' : 'ja';
+                    if (!window.VNFLanguage?.setPreference) return;
+                    window.VNFLanguage.setPreference(next).then((result) => {
+                      if (result && result.success === false && result.error) {
+                        messageApi.error(result.error);
+                      }
+                    }).catch(() => {});
+                  }}
+                  aria-label={language === 'ja' ? '切换到中文' : '切换到日本語'}
+                />
+              </Tooltip>
+            )}
+            {isMobile && (
+              <Tooltip title={isDark ? '切换到浅色' : '切换到深色'}>
+                <Button
+                  className="vn-topbar-action vn-topbar-quick is-icon"
+                  type="text"
+                  icon={isDark ? <SunOutlined /> : <MoonOutlined />}
+                  onClick={() => setThemeMode(isDark ? 'light' : 'dark')}
+                  aria-label={isDark ? '切换到浅色' : '切换到深色'}
+                />
+              </Tooltip>
+            )}
             <Tooltip title="刷新数据">
-              <Button type="text" icon={<ReloadOutlined />} onClick={() => reloadData({ silent: true })} />
+              <Button className={isMobile ? undefined : 'vn-topbar-action is-icon'} type="text" icon={<ReloadOutlined />} onClick={() => reloadData({ silent: true })} aria-label="刷新数据" />
             </Tooltip>
           </Space>
         </header>

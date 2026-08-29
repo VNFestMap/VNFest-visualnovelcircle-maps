@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { escapeHtml, generateWikiPages, pageNameForClubKey } from './generate-wiki-pages.mjs';
+import { escapeHtml, generateWikiPages, languagePageNameForClubKey, pageNameForClubKey } from './generate-wiki-pages.mjs';
 
 const root = process.cwd();
 const fixture = join(root, '.tmp-wiki-test');
@@ -58,7 +58,7 @@ writeFileSync(join(fixture, 'data/clubs_japan.json'), JSON.stringify({
 writeFileSync(join(fixture, 'wiki/content/china-2.json'), JSON.stringify({
   club_key: 'china-2',
   title: '安理二次元同好交流圈',
-  summary: '公开资料页 <script>alert(1)</script>',
+  summary: '公开资料页 <script>alert(1)</script> **加粗**、*斜体*、~~删除~~、[站点](https://example.com)、[危险](javascript:alert(1)) 和 `代码`\n第二行摘要\\n第三行字面量',
   i18n: {
     ja: {
       title: 'Anri VN Circle JP',
@@ -74,9 +74,29 @@ writeFileSync(join(fixture, 'wiki/content/china-2.json'), JSON.stringify({
   images: [
     { url: '../images/sample.png', caption: '示例图片', alt: '示例', width_percent: 50, align: 'right', fit: 'contain' }
   ],
+  avatar: {
+    url: '../images/avatar.png',
+    alt: '同好会头像',
+    caption: '同好会标志',
+    position: 'bottom'
+  },
   sections: [
-    { heading: '概要', level: 2, body: ['第一段', '第二段'] },
-    { heading: '活动形式', level: 3, body: ['每月组织一次交流会'] }
+    {
+      heading: '概要',
+      level: 2,
+      blocks: [
+        { type: 'paragraph', text: '第一段', note: '这是正文脚注。' },
+        { type: 'image', url: '../images/inline.png', caption: '章节图片', alt: '章节图片替代文本', width_percent: 50, aspect_ratio: '4/3', align: 'left', fit: 'contain' },
+        { type: 'paragraph', text: '第二段' },
+      ],
+    },
+    { heading: '活动形式', level: 3, body: ['每月组织一次交流会'] },
+    {
+      heading: '旧数据兼容',
+      level: 2,
+      body: ['旧版正文仍然可以读取。'],
+      images: [{ url: '../images/legacy-inline.png', caption: '旧版章节图片', alt: '旧版章节图片', width_percent: 50, align: 'center', fit: 'cover' }],
+    }
   ],
   references: [
     { label: '登记资料', url: '../index.html' }
@@ -130,6 +150,9 @@ if (escapeHtml('<b>"x"&</b>') !== '&lt;b&gt;&quot;x&quot;&amp;&lt;/b&gt;') {
 if (pageNameForClubKey('china-2') !== 'china-2.html') {
   throw new Error('pageNameForClubKey should create a stable HTML filename');
 }
+if (languagePageNameForClubKey('china-2', 'ja') !== 'china-2-ja.html') {
+  throw new Error('languagePageNameForClubKey should create a separate Japanese HTML filename');
+}
 
 const result = generateWikiPages({ rootDir: fixture });
 if (result.count !== 3) {
@@ -139,6 +162,10 @@ if (result.count !== 3) {
 const pagePath = join(fixture, 'wiki/pages/china-2.html');
 if (!existsSync(pagePath)) {
   throw new Error('Expected generated wiki HTML page');
+}
+const jaPagePath = join(fixture, 'wiki/pages/china-2-ja.html');
+if (!existsSync(jaPagePath)) {
+  throw new Error('Expected generated Japanese wiki HTML page');
 }
 
 const html = readFileSync(pagePath, 'utf8');
@@ -151,6 +178,12 @@ if (html.includes('<script>alert(1)</script>')) {
 if (!html.includes('&lt;script&gt;alert(1)&lt;/script&gt;')) {
   throw new Error('Generated page should preserve escaped text content');
 }
+if (!html.includes('<strong>加粗</strong>') || !html.includes('<em>斜体</em>') || !html.includes('<del>删除</del>') || !html.includes('<code>代码</code>') || !html.includes('href="https://example.com"')) {
+  throw new Error('Generated page should render the supported Markdown inline syntax');
+}
+if (html.includes('href="javascript:')) {
+  throw new Error('Generated page should reject unsafe Markdown links');
+}
 if (!html.includes('<h2>概要</h2>') || !html.includes('<h3>活动形式</h3>')) {
   throw new Error('Generated page should render section heading levels');
 }
@@ -160,14 +193,64 @@ if (!html.includes('wiki-image-gallery') || !html.includes('../images/sample.png
 if (!html.includes('wiki-image-align-right') || !html.includes('wiki-image-fit-contain') || !html.includes('--wiki-image-width:50%')) {
   throw new Error('Generated page should render image display controls');
 }
-if (!html.includes('data-wiki-lang="zh"') || !html.includes('data-wiki-lang="ja"') || !html.includes('Anri VN Circle JP')) {
-  throw new Error('Generated page should render Chinese and Japanese wiki bodies');
+if (!html.includes('wiki-entry-avatar') || !html.includes('../images/avatar.png') || !html.includes('同好会标志')) {
+  throw new Error('Generated page should render the configurable entry avatar');
 }
-if (!html.includes('language-runtime.js') || !html.includes('VNFLanguage')) {
-  throw new Error('Generated page should consume the shared language runtime');
+if (html.indexOf('wiki-entry-facts') > html.indexOf('wiki-appearance-rail')) {
+  throw new Error('Entry facts should be rendered inside the article main flow before the appearance rail');
 }
-if (html.includes('wikiLanguageSwitch') || html.includes('data-wiki-switch-lang')) {
-  throw new Error('Generated page must not expose a page-local language switcher');
+if (!html.includes('wiki-inline-image-gallery') || !html.includes('章节图片') || !html.includes('../images/inline.png')) {
+  throw new Error('Generated page should render image blocks inside article sections');
+}
+if (!html.includes('旧版章节图片') || !html.includes('../images/legacy-inline.png') || !html.includes('旧版正文仍然可以读取。')) {
+  throw new Error('Generated page should fall back to legacy body and section images');
+}
+if (!html.includes('--wiki-image-ratio:4/3')) {
+  throw new Error('Generated page should render image aspect ratio controls');
+}
+if (!html.includes('wiki-article-nav') || !html.includes('wiki-article-main') || !html.includes('wiki-appearance-rail') || !html.includes('wiki-entry-facts')) {
+  throw new Error('Generated page should render the three-column article shell');
+}
+if (!html.includes('wiki-appearance-launcher') || !html.includes('data-appearance-hide') || !html.includes('data-appearance-dock')) {
+  throw new Error('Generated page should render the appearance hide and restore controls');
+}
+const generatedHeaderStart = html.indexOf('<header class="wiki-header vn-topbar"');
+if (generatedHeaderStart < 0 || html.indexOf('wiki-appearance-launcher') < generatedHeaderStart || html.indexOf('wiki-appearance-launcher') > html.indexOf('</header>', generatedHeaderStart)) {
+  throw new Error('Generated page should place the appearance launcher in the top header');
+}
+if ((html.match(/data-appearance-launcher/g) || []).length !== 1 || /<article class="wiki-article"[^>]*>\s*<button[^>]+data-appearance-launcher/.test(html)) {
+  throw new Error('Generated page should render exactly one appearance launcher in the top header, never inside the article grid');
+}
+if (!html.includes('wiki-toc-sublist') || !html.includes('wiki-toc-level-3') || html.indexOf('wiki-toc-level-3') === -1) {
+  throw new Error('Generated page should render nested TOC items for level-3 sections');
+}
+if (!html.includes('wiki-footnote-marker') || !html.includes('这是正文脚注。') || !html.includes('zh-footnote-1')) {
+  throw new Error('Generated page should render paragraph footnotes');
+}
+if (!html.includes('第二行摘要<br>第三行字面量') || html.includes('\\n')) {
+  throw new Error('Generated page should render actual and literal escaped line breaks without showing \\n');
+}
+if (!html.includes('data-wiki-lang="zh"') || html.includes('data-wiki-lang="ja"') || html.includes('Anri VN Circle JP')) {
+  throw new Error('Chinese generated page should not include Japanese wiki body');
+}
+const jaHtml = readFileSync(jaPagePath, 'utf8');
+if (!jaHtml.includes('data-wiki-lang="ja"') || !jaHtml.includes('Anri VN Circle JP') || jaHtml.includes('data-wiki-lang="zh"')) {
+  throw new Error('Japanese generated page should contain only Japanese wiki body');
+}
+if (!html.includes('class="wiki-language-switch"') || !html.includes('href="./china-2-ja.html"') || !html.includes('data-wiki-page-lang="zh"')) {
+  throw new Error('Generated page should link to a separate Japanese page');
+}
+if (html.includes('id="section-1"') || !html.includes('id="zh-section-1"') || !jaHtml.includes('id="ja-section-1"')) {
+  throw new Error('Generated language pages should use language-prefixed section anchors');
+}
+if (!html.includes('language-runtime.js') || !html.includes('wiki-page.js')) {
+  throw new Error('Generated page should consume the shared language runtime and reader behavior');
+}
+if (!html.includes('wiki.css?v=20260817-editor-workbench')) {
+  throw new Error('Generated page should bust the stylesheet cache after the editor and TOC changes');
+}
+if (!html.includes('wiki-page.js') || html.includes('data-wiki-switch-lang')) {
+  throw new Error('Generated page should use the shared wiki reader behavior');
 }
 
 const manifest = JSON.parse(readFileSync(join(fixture, 'wiki/index.json'), 'utf8'));
@@ -182,6 +265,9 @@ if (manifest['china-4'].region !== '四川') {
 }
 if (manifest['china-2'].i18n?.ja?.title !== 'Anri VN Circle JP' || manifest['china-2'].i18n?.ja?.summary !== 'Japanese summary for the wiki page.') {
   throw new Error('Manifest should include Japanese wiki index metadata');
+}
+if (manifest['china-2'].i18n?.ja?.url !== './pages/china-2-ja.html') {
+  throw new Error('Manifest should include the separate Japanese page URL');
 }
 
 const homePath = join(fixture, 'wiki/index.html');

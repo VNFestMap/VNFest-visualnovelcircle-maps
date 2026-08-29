@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摊主确认函 · GalOnly</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
+  <script src="../js/theme-runtime.js?v=20260813-beijing-booth"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --page-bg: #111628;
+      --page-bg-soft: #182039;
+      --paper: #242b40;
+      --paper-raised: #2c344d;
+      --ink: #f7f3e9;
+      --ink-soft: #ded9cf;
+      --ink-muted: #a9b0c2;
+      --rule: rgba(247, 243, 233, .18);
+      --blue: #73a7d9;
+      --blue-deep: #29548d;
+      --orange: #f0a14d;
+      --coral: #e27e7b;
+      --yellow: #f0d174;
+      --success: #8ed7b0;
+      --success-bg: rgba(142, 215, 176, .12);
+      --warning: #f2c978;
+      --warning-bg: rgba(242, 201, 120, .12);
+      --danger: #f09a9a;
+      --danger-bg: rgba(240, 154, 154, .12);
+      --shadow: 0 28px 90px rgba(0, 0, 0, .3);
+      --display: "Playfair Display", "Noto Serif SC", Georgia, serif;
+      --body: "Jost", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --page-bg: #eef2f5;
+      --page-bg-soft: #e2e9ef;
+      --paper: #fffaf0;
+      --paper-raised: #f6ebd8;
+      --ink: #18243a;
+      --ink-soft: #38445a;
+      --ink-muted: #647086;
+      --rule: rgba(24, 36, 58, .16);
+      --blue: #3e77b5;
+      --blue-deep: #29548d;
+      --orange: #c96e22;
+      --coral: #c85f64;
+      --yellow: #c89a2e;
+      --success: #317d56;
+      --success-bg: #e3f2e8;
+      --warning: #87601b;
+      --warning-bg: #fbf0d2;
+      --danger: #a54141;
+      --danger-bg: #fae4e4;
+      --shadow: 0 24px 65px rgba(48, 65, 83, .16);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--page-bg); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: var(--page-bg);
+      font-family: var(--body);
+      line-height: 1.65;
+      text-wrap: pretty;
+      -webkit-font-smoothing: antialiased;
+      transition: background .35s ease, color .35s ease;
+    }
+    body::before,
+    body::after {
+      position: fixed;
+      z-index: 0;
+      pointer-events: none;
+      content: "";
+      opacity: .16;
+    }
+    body::before {
+      top: 12vh;
+      left: -110px;
+      width: 360px;
+      height: 92px;
+      background: var(--blue);
+      transform: rotate(-13deg);
+    }
+    body::after {
+      right: -95px;
+      bottom: 14vh;
+      width: 340px;
+      height: 86px;
+      background: var(--orange);
+      transform: rotate(11deg);
+    }
+    a { color: inherit; }
+    button,
+    a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--orange);
+      outline-offset: 4px;
+    }
+    [hidden] { display: none !important; }
+
+    .page-shell {
+      position: relative;
+      z-index: 1;
+      width: min(900px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 76px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding: 8px 15px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      background: color-mix(in oklch, var(--paper) 72%, transparent);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease;
+    }
+    .back-link::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--orange);
+      content: "";
+    }
+    .back-link:hover {
+      border-color: var(--orange);
+      color: var(--ink);
+      background: color-mix(in oklch, var(--paper) 88%, var(--orange) 12%);
+      transform: translateY(-1px);
+    }
+
+    .page-heading {
+      position: relative;
+      margin-bottom: 22px;
+      padding: 28px clamp(22px, 5vw, 48px) 26px;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      background: var(--page-bg-soft);
+      box-shadow: var(--shadow);
+    }
+    .page-heading::before,
+    .page-heading::after {
+      position: absolute;
+      content: "";
+      pointer-events: none;
+    }
+    .page-heading::before {
+      top: 0;
+      right: 12%;
+      width: 150px;
+      height: 9px;
+      background: var(--coral);
+      transform: rotate(-3deg);
+    }
+    .page-heading::after {
+      right: -24px;
+      bottom: 20px;
+      width: 190px;
+      height: 11px;
+      background: var(--blue);
+      transform: rotate(-8deg);
+    }
+    .eyebrow {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 8px;
+      color: var(--orange);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+    .page-heading h1 {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--display);
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 700;
+      letter-spacing: -.045em;
+      line-height: 1.15;
+    }
+    .hero-event {
+      position: relative;
+      z-index: 1;
+      margin: 10px 0 0;
+      color: var(--ink-muted);
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .state-message {
+      padding: 18px 20px;
+      border: 1px solid var(--rule);
+      background: color-mix(in oklch, var(--paper) 86%, transparent);
+      color: var(--ink-soft);
+      line-height: 1.7;
+    }
+    .state-message.error {
+      border-color: color-mix(in oklch, var(--danger) 50%, var(--rule));
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .state-message.notice {
+      border-color: color-mix(in oklch, var(--warning) 52%, var(--rule));
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .invitation-card {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(22px, 5vw, 54px);
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .invitation-card::before,
+    .invitation-card::after {
+      position: absolute;
+      z-index: 0;
+      content: "";
+      pointer-events: none;
+    }
+    .invitation-card::before {
+      top: 6px;
+      left: -22px;
+      width: 190px;
+      height: 12px;
+      background: var(--blue);
+      transform: rotate(-4deg);
+    }
+    .invitation-card::after {
+      right: -26px;
+      bottom: 42px;
+      width: 210px;
+      height: 13px;
+      background: var(--orange);
+      transform: rotate(7deg);
+    }
+    .letter-content {
+      position: relative;
+      z-index: 1;
+    }
+    .letter-masthead {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .letter-kicker {
+      margin: 0 0 6px;
+      color: var(--blue-deep);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    [data-theme="dark"] .letter-kicker { color: var(--blue); }
+    .letter-masthead h2 {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--display);
+      font-size: clamp(24px, 4vw, 38px);
+      letter-spacing: -.04em;
+      line-height: 1.2;
+    }
+    .letter-stamp {
+      flex: 0 0 auto;
+      min-width: 132px;
+      padding: 12px 14px;
+      border: 2px solid var(--orange);
+      color: var(--orange);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      line-height: 1.45;
+      text-align: center;
+      text-transform: uppercase;
+      transform: rotate(5deg);
+    }
+    .letter-stamp.shared {
+      border-color: var(--blue-deep);
+      color: var(--blue-deep);
+    }
+    [data-theme="dark"] .letter-stamp.shared { border-color: var(--blue); color: var(--blue); }
+    .letter-rule {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 20px 0 22px;
+    }
+    .letter-rule span:nth-child(1) { width: 54px; height: 5px; background: var(--blue); }
+    .letter-rule span:nth-child(2) { width: 28px; height: 5px; background: var(--coral); }
+    .letter-rule span:nth-child(3) { width: 12px; height: 5px; background: var(--yellow); }
+    .letter-event-name {
+      margin: 0 0 13px;
+      color: var(--blue-deep);
+      font-family: "Noto Serif SC", Georgia, serif;
+      font-size: clamp(18px, 3vw, 25px);
+      font-weight: 700;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    [data-theme="dark"] .letter-event-name { color: var(--blue); }
+    .letter-lead {
+      max-width: 700px;
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 15px;
+      line-height: 1.9;
+    }
+    .letter-lead strong { color: var(--ink); font-weight: 700; }
+
+    .letter-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+    }
+    .letter-section h3 {
+      margin: 0 0 13px;
+      color: var(--ink);
+      font-family: "Noto Serif SC", Georgia, serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--rule);
+      background: var(--rule);
+    }
+    .info-item {
+      min-width: 0;
+      padding: 15px 16px;
+      background: var(--paper);
+    }
+    .info-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+    }
+    .info-value {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+    .letter-note {
+      padding: 15px 17px;
+      border-left: 4px solid var(--orange);
+      background: color-mix(in oklch, var(--paper-raised) 82%, var(--orange) 18%);
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .letter-note strong { color: var(--ink); }
+    .letter-footer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 34px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-muted);
+      font-size: 12px;
+    }
+    .letter-footer .signature {
+      color: var(--ink);
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .screen-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 9px 17px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink-soft);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease;
+    }
+    .button:hover {
+      border-color: var(--orange);
+      color: var(--ink);
+      transform: translateY(-1px);
+    }
+    .button.primary {
+      border-color: var(--orange);
+      background: var(--orange);
+      color: #21170e;
+    }
+    .button.primary:hover { background: color-mix(in oklch, var(--orange) 84%, white 16%); }
+    .button.secondary { background: transparent; }
+
+    @media (max-width: 620px) {
+      .page-shell { width: min(100% - 20px, 900px); padding-top: 18px; padding-bottom: 54px; }
+      .page-heading { padding: 24px 18px 22px; }
+      .invitation-card { padding: 22px 17px; }
+      .letter-masthead { align-items: flex-start; flex-direction: column; gap: 18px; }
+      .letter-stamp { align-self: flex-end; }
+      .info-grid { grid-template-columns: 1fr; }
+      .screen-actions { flex-direction: column; }
+      .screen-actions .button { width: 100%; }
+      .letter-footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 14mm; }
+      html,
+      body {
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body::before,
+      body::after,
+      .back-link,
+      .page-heading,
+      .screen-actions,
+      .state-message { display: none !important; }
+      .page-shell { width: 100%; padding: 0; }
+      .invitation-card {
+        display: block !important;
+        min-height: 0;
+        padding: 9mm 13mm;
+        border: 1px solid #9d9d9d;
+        box-shadow: none;
+        background: #fff;
+        color: #17233a;
+      }
+      .letter-masthead { gap: 14px; padding-bottom: 10px; }
+      .letter-stamp { min-width: 110px; padding: 8px 10px; font-size: 9px; }
+      .letter-rule { margin: 12px 0 14px; }
+      .letter-event-name { margin-bottom: 8px; font-size: 20px; }
+      .letter-lead { font-size: 12px; line-height: 1.6; }
+      .letter-section { margin-top: 16px; padding-top: 11px; }
+      .letter-section h3 { margin-bottom: 8px; font-size: 15px; }
+      .info-item { padding: 9px 11px; }
+      .info-label { margin-bottom: 2px; font-size: 9px; }
+      .info-value { font-size: 11px; line-height: 1.35; }
+      .letter-note { padding: 9px 11px; font-size: 11px; line-height: 1.5; }
+      .letter-footer { margin-top: 18px; padding-top: 9px; font-size: 10px; }
+      .letter-footer .signature { font-size: 15px; }
+      /* Keep the rotated blue band above the compact print masthead. */
+      .invitation-card::before { top: 6px; }
+      .invitation-card::before,
+      .invitation-card::after { opacity: .72; }
+      .letter-content,
+      .info-item { background: #fff; }
+      .letter-event-name,
+      .letter-kicker,
+      .letter-stamp.shared { color: #29548d; }
+      .letter-stamp.shared { border-color: #29548d; }
+      .letter-masthead h2,
+      .letter-section h3,
+      .info-value,
+      .letter-footer .signature,
+      .letter-lead strong,
+      .letter-note strong { color: #17233a; }
+      .letter-lead,
+      .info-label,
+      .letter-footer,
+      .letter-note { color: #3f4b5d; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+      .back-link:hover,
+      .button:hover { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <a class="back-link" href="galgameonly_list.html">返回活动列表</a>
+
+    <header class="page-heading">
+      <p class="eyebrow">Beijing GalOnly · Confirmation</p>
+      <h1>摊主确认函</h1>
+      <p class="hero-event" id="event-name-display">活动信息加载中</p>
+    </header>
+
+    <div class="state-message" id="loading-msg" role="status" aria-live="polite">正在加载确认函</div>
+    <div class="state-message error" id="error-msg" role="alert" hidden></div>
+    <div class="state-message notice" id="ineligible-msg" role="status" hidden>
+      当前申请尚未进入确认函状态，请返回申请状态页查看审核进度。
+    </div>
+
+    <article class="invitation-card" id="invitation-card" hidden>
+      <div class="letter-content">
+        <div class="letter-masthead">
+          <div>
+            <p class="letter-kicker">OFFICIAL INVITATION</p>
+            <h2>摊主确认函</h2>
+          </div>
+          <div class="letter-stamp" id="letter-stamp">Booth Confirmed</div>
+        </div>
+
+        <div class="letter-rule" aria-hidden="true"><span></span><span></span><span></span></div>
+        <p class="letter-event-name" id="letter-event-name">北京视觉小说Only 第二届</p>
+        <p class="letter-lead" id="letter-lead"></p>
+
+        <section class="letter-section" aria-labelledby="event-section-title">
+          <h3 id="event-section-title">活动信息</h3>
+          <dl class="info-grid" id="event-info-grid"></dl>
+        </section>
+
+        <section class="letter-section" aria-labelledby="booth-section-title">
+          <h3 id="booth-section-title">摊主信息</h3>
+          <dl class="info-grid" id="booth-info-grid"></dl>
+        </section>
+
+        <section class="letter-section" aria-labelledby="notice-section-title">
+          <h3 id="notice-section-title">参展须知</h3>
+          <div class="letter-note">
+            如需追加个别制品，请在 <strong>2026 年 10 月 1 日前</strong>向摊位组报备并提交审核。未经审核通过的制品不得在现场展示或售卖。现场报到、布置及撤展安排以主办方后续通知为准。
+          </div>
+        </section>
+
+        <footer class="letter-footer">
+          <div>
+            <div class="signature">VNFest · GalOnly</div>
+            <div>本函依据系统当前审核结果生成</div>
+          </div>
+          <div id="letter-reference">Application —</div>
+        </footer>
+      </div>
+    </article>
+
+    <div class="screen-actions" id="screen-actions" hidden>
+      <button class="button primary" type="button" id="print-btn">打印 / 保存 PDF</button>
+      <a class="button secondary" id="status-link" href="Galonly_status.html">返回申请状态</a>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var params = new URLSearchParams(window.location.search);
+    var eventId = parseInt(params.get('event_id'), 10) || 0;
+    var requestedApplicationId = parseInt(params.get('application_id') || params.get('app_id') || '0', 10) || 0;
+
+    function escapeHtml(value) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(value === null || value === undefined ? '' : String(value)));
+      return div.innerHTML;
+    }
+
+    function fetchJson(url) {
+      return fetch(url, { credentials: 'same-origin' }).then(function (response) {
+        return response.text().then(function (text) {
+          var data;
+          try { data = JSON.parse(text); } catch (error) { throw new Error('接口返回格式错误。'); }
+          if (!response.ok) throw new Error(data.message || ('请求失败（' + response.status + '）。'));
+          return data;
+        });
+      });
+    }
+
+    function formatEventDate(value) {
+      var raw = String(value || '').trim();
+      var match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (!match) return raw || '待主办方公布';
+      return match[1] + ' 年 ' + parseInt(match[2], 10) + ' 月 ' + parseInt(match[3], 10) + ' 日';
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '—';
+      var date = new Date(String(value).replace(' ', 'T'));
+      if (isNaN(date.getTime())) return String(value);
+      var pad = function (number) { return String(number).padStart(2, '0'); };
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    }
+
+    function isTruthyFlag(value) {
+      return value === true || value === 1 || value === '1';
+    }
+
+    function boothTypeLabel(type) {
+      var map = {
+        sell_only: 'A · 只贩售同人制品',
+        activity_only: 'B · 只进行活动',
+        both_sell: 'C · 贩售为主，同时进行活动',
+        both_activity: 'D · 活动为主，同时贩售',
+        doujin: '同人社团摊位',
+        used: '中古摊位',
+        activity: '活动摊位',
+        consignment: '寄售摊位'
+      };
+      return map[type] || '未填写';
+    }
+
+    function upgradeLabel(value) {
+      return isTruthyFlag(value) ? '升级摊位 · 1.2 × 0.6 m' : '基础摊位 · 1.2 × 0.4 m';
+    }
+
+    function powerLabel(value) {
+      return value === 'yes' ? '需要' : value === 'no' ? '不需要' : '未说明';
+    }
+
+    function jointLabel(application) {
+      return parseInt(application.is_joint, 10) === 1
+        ? '是' + (application.joint_name ? ' · ' + application.joint_name : '')
+        : '否';
+    }
+
+    function applicationStatusMeta(status) {
+      if (status === 'confirmed') {
+        return {
+          stamp: 'Booth Confirmed',
+          label: '正式摊主',
+          className: 'confirmed',
+          lead: '制品审核已通过，现确认您获得本届活动的摊主资格。摊位位置及现场安排以主办方后续通知为准。'
+        };
+      }
+      if (status === 'shared') {
+        return {
+          stamp: 'Shared Booth',
+          label: '拼摊安排中',
+          className: 'shared',
+          lead: '本次申请保留摊主资格，拼摊安排另行通知。独立摊位位置不在本函中确认。'
+        };
+      }
+      return null;
+    }
+
+    function renderInfoGrid(target, items) {
+      target.innerHTML = items.map(function (item) {
+        return '<div class="info-item"><dt class="info-label">' + escapeHtml(item[0]) + '</dt><dd class="info-value">' + escapeHtml(item[1]) + '</dd></div>';
+      }).join('');
+    }
+
+    function showError(message) {
+      $('loading-msg').hidden = true;
+      $('invitation-card').hidden = true;
+      $('screen-actions').hidden = true;
+      $('ineligible-msg').hidden = true;
+      $('error-msg').textContent = message;
+      $('error-msg').hidden = false;
+    }
+
+    function render(event, application) {
+      var status = String(application.status || '');
+      var meta = applicationStatusMeta(status);
+      var eventName = event && (event.name || event.event_name) || application.event_name || ('活动 #' + eventId);
+      var applicationId = application.id || requestedApplicationId;
+      var dateText = formatEventDate(event && event.date);
+      var locationText = (event && event.location) || '待主办方公布';
+
+      $('loading-msg').hidden = true;
+      $('error-msg').hidden = true;
+      $('event-name-display').textContent = eventName + (event && event.date ? ' · ' + dateText : '');
+      $('letter-event-name').textContent = eventName;
+      $('status-link').href = 'Galonly_status.html?event_id=' + encodeURIComponent(eventId) + '&application_id=' + encodeURIComponent(applicationId);
+
+      if (!meta) {
+        $('invitation-card').hidden = true;
+        $('screen-actions').hidden = false;
+        $('print-btn').hidden = true;
+        $('status-link').textContent = '返回申请状态';
+        $('ineligible-msg').hidden = false;
+        return;
+      }
+
+      $('ineligible-msg').hidden = true;
+      $('invitation-card').hidden = false;
+      $('screen-actions').hidden = false;
+      $('print-btn').hidden = false;
+      $('letter-stamp').textContent = meta.stamp;
+      $('letter-stamp').className = 'letter-stamp ' + meta.className;
+      $('letter-lead').innerHTML = escapeHtml(meta.lead).replace(/(摊主资格|摊位位置|现场安排|拼摊安排)/g, '<strong>$1</strong>');
+      $('letter-reference').textContent = 'Application #' + (applicationId || '—');
+
+      renderInfoGrid($('event-info-grid'), [
+        ['活动名称', eventName],
+        ['活动日期', dateText],
+        ['活动地点', locationText],
+        ['摊位位置', '待后续通知']
+      ]);
+      renderInfoGrid($('booth-info-grid'), [
+        ['摊位名称', application.booth_name || '未填写'],
+        ['申请编号', '#' + (applicationId || '—')],
+        ['摊位形式', application.booth_type_label || boothTypeLabel(application.booth_type)],
+        ['摊位规格', upgradeLabel(application.wants_upgrade)],
+        ['预计参展人数', Number(application.expected_members || 0) > 0 ? application.expected_members + ' 人' : '未填写'],
+        ['联合参展', jointLabel(application)],
+        ['电源需求', powerLabel(application.needs_power)],
+        ['申请提交时间', formatDateTime(application.created_at)]
+      ]);
+    }
+
+    function load() {
+      if (!eventId) {
+        showError('缺少活动参数，请从活动列表进入。');
+        return;
+      }
+
+      fetchJson('../api/auth.php?action=me').then(function (auth) {
+        if (!(auth.success || auth.logged_in) || !(auth.user || auth.id)) {
+          window.location.href = '../login.html?redirect=' + encodeURIComponent(window.location.href);
+          return null;
+        }
+        var applicationQuery = '../api/galonly.php?action=get_application&event_id=' + encodeURIComponent(eventId);
+        if (requestedApplicationId) applicationQuery += '&application_id=' + encodeURIComponent(requestedApplicationId);
+        return Promise.all([
+          fetchJson('../api/galonly.php?action=list_events'),
+          fetchJson(applicationQuery)
+        ]);
+      }).then(function (results) {
+        if (!results) return;
+        var eventsData = results[0];
+        var applicationData = results[1];
+        if (!applicationData.success || !applicationData.application) {
+          showError(applicationData.message || '未找到对应的摊位申请。');
+          return;
+        }
+        var events = eventsData && eventsData.events || [];
+        var event = events.find(function (item) { return String(item.id) === String(eventId); }) || null;
+        render(event, applicationData.application);
+      }).catch(function (error) {
+        showError(error.message || '确认函加载失败，请稍后重试。');
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      $('print-btn').addEventListener('click', function () { window.print(); });
+      load();
+    });
+  }());
+  </script>
+  <script src="../js/page-background.js?v=20260813-beijing-booth"></script>
+</body>
+</html>

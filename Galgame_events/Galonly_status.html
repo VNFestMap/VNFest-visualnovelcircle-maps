@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <!-- 2026-08 北京 GalOnly 2.0 两阶段参展更新备注：
+       摊位类型展示为 A/B/C/D 摊位呈现形式；新增「是否升级摊位」；
+       联系方式展示 QQ 号 + 手机号；新增「参展经历」。
+       2026-08 审核匿名：摊主侧不再展示陪审逐条审核意见，仅保留两阶段总审反馈。
+       2026-08 补充：摊主可删除自己的申请（含已通过状态，删除不可恢复）。
+       样式统一由 css/galonly-poster-theme.css 约束。 -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摊位申请状态查询 · GalOnly</title>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+  <script defer src="../js/site-header.js?v=20260827-site-header"></script>
+  <script src="../js/theme-runtime.js?v=20260813-beijing-booth"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131b;
+      --panel: rgba(25, 30, 42, .92);
+      --panel-soft: rgba(255, 255, 255, .055);
+      --text: #f6f7fb;
+      --muted: #a6afc2;
+      --line: rgba(255, 255, 255, .12);
+      --accent: #ffb86b;
+      --accent-strong: #ff8f70;
+      --danger: #ff8d8d;
+      --success: #8ee7b1;
+      --warning: #ffe0b6;
+      --shadow: 0 22px 70px rgba(0, 0, 0, .32);
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); }
+    body {
+      min-height: 100vh; margin: 0; color: var(--text);
+      font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(255, 170, 111, .17), transparent 35rem),
+        radial-gradient(circle at 100% 20%, rgba(137, 170, 255, .13), transparent 32rem),
+        var(--bg);
+    }
+    a { color: inherit; }
+    .page-shell { width: min(880px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 72px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px; color: var(--muted);
+      text-decoration: none; font-size: 14px; margin-bottom: 26px;
+    }
+    .back-link:hover { color: var(--text); }
+    .hero { margin-bottom: 22px; }
+    .eyebrow { margin: 0 0 8px; color: var(--accent); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(26px, 4.5vw, 38px); line-height: 1.15; letter-spacing: -.035em; }
+    .hero-event { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+    .panel {
+      padding: clamp(20px, 4vw, 32px); border: 1px solid var(--line); border-radius: 22px;
+      background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(18px);
+    }
+    [hidden] { display: none !important; }
+    .notice { margin: 0 0 18px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); background: var(--panel-soft); line-height: 1.65; }
+    .notice.warning { color: var(--warning); border-color: rgba(255, 184, 107, .38); background: rgba(255, 184, 107, .08); }
+    .notice.error { color: var(--danger); border-color: rgba(255, 141, 141, .38); background: rgba(255, 141, 141, .08); }
+    .notice.success { color: var(--success); border-color: rgba(142, 231, 177, .38); background: rgba(142, 231, 177, .08); }
+    .summary { display: grid; gap: 14px; padding: 16px; margin-bottom: 18px; border-radius: 15px; background: var(--panel-soft); }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .summary-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .summary-value { display: block; overflow-wrap: anywhere; line-height: 1.5; }
+    .empty-value { color: var(--muted); font-size: 13px; }
+    .status-card { padding: 18px; border-radius: 15px; margin-bottom: 18px; line-height: 1.7; }
+    .status-card h3 { margin: 0 0 8px; font-size: 17px; }
+    .status-card .status-icon {
+      display: inline-block; width: 10px; height: 10px; margin: 0 9px 0 1px;
+      border-radius: 50%; background: currentColor; vertical-align: .08em;
+      box-shadow: 0 0 0 4px color-mix(in oklch, currentColor 14%, transparent);
+    }
+    .status-card.pending { color: var(--warning); background: rgba(255, 184, 107, .07); border: 1px solid rgba(255, 184, 107, .3); }
+    .status-card.approved { color: var(--success); background: rgba(142, 231, 177, .07); border: 1px solid rgba(142, 231, 177, .3); }
+    .status-card.rejected { color: var(--danger); background: rgba(255, 141, 141, .07); border: 1px solid rgba(255, 141, 141, .3); }
+    .status-card.revision { color: var(--warning); background: rgba(255, 184, 107, .07); border: 1px solid rgba(255, 184, 107, .3); }
+    .status-card.confirmed { color: var(--success); background: rgba(142, 231, 177, .09); border: 1px solid rgba(142, 231, 177, .4); }
+    .status-card.shared { color: var(--accent); background: rgba(255, 184, 107, .08); border: 1px solid rgba(255, 184, 107, .35); }
+    .status-card .deadline { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .status-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 42px; padding: 9px 18px; border-radius: 11px; font-weight: 700;
+      text-decoration: none; cursor: pointer; border: 1px solid var(--line);
+      color: var(--text); background: var(--panel-soft); font-family: inherit; font-size: 13px;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary { color: #1a1510; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); border: 0; }
+    .btn.primary:hover { filter: brightness(1.08); }
+    .btn.success { color: var(--success); border-color: rgba(142, 231, 177, .45); }
+    .btn.disabled { opacity: .55; cursor: not-allowed; }
+    .section-title { margin: 24px 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+    .feedback-box { padding: 13px 15px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel-soft); margin-bottom: 12px; line-height: 1.7; font-size: 14px; }
+    .feedback-box .fb-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .file-link { display: inline-block; margin: 3px 8px 3px 0; padding: 5px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 12px; background: var(--panel-soft); }
+    .file-link:hover { color: var(--accent); border-color: var(--accent); }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .danger-btn {
+      min-height: 44px; padding: 10px 18px; border: 1px solid var(--danger);
+      border-radius: 11px; color: var(--danger); background: var(--danger-bg);
+      font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .danger-btn:hover { border-color: var(--danger); background: color-mix(in oklch, var(--danger-bg) 72%, var(--danger) 28%); }
+    .danger-btn:disabled { opacity: .58; cursor: wait; }
+    .hint { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    @media (max-width: 620px) {
+      .page-shell { width: min(100% - 20px, 880px); padding-top: 18px; }
+      .panel { padding: 18px 14px; border-radius: 18px; }
+    }
+  </style>
+  <link rel="stylesheet" href="../css/galonly-poster-theme.css">
+</head>
+<body>
+  <main class="page-shell">
+    <a class="back-link" href="galgameonly_list.html">&larr; 返回活动列表</a>
+    <header class="hero">
+      <p class="eyebrow">Beijing GalOnly · Application Status</p>
+      <h1>摊位申请状态查询</h1>
+      <p class="hero-event" id="event-name-display">正在读取活动信息…</p>
+    </header>
+
+    <section class="panel">
+      <div class="notice" id="loading-msg">正在加载申请状态…</div>
+      <div class="notice error" id="error-msg" hidden></div>
+      <div class="notice warning" id="no-app-msg" hidden>暂未查询到您的摊位申请。请确认是否已通过活动列表提交摊位申请。</div>
+
+      <div id="result-area" hidden>
+        <div class="summary">
+          <div class="summary-grid" id="summary-grid"></div>
+        </div>
+
+        <div id="status-card"></div>
+
+        <div id="feedback-area" hidden>
+          <div class="section-title">审核回执</div>
+          <div id="phase1-feedback" hidden></div>
+          <div id="phase2-feedback" hidden></div>
+        </div>
+
+        <div class="section-title">申请详情</div>
+        <div class="detail-grid" id="detail-grid"></div>
+        <div class="section-title">附件</div>
+        <div id="attachment-area"><span class="empty-value">无</span></div>
+
+        <div class="section-title" id="delete-title" hidden>危险操作</div>
+        <div id="delete-area" hidden>
+          <button type="button" class="danger-btn" id="delete-application-btn">删除我的申请</button>
+          <div class="hint">删除后不可恢复，社团名额将释放，需重新提交申请。审核中的申请删除后同样立即生效。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    var eventId = 0;
+    var applicationId = 0;
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        var d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr);
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      } catch (e) { return String(dateStr); }
+    }
+
+    function daysLeft(markedAt) {
+      if (!markedAt) return null;
+      var ts = new Date(markedAt.replace(' ', 'T')).getTime();
+      if (isNaN(ts)) return null;
+      var remain = 3 * 24 * 3600 * 1000 - (Date.now() - ts);
+      return Math.max(0, Math.ceil(remain / (24 * 3600 * 1000)));
+    }
+
+    function boothTypeLabel(type) {
+      var map = {
+        sell_only: 'A · 只贩售同人制品',
+        activity_only: 'B · 只进行活动（卡牌、游戏试玩、展示等）',
+        both_sell: 'C · 二者均有，贩售为主',
+        both_activity: 'D · 二者均有，活动为主',
+        doujin: '同人社团摊位', used: '中古摊位', activity: '活动摊位', consignment: '寄售摊位'
+      };
+      return map[type] || '未填写';
+    }
+
+    function upgradeLabel(v) {
+      return isTruthyFlag(v) ? '是（升级 1.2×0.6m）' : '否（基础 1.2×0.4m）';
+    }
+
+    function isTruthyFlag(value) {
+      return value === true || value === 1 || value === '1';
+    }
+
+    function powerLabel(v) {
+      return v === 'yes' ? '是' : v === 'no' ? '否' : '不确定';
+    }
+
+    function attachmentUrl(path) {
+      return '../' + String(path).replace(/^\//, '');
+    }
+
+    function renderSummary(app) {
+      var items = [
+        ['申请编号', '#' + app.id],
+        ['摊位名称', app.booth_name || '—'],
+        ['摊位类型', boothTypeLabel(app.booth_type)],
+        ['是否升级摊位', upgradeLabel(app.wants_upgrade)],
+        ['提交时间', formatDate(app.created_at)],
+        ['预计参展人数', (app.expected_members || 0) > 0 ? app.expected_members + ' 人' : '未填写'],
+        ['需要电源', powerLabel(app.needs_power)],
+      ];
+      $('summary-grid').innerHTML = items.map(function (it) {
+        return '<div><span class="summary-label">' + escapeHtml(it[0]) + '</span><span class="summary-value">' + escapeHtml(it[1]) + '</span></div>';
+      }).join('');
+    }
+
+    function renderStatusCard(app) {
+      var card = $('status-card');
+      var status = app.status || 'pending';
+      var phase = parseInt(app.phase || 1, 10);
+      var html = '';
+      var cls = 'pending';
+
+      if (status === 'pending') {
+        cls = 'pending';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>阶段一 · 资质审核中</h3>'
+          + '<div>申请已提交，审核结果将在站内通知和本页更新。</div>';
+      } else if (status === 'approved') {
+        cls = 'approved';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>阶段一通过 · 进入制品审核</h3>'
+          + '<div>摊位申请已通过第一阶段。请在 <strong>2026 年 9 月 19 日前</strong>提交制品审核材料，包括计划展示或售卖的制品，以及包含多个制品的菜单。9 月 19 日后仅允许追加个别制品，须在 <strong>2026 年 10 月 1 日前</strong>向摊位组报备并提交审核。</div>'
+          + '<div class="status-actions">'
+          + '<a class="btn primary" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">提交制品审核材料</a>'
+          + '<a class="btn" href="Beijing_Galonly_submit.html?event_id=' + eventId + '&application_id=' + app.id + '">编辑申请</a>'
+          + '</div>';
+      } else if (status === 'rejected') {
+        cls = 'rejected';
+        var dl = daysLeft(app.rejected_at);
+        if (phase === 1) {
+          html = '<h3><span class="status-icon" aria-hidden="true"></span>第一阶段未通过（可修改）</h3>'
+            + '<div>请根据审核反馈修改申请。' + (dl !== null ? '<span class="deadline">可修改时间：驳回当天起 3 天内，剩余约 ' + dl + ' 天。</span>' : '<span class="deadline">修改期限已过，本次申请结束。</span>') + '</div>';
+          if (dl !== null && dl > 0) {
+            html += '<div class="status-actions"><a class="btn primary" href="Beijing_Galonly_submit.html?event_id=' + eventId + '&application_id=' + app.id + '">修改后重新提交</a></div>';
+          }
+        } else {
+          html = '<h3><span class="status-icon" aria-hidden="true"></span>制品审核未通过</h3>'
+            + '<div>未通过审核的制品不得放入菜单，也不能在现场展示或售卖。若多数制品仍未通过，摊位参展资格可能被取消。' + (dl !== null ? '<span class="deadline">修改期限已过：驳回当天起 3 天。</span>' : '') + '</div>';
+        }
+      } else if (status === 'phase2_pending') {
+        cls = 'pending';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>阶段二 · 制品审核中</h3>'
+          + '<div>制品审核材料已提交，审核完成后将在站内通知和本页更新。9 月 19 日后仅允许追加个别制品，须在 2026 年 10 月 1 日前向摊位组报备并提交审核。</div>';
+      } else if (status === 'phase2_revision') {
+        cls = 'revision';
+        var dl2 = daysLeft(app.revision_at);
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>制品审核退回修改（资格保留）</h3>'
+          + '<div>请根据审核反馈修改不合规制品后重新提交。' + (dl2 !== null ? '<span class="deadline">可修改时间：退回当天起 3 天内，剩余约 ' + dl2 + ' 天。</span>' : '<span class="deadline">修改期限已过，未通过审核的制品不得放入菜单。</span>') + '</div>';
+        if (dl2 !== null && dl2 > 0) {
+          html += '<div class="status-actions"><a class="btn primary" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">修改后重新提交</a></div>';
+        }
+      } else if (status === 'confirmed') {
+        cls = 'confirmed';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>正式摊主</h3>'
+          + '<div>制品审核已通过，您已获得本届活动摊主资格。摊位位置及现场安排以主办方后续通知为准。2026 年 10 月 1 日前如需追加个别制品，请先向摊位组报备并提交审核。</div>'
+          + '<div class="status-actions">'
+          + '<a class="btn success" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + app.id + '">查看确认函</a>'
+          + '<a class="btn" href="Galonly_manual.html?event_id=' + eventId + '&application_id=' + app.id + '">查看摊主手册</a>'
+          + '</div>';
+      } else if (status === 'shared') {
+        cls = 'shared';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>拼摊安排中（保留摊主资格）</h3>'
+          + '<div>本次申请保留摊主资格，拼摊安排以主办方后续通知为准。请留意相关通知。</div>'
+          + '<div class="status-actions">'
+          + '<a class="btn success" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + app.id + '">查看确认函</a>'
+          + '<a class="btn" href="Galonly_manual.html?event_id=' + eventId + '&application_id=' + app.id + '">查看摊主手册</a>'
+          + '</div>';
+      } else {
+        html = '<h3>未知状态</h3><div>请联系主办方确认。</div>';
+      }
+      card.className = 'status-card ' + cls;
+      card.innerHTML = html;
+    }
+
+    function renderFeedback(app) {
+      var area = $('feedback-area');
+      var any = false;
+      if (app.phase1_feedback) {
+        $('phase1-feedback').hidden = false;
+        $('phase1-feedback').innerHTML = '<div class="feedback-box"><div class="fb-label">第一阶段 · 总审反馈</div>' + escapeHtml(app.phase1_feedback) + '</div>';
+        any = true;
+      } else {
+        $('phase1-feedback').hidden = true;
+      }
+      if (app.phase2_feedback) {
+        $('phase2-feedback').hidden = false;
+        $('phase2-feedback').innerHTML = '<div class="feedback-box"><div class="fb-label">第二阶段 · 专人反馈</div>' + escapeHtml(app.phase2_feedback) + '</div>';
+        any = true;
+      } else {
+        $('phase2-feedback').hidden = true;
+      }
+      area.hidden = !any;
+    }
+
+    function renderDetails(app) {
+      var exp = app.exhibition_experience || {};
+      if (typeof exp === 'string') {
+        try { exp = JSON.parse(exp); } catch (e) { exp = exp === '' ? {} : { has: 1, detail: exp }; }
+      }
+      var expHas = exp && (exp.has === 1 || exp.has === true || exp.has === '1');
+      var expDisplay = expHas ? ((exp.detail || '').trim() ? exp.detail : '有') : '无';
+      var legacyContact = app.contact || '';
+      var rows = [
+        ['QQ 号', app.qq_number || (legacyContact || '—')],
+        ['手机号', app.phone_number || '—'],
+        ['联合参展', parseInt(app.is_joint) === 1 ? '是' + (app.joint_name ? ' · ' + app.joint_name : '') : '否'],
+        ['参展经历', expDisplay],
+        ['排摊特别需求', app.layout_notes || '未填写'],
+        ['备注', app.notes || '未填写'],
+      ];
+      $('detail-grid').innerHTML = rows.map(function (r) {
+        return '<div><span class="summary-label">' + escapeHtml(r[0]) + '</span><span class="summary-value">' + escapeHtml(r[1]) + '</span></div>';
+      }).join('');
+
+      var attachments = app.attachment_paths || [];
+      $('attachment-area').innerHTML = attachments.length
+        ? attachments.map(function (p) {
+            var path = typeof p === 'string' ? p : (p && p.path) || '';
+            var name = typeof p === 'string' ? path.split('/').pop() : (p && p.name) || '';
+            return '<a class="file-link" href="' + escapeHtml(attachmentUrl(path)) + '" target="_blank" rel="noopener">' + escapeHtml(name || path) + '</a>';
+          }).join('')
+        : '<span class="empty-value">无</span>';
+    }
+
+    function render(app) {
+      $('loading-msg').hidden = true;
+      $('result-area').hidden = false;
+      $('no-app-msg').hidden = true;
+      renderSummary(app);
+      renderStatusCard(app);
+      renderFeedback(app);
+      renderDetails(app);
+      // 2026-08 摊主可删除自己的申请（含已通过状态）；删除不可恢复
+      $('delete-title').hidden = false;
+      $('delete-area').hidden = false;
+    }
+
+    function deleteApplication() {
+      if (!applicationId) return;
+      if (!confirm('确定删除您的摊位申请吗？删除后不可恢复，社团名额将释放，需重新提交申请。')) return;
+      var btn = $('delete-application-btn');
+      btn.disabled = true;
+      btn.textContent = '删除中…';
+      fetch('../api/galonly.php?action=delete_application', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ application_id: applicationId })
+      }).then(function (r) { return r.json(); }).then(function (data) {
+        if (!data.success) throw new Error(data.message || '删除失败。');
+        window.location.href = 'galgameonly_list.html';
+      }).catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = '删除我的申请';
+        alert(err.message || '删除失败，请稍后重试。');
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var params = new URLSearchParams(window.location.search);
+      eventId = parseInt(params.get('event_id'), 10) || 0;
+      applicationId = parseInt(params.get('application_id') || params.get('app_id') || '0', 10) || 0;
+      if (!eventId) {
+        $('loading-msg').hidden = true;
+        $('error-msg').hidden = false;
+        $('error-msg').textContent = '缺少活动参数，请从活动列表进入。';
+        return;
+      }
+
+      fetch('../api/auth.php?action=me', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (auth) {
+          if (!(auth.success || auth.logged_in) || !(auth.user || auth.id)) {
+            window.location.href = '../login.html?redirect=' + encodeURIComponent(window.location.href);
+            return null;
+          }
+          var eventsPromise = fetch('../api/galonly.php?action=list_events', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); }).catch(function () { return { success: false }; });
+          var appPromise = fetch('../api/galonly.php?action=get_application&event_id=' + eventId + (applicationId ? '&application_id=' + applicationId : ''), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); }).catch(function () { return { success: false }; });
+          return Promise.all([eventsPromise, appPromise]);
+        })
+        .then(function (results) {
+          if (!results) return;
+          var eventsData = results[0];
+          var appData = results[1];
+          if (eventsData.success && eventsData.events) {
+            var ev = eventsData.events.find(function (e) { return String(e.id) === String(eventId); });
+            if (ev) $('event-name-display').textContent = (ev.name || ev.event_name || ('活动 #' + eventId)) + (ev.date ? ' · ' + ev.date : '');
+          }
+          if (appData.success && appData.application) {
+            render(appData.application);
+          } else {
+            $('loading-msg').hidden = true;
+            $('no-app-msg').hidden = false;
+          }
+        })
+        .catch(function (err) {
+          $('loading-msg').hidden = true;
+          $('error-msg').hidden = false;
+          $('error-msg').textContent = '加载失败：' + (err.message || '网络错误，请稍后重试。');
+        });
+
+      $('delete-application-btn').addEventListener('click', deleteApplication);
+    });
+  }());
+  </script>
+  <script src="../js/page-background.js?v=20260813-beijing-booth"></script>
+</body>
+</html>

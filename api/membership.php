@@ -1042,10 +1042,136 @@ switch ($action) {
         echo json_encode(['success' => true, 'message' => '负责人已转让']);
         exit();
 
+    case 'grant_from_submission':
+        // 同好会信息提交审核通过后，由超级管理员自动为该提交用户绑定同好会身份
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
+            exit();
+        }
+
+        $admin = requireAdmin();
+        if (($admin['role'] ?? '') !== 'super_admin') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => '仅超级管理员可执行此操作']);
+            exit();
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            echo json_encode(['success' => false, 'message' => '请求数据格式错误']);
+            exit();
+        }
+
+        $userId = (int)($input['user_id'] ?? 0);
+        $clubId = (int)($input['club_id'] ?? 0);
+        $country = (string)($input['country'] ?? 'china');
+        $role = (string)($input['role'] ?? ($input['apply_role'] ?? 'external'));
+        $roleMap = [
+            'other' => 'external',
+            'external' => 'external',
+            'member' => 'member',
+            'manager' => 'manager',
+            'representative' => 'representative',
+        ];
+        $role = $roleMap[$role] ?? 'external';
+        if (!in_array($country, ['china', 'japan', 'overseas'], true)) $country = 'china';
+
+        if ($userId <= 0 || $clubId <= 0) {
+            echo json_encode(['success' => false, 'message' => '缺少有效的用户 ID 或同好会 ID']);
+            exit();
+        }
+
+        $db = getDB();
+        ensureMembershipApplicationColumns($db);
+        ensureUniqueConstraintIncludesCountry($db);
+
+        $stmt = $db->prepare("SELECT id FROM users WHERE id = ? AND status = 'active'");
+        $stmt->execute([$userId]);
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => '提交用户不存在或已停用']);
+            exit();
+        }
+
+        $contact = trim((string)($input['contact_account'] ?? $input['qq_account'] ?? ''));
+
+        $stmt = $db->prepare(
+            "SELECT id, status FROM club_memberships WHERE user_id = ? AND club_id = ? AND country = ?"
+        );
+        $stmt->execute([$userId, $clubId, $country]);
+        $existing = $stmt->fetch();
+
+        $clubName = getClubName($clubId, $country);
+        $membershipId = $existing ? (int)$existing['id'] : 0;
+
+        $db->beginTransaction();
+        try {
+            if ($existing && $existing['status'] === 'active') {
+                // 已经是该同好会成员，保持现有身份，不降级
+                $grantMode = 'already_active';
+            } elseif ($existing) {
+                $db->prepare(
+                    "UPDATE club_memberships
+                     SET role = ?, status = 'active', apply_role = ?, join_method = 'club_submit',
+                         qq_account = ?, contact_account = ?, left_at = NULL, joined_at = CURRENT_TIMESTAMP
+                     WHERE id = ?"
+                )->execute([$role, $role, $contact, $contact, $membershipId]);
+                displayClubClearSelection($db, $membershipId);
+                $grantMode = 'reactivated';
+            } else {
+                $stmt = $db->prepare(
+                    "INSERT INTO club_memberships
+                        (user_id, club_id, role, status, qq_account, contact_account, apply_role, is_student,
+                         country, join_method, external_club_name, external_club_role, apply_reason)
+                     VALUES (?, ?, ?, 'active', ?, ?, ?, 0, ?, 'club_submit', '', '', ?)"
+                );
+                $stmt->execute([
+                    $userId, $clubId, $role, $contact, $contact, $role, $country,
+                    '同好会信息提交通过后自动绑定'
+                ]);
+                $membershipId = (int)$db->lastInsertId();
+                $grantMode = 'created';
+            }
+
+            logAction('membership.grant_from_submission', 'club_membership', $membershipId, [
+                'club_id' => $clubId,
+                'country' => $country,
+                'target_user_id' => $userId,
+                'role' => $role,
+                'grant_mode' => $grantMode,
+                'by_user_id' => (int)$admin['id'],
+            ]);
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            echo json_encode(['success' => false, 'message' => '自动绑定身份失败：' . $e->getMessage()]);
+            exit();
+        }
+
+        $roleNames = ['external' => '其他', 'member' => '成员', 'manager' => '管理员', 'representative' => '负责人'];
+        $roleLabel = $roleNames[$role] ?? $role;
+        createNotification(
+            $userId,
+            'join_approved',
+            '同好会信息已通过',
+            '你在同好会「' . $clubName . '」的信息提交已通过，已自动绑定为「' . $roleLabel . '」',
+            'index.html',
+            'club_membership',
+            $membershipId
+        );
+
+        echo json_encode([
+            'success' => true,
+            'message' => '已自动绑定同好会身份',
+            'membership_id' => $membershipId,
+            'grant_mode' => $grantMode,
+        ]);
+        exit();
+
     default:
         echo json_encode(['success' => false, 'message' => '未知动作', 'available_actions' => [
             'my', 'apply', 'approve', 'reject', 'pending', 'members', 'set_application_email_recipient',
-            'leave', 'kick', 'change_role', 'transfer'
+            'leave', 'kick', 'change_role', 'transfer', 'grant_from_submission'
         ]]);
         exit();
 }

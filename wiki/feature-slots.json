@@ -54,6 +54,13 @@
       "description": "提供同好会公开资料上传、页面预览生成与 3D 翻页阅读能力。",
       "status": "active",
       "url": "./publications.html"
+    },
+    {
+      "key": "daily",
+      "title": "每日日报",
+      "description": "每天从 Notion 信息台抓取的日本 Galgame 行业简报，支持关键词搜索与往期查询。",
+      "status": "active",
+      "url": "./daily/index.html"
     }
   ]
 }
