@@ -1240,6 +1240,44 @@
             "**VNFest 公式 X：** https://x.com/visualnovelfes\n**VNFest Map / 全国 Galgame 同好会地図：** https://map.vnfest.top/\n**VNFest Map オープンソースリポジトリ：** https://github.com/VNFestMap/china-visualnovelcircle-maps\n**UT-ViNos / Visual Novel Festival：** https://ut-vinos.netlify.app/visualnovelfes/\n**大学合同誌・中国側振り返り：** https://www.bilibili.com/opus/1148306837156659202\n**中国語版合同誌の振り返り：** https://www.bilibili.com/opus/1207157952241205266"
           ]
         }
+      ],
+      "references": [
+        {
+          "label": "VNFest 公式 X / @visualnovelfes",
+          "url": "https://x.com/visualnovelfes"
+        },
+        {
+          "label": "UT-ViNos：Visual Novel Festival 公式ページ",
+          "url": "https://ut-vinos.netlify.app/visualnovelfes/"
+        },
+        {
+          "label": "UT-ViNos：ビジュアルノベル学園祭の活動記録",
+          "url": "https://ut-vinos.netlify.app/visualnovelfes/contents"
+        },
+        {
+          "label": "VNFest Map / 全国 Galgame 同好会地図",
+          "url": "https://map.vnfest.top/"
+        },
+        {
+          "label": "VNFest Map GitHub",
+          "url": "https://github.com/VNFestMap/china-visualnovelcircle-maps"
+        },
+        {
+          "label": "京都大学美少女ゲーム同好会 年間活動記録",
+          "url": "https://kuvnlovers.hatenablog.com/entry/2026/03/23/170000"
+        },
+        {
+          "label": "大学合同誌・中国側振り返り（一）",
+          "url": "https://www.bilibili.com/opus/1148306837156659202"
+        },
+        {
+          "label": "中国語版合同誌の振り返り（二）",
+          "url": "https://www.bilibili.com/opus/1207157952241205266"
+        },
+        {
+          "label": "Galgame 同好会地図 登録資料",
+          "url": "../../index.html"
+        }
       ]
     }
   },

@@ -13,8 +13,8 @@ assert.match(appSource, /URLSearchParams\(window\.location\.search\)/, 'deep lin
 assert.match(appSource, /params\.get\(['"]edit_club['"]\)/, 'deep link handler should read edit_club');
 assert.match(appSource, /State\.japanRows/, 'deep link handler should support Japan clubs');
 assert.match(appSource, /function\s+loadEditableClubSnapshot\s*\(/, 'edit flow should load a complete editable club snapshot');
-assert.match(appSource, /fetch\(['"]\.\/data\/clubs\.json['"][\s\S]*cache:\s*['"]no-store['"]/, 'China edit flow should read raw club JSON before opening editor');
-assert.match(appSource, /fetch\(['"]\.\/data\/clubs_japan\.json['"][\s\S]*cache:\s*['"]no-store['"]/, 'Japan edit flow should read raw club JSON before opening editor');
+assert.match(appSource, /fetch\(['"]\.\/api\/clubs\.php['"][\s\S]*cache:\s*['"]no-store['"]/, 'China edit flow should read the club snapshot from the API before opening editor');
+assert.match(appSource, /fetch\(['"]\.\/api\/clubs_japan\.php['"][\s\S]*cache:\s*['"]no-store['"]/, 'Japan edit flow should read the club snapshot from the API before opening editor');
 assert.match(appSource, /function\s+openClubEditor\s*\(/, 'edit buttons should use the hydrated editor opener');
 assert.match(appSource, /openClubEditor\(club\)/, 'deep link handler should open the hydrated edit panel');
 assert.match(appSource, /data-action="edit-club"[\s\S]*openClubEditor\(club\)/, 'detail edit action should hydrate before editing');
@@ -39,8 +39,8 @@ assert.match(managerSource, /selectedCountry\s*=\s*managedClubs\[0\]\.country/, 
 assert.match(managerSource, /function\s+updateSuperAdminTabs\s*\([\s\S]*usersTabBtn\.style\.display\s*=\s*isSuperAdminUser\(\)\s*\?\s*['"]{2}\s*:\s*['"]none['"]/, 'super admin users module should be visible regardless of selected club');
 assert.doesNotMatch(managerSource, /selectedClubId\s*!==\s*0[\s\S]{0,160}无权限访问/, 'super admin users module should not require selecting club #0');
 assert.doesNotMatch(managerSource, /请先选择\s*同好会\s*#0/, 'users tab should not ask super admin to select club #0');
-assert.match(managerSource, /Admin Console Redesign v2/, 'manager page should keep the cleaner admin console restyle');
-assert.match(managerSource, /Light mode pass: crisp neutral admin surface/, 'manager page should include a dedicated light mode pass');
-assert.match(managerSource, /window\.location\.href\s*=\s*['"]\.\.\/index\.html\?edit_club=/, 'manager edit should navigate without popup blockers');
+assert.match(managerSource, /--sidebar-w:\s*248px/, 'manager page should keep the sidebar/topbar admin console layout');
+assert.match(managerSource, /:root\[data-theme='light'\]\s*\{/, 'manager page should include a dedicated light mode pass');
+assert.match(managerSource, /async function saveClubSettings\s*\(/, 'manager should save club settings in-page without redirecting to the main editor');
 
 console.log('club edit contract tests passed');

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
 
 const smoke = read('scripts/browser-smoke-electron.cjs');
 assert.ok(smoke.includes('SMOKE_PERF'), 'browser smoke should expose optional perf mode');
@@ -40,7 +40,7 @@ assert.ok(
 const listNavRowStart = index.indexOf('<div class="list-nav-row"', listTopRowEnd);
 const listNavRowEnd = index.indexOf('</div>', listNavRowStart);
 const listNavRowMarkup = index.slice(listNavRowStart, listNavRowEnd);
-assert.ok(listNavRowMarkup.includes('data-action="starmap"'), 'list navigation should expose star map outside the map/list switch');
+assert.ok(listNavRowMarkup.includes('data-action="project-hub"') && listNavRowMarkup.includes('data-action="forum"'), 'list navigation should keep project hub and forum reachable');
 
 const styles = read('css/styles.css');
 assert.ok(styles.includes(':root.mobile-list-mode-active .list-mode-inner'), 'mobile list mode should have isolated inner layout rules');

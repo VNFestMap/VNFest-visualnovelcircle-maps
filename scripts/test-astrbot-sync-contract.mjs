@@ -42,7 +42,6 @@ const pluginDir = [
 
 if (pluginDir) {
 const plugin = fs.readFileSync(path.join(pluginDir, 'main.py'), 'utf8');
-assert.ok(plugin.includes('v0.3.0-public'), 'plugin version should be bumped');
 assert.ok(plugin.includes('sync_enabled'), 'plugin should read sync_enabled config');
 assert.ok(plugin.includes('sync_auto_enable_on_bind'), 'plugin should support auto-enable after binding');
 assert.ok(plugin.includes('sync_interval_seconds'), 'plugin should read sync interval config');
@@ -93,7 +92,9 @@ for (const key of [
 }
 
 const metadata = fs.readFileSync(path.join(pluginDir, 'metadata.yaml'), 'utf8');
-assert.ok(metadata.includes('v0.3.0-public'), 'metadata should advertise v0.3.0-public');
+const metadataVersion = (metadata.match(/^version:\s*(\S+)/m) || [])[1];
+assert.ok(metadataVersion, 'metadata should advertise a plugin version');
+assert.ok(plugin.includes(`"${metadataVersion}"`) && plugin.includes('@register('), 'plugin @register version should match metadata.yaml version');
 assert.ok(metadata.includes('公开版') && metadata.includes('申请同步') && metadata.includes('IEM') && metadata.includes('萌王'), 'metadata should mention the new information surface');
 
 const readme = fs.readFileSync(path.join(pluginDir, 'README.md'), 'utf8');

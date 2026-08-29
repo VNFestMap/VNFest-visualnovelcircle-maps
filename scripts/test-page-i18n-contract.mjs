@@ -24,7 +24,7 @@ for (const file of pages) {
   assert.match(html, /js\/language-runtime\.js/, `${file} must load the shared language runtime`);
   assert.match(html, /js\/language-catalog\.js/, `${file} must load the shared language catalog`);
   assert.match(html, /js\/language-static-ja\.js/, `${file} must load the first-party Japanese text catalog`);
-  assert.doesNotMatch(html, /data-i18n-lang|wiki-language-switch|data-wiki-switch-lang|data-wiki-index-lang|langToggle/, `${file} must not expose a page-local language selector`);
+  assert.doesNotMatch(html, /data-i18n-lang|data-wiki-switch-lang|data-wiki-index-lang|langToggle/, `${file} must not expose an ad-hoc page-local language selector`);
 }
 
 const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

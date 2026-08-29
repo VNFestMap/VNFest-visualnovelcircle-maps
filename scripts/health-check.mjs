@@ -45,7 +45,23 @@ function checkInlineScripts(file) {
   scripts.forEach((match, index) => {
     const attributes = match[1] || '';
     const source = match[2] || '';
-    const isModule = /\btype\s*=\s*(['"])module\1/i.test(attributes);
+    const typeMatch = attributes.match(/\btype\s*=\s*(['"]?)([^'">\s]+)\1/i);
+    const scriptType = (typeMatch?.[2] || '').toLowerCase();
+    const isModule = scriptType === 'module';
+    if (scriptType === 'importmap' || scriptType.includes('json')) {
+      try {
+        JSON.parse(source);
+      } catch (error) {
+        failures.push({
+          label: `html inline json: ${relative(ROOT, file)}#${index + 1}`,
+          output: error.stack || String(error),
+        });
+      }
+      return;
+    }
+    if (scriptType && !isModule && scriptType !== 'text/javascript' && scriptType !== 'application/javascript') {
+      return;
+    }
     if (isModule) {
       const result = spawnSync('node', ['--input-type=module', '--check', '-'], {
         cwd: ROOT,
