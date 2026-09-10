@@ -46,7 +46,47 @@ chmod -R 755 data uploads wiki
 
 编辑 `config.php`，填入真实数据库信息（宝塔里先创建好 MySQL 数据库）。
 
-### 2.3 首次启动容器
+### 2.3 公开图片图床配置
+
+公开头像、同好会图片、Wiki 图片和刊物预览页会由 PHP 服务端代传到 picui。真实 Token 只放服务器的 `.env`，不要写入 Git、前端代码或命令输出：
+
+```bash
+PICUI_TOKEN=在服务器环境中填写
+PICUI_API_URL=https://picui.cn/api/v1
+PICUI_ENABLED=true
+PICUI_PERMISSION=1
+PICUI_TIMEOUT=30
+PICUI_FALLBACK_LOCAL=true
+PICUI_ALLOWED_HOSTS=picui.cn,www.picui.cn
+```
+
+上传时仍会先保留本地副本。picui 不可用时，公开图片会自动返回本地副本；作品审核图、稿件附件和内部考核图片不会作为公开图床图片上传。
+
+首次迁移前先执行清单检查，确认公开图片数量和排除项：
+
+```bash
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --dry-run
+```
+
+确认清单后分批上传并保存映射；全部完成后再替换引用：
+
+```bash
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --resume --limit=100
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --resume --rewrite
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --verify
+```
+
+默认迁移重要公开图片，不包含刊物预览页面。重要图片完成后，再单独迁移刊物预览：
+
+```bash
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --resume --limit=100
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --resume --rewrite
+docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --verify
+```
+
+迁移清单和备份位于服务器 `data/image-host/`，原 `data/`、`uploads/` 和 `wiki/uploads/` 图片不删除。
+
+### 2.4 首次启动容器
 
 ```bash
 # 启动
@@ -59,7 +99,7 @@ docker compose logs -f
 docker exec vnfest-app php scripts/migrate.php
 ```
 
-### 2.4 配置 Nginx 反代
+### 2.5 配置 Nginx 反代
 
 宝塔 → 网站 → 设置 → 反向代理 → 添加：
 
@@ -82,7 +122,7 @@ location / {
 
 如已有静态文件配置，替换为上面的反代配置即可。
 
-### 2.5 验证
+### 2.6 验证
 
 访问 `https://你的域名/api/health.php`，返回 `status: "ok"` 即成功。
 

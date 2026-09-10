@@ -1,0 +1,510 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#e67e22">
+<title>Galgame履历书 | VNFmap 辅助工具</title>
+<script src="../../js/theme-runtime.js?v=20260702-theme"></script>
+<link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header">
+<script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+<script src="../../js/page-background.js?v=20260812-centralized-preferences"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&family=Noto+Sans+JP:wght@300;400;500;700;900&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="./galgame-tool.css?v=20260903-mobile-shell3">
+    <link rel="stylesheet" href="./meme-tool.css?v=20260903-meme-v6">
+<script defer src="../../js/analytics.js?v=20260905-analytics"></script>
+</head>
+<body class="meme-page" data-page-name="自助工具">
+
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<!-- Shared VNFest top-level header -->
+<header class="vn-topbar" data-page-header>
+  <div class="vn-topbar-leading">
+    <a class="vn-topbar-brand" href="../../index.html?guest=1" aria-label="返回地图">
+      <span class="vn-topbar-name">VNFest</span>
+      <span class="vn-topbar-divider" aria-hidden="true"></span>
+      <span class="vn-topbar-sub">自助工具</span>
+    </a>
+  </div>
+  <nav class="vn-topbar-actions" aria-label="页面导航">
+    <a class="vn-topbar-action" href="../../club_square.html">活动中心</a>
+    <a class="vn-topbar-action" href="../../index.html?guest=1">返回地图</a>
+    <a class="vn-topbar-action" href="../../user.html">用户中心</a>
+    <button class="vn-topbar-action is-icon" id="themeToggle" type="button" title="切换主题" aria-label="切换明亮/暗色模式" onclick="toggleTheme(event)">
+      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </nav>
+</header>
+
+<!-- Main Content -->
+<main class="main-content" id="main">
+  <div class="tool-layout">
+    <aside class="tool-sidebar meme-tool-sidebar" id="memeToolSidebar" aria-label="自助工具菜单">
+      <div class="meme-tool-sidebar-head">
+        <span class="tool-sidebar-label">自助工具</span>
+        <button class="meme-tool-menu-toggle" id="memeToolMenuToggle" type="button" aria-expanded="false" aria-controls="memeToolNav">菜单</button>
+      </div>
+      <nav class="meme-tool-nav" id="memeToolNav" aria-label="自助工具页面">
+      <button class="tool-nav-item is-active" type="button" data-tool-view="resume" aria-current="page" onclick="window.switchToolView(this.dataset.toolView, true); document.getElementById('memeToolSidebar')?.classList.remove('is-open');">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v19H7.5A2.5 2.5 0 0 0 5 23V4.5Z"/><path d="M5 4.5V19a2 2 0 0 0 2 2h12M9 6h6M9 10h6M9 14h4"/></svg>
+        <span>履历书</span>
+      </button>
+      <button class="tool-nav-item" type="button" data-tool-view="meme" onclick="window.switchToolView(this.dataset.toolView, true); document.getElementById('memeToolSidebar')?.classList.remove('is-open');">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 15 2.5-3 2 2 2.5-3 2.5 4"/><circle cx="9" cy="8.5" r="1"/></svg>
+        <span>MEME</span>
+      </button>
+      <button class="tool-nav-item mobile-tool-action" id="mobileBangumiImportAction" type="button" onclick="handleMobileBangumiImport()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>从 Bangumi 导入</span>
+      </button>
+      </nav>
+    </aside>
+
+    <div class="tool-workspace">
+  <section class="tool-view resume-tool-view" id="resumeView" data-tool-panel="resume" aria-labelledby="resumePageTitle">
+  <div class="page-header">
+    <h1 class="page-title" id="resumePageTitle">Galgame履历书</h1>
+    <p class="page-subtitle">将喜欢的作品和推的角色整理成履历书并保存为图片 · 点击文本编辑，拖拽项目排序</p>
+    <span class="resume-sync-status" id="resumeSyncStatus" data-state="loading" role="status">正在加载账号履历</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="resume" onclick="switchMode('resume')">履历书</button>
+      <button class="mode-btn" data-mode="card" onclick="switchMode('card')">卡片</button>
+    </div>
+    <div class="toggle-group">
+      <span class="toggle-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> 更多项目</span>
+      <div class="toggle-switch" id="moreItemsToggle" onclick="toggleMoreItems()"></div>
+    </div>
+    <div class="toggle-group">
+      <span class="toggle-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 弹窗提示</span>
+      <div class="toggle-switch active" id="popupToggle" onclick="togglePopup()"></div>
+    </div>
+    <button class="account-platform-toolbar-btn" id="accountPlatformToggle" type="button" title="切换账号平台（当前：Bangumi）" aria-label="切换账号平台，当前为 Bangumi" onclick="toggleAccountType()">
+      <span class="account-platform-toolbar-icon" aria-hidden="true"></span>
+      <span class="account-platform-toolbar-label">Bangumi</span>
+    </button>
+    <button class="btn btn-secondary bangumi-import-button" id="bangumiImportButton" type="button" title="从已绑定的 Bangumi 导入已看过的游戏" onclick="openBangumiImportModal()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      从 Bangumi 导入
+    </button>
+    <div class="toolbar-spacer"></div>
+    <button class="btn btn-primary" title="保存图片（长履历自动分割）" aria-label="保存图片，长履历自动分割" onclick="exportImage()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> 保存图片</button>
+    <button class="btn btn-secondary" onclick="shareX()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> 分享</button>
+    <button class="btn btn-danger" title="重置" onclick="resetAll()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+  </div>
+
+  <div class="mobile-edit-actions">
+    <button class="mobile-edit-toggle" id="mobileEditToggle" type="button" aria-pressed="false" aria-controls="resumeContainer" onclick="toggleMobileEditMode()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5"></circle>
+        <path d="m16 16 4.5 4.5"></path>
+      </svg>
+      <span class="mobile-edit-toggle-label">等倍编辑（放大）</span>
+    </button>
+  </div>
+
+  <!-- Resume Container -->
+  <div class="resume-container" id="resumeContainer">
+    <div class="resume-scale-stage" id="resumeScaleStage">
+      <div class="resume-paper" id="resumePaper">
+        <!-- Content rendered by JS -->
+      </div>
+    </div>
+  </div>
+  </section>
+
+  <section class="tool-view meme-workspace" id="memeView" data-tool-panel="meme" aria-labelledby="memePageTitle" hidden>
+    <header class="page-header meme-page-header">
+      <div>
+        <p class="meme-eyebrow">BOARD · 排列、保存、分享</p>
+        <h1 class="page-title" id="memePageTitle">Galgame MEME</h1>
+        <p class="page-subtitle">把喜欢的作品和角色放进分类格子，拖拽整理后保存成一张完整图片。</p>
+      </div>
+      <span class="resume-sync-status meme-sync-status" id="memeSyncStatus" data-state="loading" role="status">正在加载 MEME 看板</span>
+    </header>
+
+    <section class="meme-toolbar" aria-label="看板工具栏">
+      <div class="meme-toolbar-group meme-size-group" role="group" aria-label="卡片尺寸">
+        <span class="meme-toolbar-label">卡片</span>
+        <button class="meme-segment" data-card-size="sm" type="button" aria-pressed="false">小</button>
+        <button class="meme-segment is-active" data-card-size="md" type="button" aria-pressed="true">中</button>
+        <button class="meme-segment" data-card-size="lg" type="button" aria-pressed="false">大</button>
+      </div>
+      <div class="meme-toolbar-group meme-switch-group">
+        <button class="meme-switch is-active" id="memeShowTitles" type="button" aria-pressed="true">作品名</button>
+        <button class="meme-switch is-active" id="memeShowPopup" type="button" aria-pressed="true">弹窗</button>
+      </div>
+      <div class="meme-toolbar-group meme-grid-controls" aria-label="调整网格">
+        <button class="meme-icon-control" id="memeColsDown" type="button" title="减少列数" aria-label="减少列数">−</button>
+        <button class="meme-grid-value" id="memeColsValue" type="button" title="点击切换自动或固定列数">6 列</button>
+        <button class="meme-icon-control" id="memeColsUp" type="button" title="增加列数" aria-label="增加列数">＋</button>
+        <span class="meme-grid-divider" aria-hidden="true"></span>
+        <button class="meme-icon-control" id="memeRowsDown" type="button" title="减少行数" aria-label="减少行数">−</button>
+        <span class="meme-grid-value" id="memeRowsValue">4 行</span>
+        <button class="meme-icon-control" id="memeRowsUp" type="button" title="增加行数" aria-label="增加行数">＋</button>
+      </div>
+      <div class="meme-toolbar-actions">
+        <button class="meme-button meme-button-secondary" id="memeBangumiImport" type="button">从 Bangumi 导入</button>
+        <button class="meme-button meme-button-secondary meme-compact-action" id="memeFileExport" type="button" title="导入看板文件" aria-label="导入看板文件">文件</button>
+        <button class="meme-button meme-button-secondary meme-compact-action" id="memeCopyUrl" type="button" title="复制看板链接" aria-label="复制看板链接">链接</button>
+        <button class="meme-button meme-button-secondary meme-compact-action" id="memeShareX" type="button" title="分享到 X" aria-label="分享到 X">X</button>
+        <button class="meme-button meme-button-primary" id="memeSaveImage" type="button">保存图片</button>
+        <button class="meme-button meme-button-danger meme-compact-action" id="memeReset" type="button" title="重置看板" aria-label="重置看板">删</button>
+      </div>
+    </section>
+
+    <section class="meme-board-frame" aria-label="Galgame MEME 看板区域">
+      <article class="meme-board" id="memeBoard" aria-label="Galgame MEME 看板">
+        <div class="meme-board-heading">
+          <button class="meme-board-title" id="memeBoardTitle" type="button" title="点击编辑看板标题">Galgame MEME</button>
+          <span class="meme-board-caption">点击分类标题可编辑 · 拖拽卡片调整位置</span>
+        </div>
+        <div class="meme-grid" id="memeGrid"></div>
+        <footer class="meme-export-footer">
+          <span>VNFest · GalgameTool</span>
+          <span>vnfest.top</span>
+        </footer>
+      </article>
+    </section>
+
+    <section class="meme-pool-row" aria-labelledby="memePoolTitle">
+      <div class="meme-pool-header">
+        <div>
+          <p class="meme-eyebrow">素材池</p>
+          <h2 id="memePoolTitle">未分类素材</h2>
+        </div>
+        <div class="meme-pool-actions">
+          <button class="meme-button meme-button-secondary" id="memeAddImage" type="button">添加本地图片</button>
+          <button class="meme-button meme-button-secondary" id="memeResumeSource" type="button">载入履历素材</button>
+        </div>
+      </div>
+      <div class="meme-pool-tabs" role="tablist" aria-label="素材来源">
+        <button class="meme-pool-tab is-active" data-pool-tab="search" type="button" role="tab" aria-selected="true">搜索作品 / 角色</button>
+        <button class="meme-pool-tab" data-pool-tab="unranked" type="button" role="tab" aria-selected="false">未分类卡片 <span id="memeUnrankedCount">0</span></button>
+      </div>
+      <div class="meme-search-panel" id="memeSearchPanel">
+        <div class="meme-search-row">
+          <label class="meme-search-input-wrap" for="memeSearchInput">
+            <span aria-hidden="true">⌕</span>
+            <input id="memeSearchInput" type="search" placeholder="搜索作品名、角色名或厂商" autocomplete="off">
+          </label>
+          <select id="memeSearchKind" aria-label="搜索类型">
+            <option value="work">作品</option>
+            <option value="character">角色</option>
+          </select>
+          <select id="memeSearchSource" aria-label="搜索来源">
+            <option value="all">全部来源</option>
+            <option value="bangumi">Bangumi</option>
+            <option value="cngal">CnGal</option>
+            <option value="vndb">VNDB</option>
+          </select>
+        </div>
+        <p class="meme-search-note" id="memeSearchNote">搜索结果会进入未分类素材池，不会直接修改履历书。</p>
+        <div class="meme-pool-results" id="memeSearchResults" aria-live="polite">
+          <div class="meme-empty-state">输入关键词开始搜索，或从履历书载入已有作品和角色。</div>
+        </div>
+      </div>
+      <div class="meme-unranked-panel" id="memeUnrankedPanel" hidden>
+        <div class="meme-unranked-grid" id="memeUnrankedGrid"></div>
+      </div>
+    </section>
+  </section>
+    </div>
+  </div>
+</main>
+
+<!-- MEME dialogs live in the same document so switching tools never reloads the page. -->
+<div class="meme-modal-overlay" id="memeImportModal" hidden>
+  <section class="meme-modal meme-import-modal" role="dialog" aria-modal="true" aria-labelledby="memeImportTitle">
+    <header class="meme-modal-header">
+      <div><p class="meme-eyebrow">BANGUMI COLLECTION</p><h2 id="memeImportTitle">导入已看过的游戏</h2><p>只读取当前账号标记为“看过”的游戏，勾选后加入未分类素材池。</p></div>
+      <button class="meme-modal-close" data-close-modal="memeImportModal" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="meme-import-actions"><span id="memeImportStatus">准备加载</span><div><button class="meme-button meme-button-secondary" id="memeImportSelectAll" type="button">全选</button><button class="meme-button meme-button-secondary" id="memeImportClear" type="button">清空</button></div></div>
+    <div class="meme-import-results" id="memeImportResults"></div>
+    <button class="meme-load-more" id="memeImportMore" type="button" hidden>加载更多</button>
+    <footer class="meme-modal-footer"><span>已选择 <strong id="memeImportCount">0</strong> 项</span><div><button class="meme-button meme-button-secondary" data-close-modal="memeImportModal" type="button">取消</button><button class="meme-button meme-button-primary" id="memeImportConfirm" type="button" disabled>导入选中</button></div></footer>
+  </section>
+</div>
+
+<div class="meme-modal-overlay" id="memeImageModal" hidden>
+  <section class="meme-modal meme-image-modal" role="dialog" aria-modal="true" aria-labelledby="memeImageTitle">
+    <header class="meme-modal-header"><div><p class="meme-eyebrow">CUSTOM CARD</p><h2 id="memeImageTitle">添加本地图片</h2><p>图片会按完整显示、留白填充的规则进入 MEME 卡片。</p></div><button class="meme-modal-close" data-close-modal="memeImageModal" type="button" aria-label="关闭">×</button></header>
+    <label class="meme-file-drop" for="memeImageInput"><span class="meme-file-drop-icon">＋</span><strong>选择图片</strong><small>PNG / JPEG / GIF / WebP，单张不超过 8 MiB</small></label>
+    <input id="memeImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    <label class="meme-field-label" for="memeCustomTitle">卡片标题</label><input class="meme-text-input" id="memeCustomTitle" type="text" maxlength="80" placeholder="例如：我的年度最佳">
+    <footer class="meme-modal-footer"><button class="meme-button meme-button-secondary" data-close-modal="memeImageModal" type="button">取消</button><button class="meme-button meme-button-primary" id="memeImageConfirm" type="button" disabled>添加到素材池</button></footer>
+  </section>
+</div>
+
+<div class="meme-modal-overlay" id="memeCardPreviewModal" hidden>
+  <section class="meme-modal meme-card-preview-modal" role="dialog" aria-modal="true" aria-labelledby="memeCardPreviewTitle">
+    <header class="meme-modal-header"><div><p class="meme-eyebrow">CARD PREVIEW</p><h2 id="memeCardPreviewTitle">卡片预览</h2></div><button class="meme-modal-close" data-close-modal="memeCardPreviewModal" type="button" aria-label="关闭">×</button></header>
+    <div id="memeCardPreviewBody" class="meme-card-preview-body"></div>
+  </section>
+</div>
+
+<div class="meme-toast" id="memeToast" role="status" aria-live="polite"></div>
+<div class="meme-export-progress" id="memeExportProgress" aria-hidden="true">
+  <div class="meme-export-progress-head"><span id="memeExportProgressLabel">准备保存</span><strong id="memeExportProgressValue">0%</strong></div>
+  <div class="meme-export-progress-track"><div class="meme-export-progress-bar" id="memeExportProgressBar"></div></div>
+</div>
+<input id="memeJsonInput" type="file" accept="application/json,.json" hidden>
+
+<!-- Search Modal -->
+<div class="modal-overlay" id="searchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">选择喜欢的作品</span>
+      <button class="modal-close" onclick="closeModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-search-area">
+      <div class="modal-search-input-wrap">
+        <input type="text" class="modal-search-input" id="modalSearchInput" placeholder="输入作品名 / 厂商名，使用 title: 精确筛选…" oninput="handleSearchInput(event)">
+        <select class="modal-year-select" id="yearSelect" onchange="performSearch()">
+          <option value="">发售年份</option>
+        </select>
+      </div>
+      <div class="modal-filters" id="modalFilters">
+        <span class="filter-chip active" data-filter="all" onclick="setFilter('all')">全部</span>
+        <span class="filter-chip" data-filter="title" onclick="setFilter('title')">作品名</span>
+        <span class="filter-chip" data-filter="maker" onclick="setFilter('maker')">厂商</span>
+        <span class="filter-chip" data-filter="genre" onclick="setFilter('genre')">类型</span>
+        <span class="filter-chip" data-filter="artist" onclick="setFilter('artist')">原画</span>
+        <span class="filter-chip" data-filter="writer" onclick="setFilter('writer')">剧本</span>
+        <span class="filter-chip" data-filter="voice" onclick="setFilter('voice')">声优</span>
+      </div>
+      <div class="api-source-selector">
+        <span class="api-source-label">数据源:</span>
+        <button class="api-source-chip active" data-api="bangumi" onclick="toggleApiSource('bangumi')">Bangumi</button>
+        <button class="api-source-chip active" data-api="vndb" onclick="toggleApiSource('vndb')">VNDB</button>
+        <span class="api-source-chip always-on" title="始终启用">CnGal</span>
+      </div>
+    </div>
+    <div class="modal-results" id="modalResults">
+      <div class="modal-results-empty">输入作品名或厂商名搜索，或选择发售年份</div>
+    </div>
+    <div class="modal-footer">
+      <span class="modal-selection-count">已选择 <strong id="selectedCount">0</strong> / <span id="maxCount">15</span> 项</span>
+      <button class="btn btn-primary" onclick="confirmSelection()">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bangumi completed-game import modal -->
+<div class="modal-overlay" id="bangumiImportModal" role="dialog" aria-modal="true" aria-labelledby="bangumiImportModalTitle" onclick="if (event.target === this) closeBangumiImportModal()">
+  <div class="modal bangumi-import-modal">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title" id="bangumiImportModalTitle">从 Bangumi 导入已玩作品</span>
+        <p class="bangumi-import-caption" id="bangumiImportCaption">仅显示 Bangumi 中标记为“看过”的游戏</p>
+      </div>
+      <button class="modal-close" type="button" aria-label="关闭导入弹窗" onclick="closeBangumiImportModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="bangumi-import-toolbar">
+      <span id="bangumiImportStatus" class="bangumi-import-status">准备加载</span>
+      <div class="bangumi-import-selection-actions">
+        <button class="btn btn-secondary" type="button" onclick="selectAllBangumiImport()">全选</button>
+        <button class="btn btn-secondary" type="button" onclick="clearBangumiImportSelection()">清空</button>
+      </div>
+    </div>
+    <div class="modal-results bangumi-import-results" id="bangumiImportResults">
+      <div class="results-loading"><div class="loading-spinner"></div><p style="margin-top:8px;">正在读取 Bangumi 收藏…</p></div>
+    </div>
+    <div class="bangumi-import-load-more-wrap" id="bangumiImportLoadMoreWrap" hidden>
+      <button class="btn btn-secondary" id="bangumiImportLoadMore" type="button" onclick="loadBangumiImportPage()">加载更多</button>
+    </div>
+    <div class="modal-footer">
+      <span class="modal-selection-count">已选择 <strong id="bangumiImportSelectedCount">0</strong> 项</span>
+      <div class="bangumi-import-footer-actions">
+        <button class="btn btn-secondary" type="button" onclick="closeBangumiImportModal()">取消</button>
+        <button class="btn btn-primary" id="bangumiImportConfirm" type="button" onclick="confirmBangumiImport()" disabled>导入选中</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Preview Modal -->
+<div class="modal-overlay" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle" onclick="if (event.target === this) closeExportModal()">
+  <div class="modal export-modal">
+    <div class="modal-header export-modal-header">
+      <span class="export-modal-title" id="exportModalTitle">保存图片</span>
+      <button class="modal-close" type="button" aria-label="关闭图片预览" onclick="closeExportModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="export-modal-body">
+      <p class="export-modal-note" id="exportModalNote">履历书较长，已从上到下分割成多张图片。</p>
+      <div class="export-preview-grid" id="exportPreviewGrid"></div>
+      <div class="export-combined">
+        <p class="export-combined-copy">也可以不分割，保存为一张纵向 PNG 图片。</p>
+        <button class="export-combined-button" type="button" onclick="saveCombinedExportImage()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          1张合并保存
+        </button>
+      </div>
+      <p class="export-download-note">点击“全部保存”时，如果浏览器询问是否允许多个文件下载，请选择允许。</p>
+    </div>
+    <div class="modal-footer export-modal-footer">
+      <button class="export-save-all" type="button" onclick="saveAllExportParts()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        全部保存
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Avatar Crop Modal -->
+<div class="avatar-crop-modal" id="avatarCropModal">
+  <div class="avatar-crop-container">
+    <div class="avatar-crop-header">
+      <span class="avatar-crop-title">剪裁头像</span>
+      <button class="modal-close" onclick="closeAvatarCrop()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="avatar-crop-body">
+      <div class="avatar-crop-area" id="avatarCropArea">
+        <img id="avatarCropImage" alt="" draggable="false">
+        <div class="avatar-crop-overlay"></div>
+        <div class="avatar-crop-frame" id="avatarCropFrame"></div>
+      </div>
+      <div class="avatar-crop-controls">
+        <div class="avatar-crop-preview-wrap">
+          <span class="avatar-crop-label">预览</span>
+          <div class="avatar-crop-preview" id="avatarCropPreview"></div>
+        </div>
+        <div class="avatar-crop-zoom">
+          <span class="avatar-crop-label">缩放</span>
+          <input type="range" id="avatarCropZoom" min="0.3" max="3" step="0.01" value="1" oninput="updateAvatarCropZoom(this.value)">
+          <span class="avatar-crop-zoom-value" id="avatarCropZoomValue">100%</span>
+        </div>
+        <div class="avatar-crop-shape">
+          <span class="avatar-crop-label">形状</span>
+          <button class="avatar-shape-btn active" data-shape="square" onclick="setAvatarCropShape('square')">正方形</button>
+          <button class="avatar-shape-btn" data-shape="circle" onclick="setAvatarCropShape('circle')">圆形</button>
+        </div>
+      </div>
+    </div>
+    <div class="avatar-crop-footer">
+      <button class="btn btn-secondary" onclick="closeAvatarCrop()">取消</button>
+      <button class="btn btn-primary" onclick="confirmAvatarCrop()">确认剪裁</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Menu Popup -->
+<div class="add-menu-popup" id="addMenuPopup">
+  <div class="add-menu-item" onclick="openSearchFromMenu()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    从目录选择
+  </div>
+  <div class="add-menu-item" onclick="addCustomItem()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+    上传图片+标签
+  </div>
+</div>
+
+<!-- Color Picker Popup -->
+<div class="color-picker-popup" id="colorPickerPopup">
+  <div class="color-swatch-row" id="colorSwatchRow"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Export progress is intentionally outside #resumePaper. -->
+<div class="export-progress" id="exportProgress" role="status" aria-live="polite" aria-hidden="true">
+  <div class="export-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="图片保存进度">
+    <div class="export-progress-bar" id="exportProgressBar"></div>
+  </div>
+  <span class="export-progress-label" id="exportProgressLabel">准备保存</span>
+</div>
+
+<!-- Hidden file input for custom upload -->
+<input type="file" id="customImageInput" accept="image/*" style="display:none" onchange="handleCustomImage(event)">
+
+  <script>
+    (function () {
+      const viewButtons = [...document.querySelectorAll('[data-tool-view]')];
+      const panels = [...document.querySelectorAll('[data-tool-panel]')];
+
+      let hasInitializedToolView = false;
+
+      function applyToolView(active, updateHash) {
+        panels.forEach(panel => { panel.hidden = panel.dataset.toolPanel !== active; });
+        viewButtons.forEach(button => {
+          const selected = button.dataset.toolView === active;
+          button.classList.toggle('is-active', selected);
+          if (selected) button.setAttribute('aria-current', 'page');
+          else button.removeAttribute('aria-current');
+        });
+        document.body.dataset.toolView = active;
+        if (updateHash) {
+          const url = new URL(window.location.href);
+          url.hash = active === 'meme' ? 'meme' : '';
+          window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        }
+        window.dispatchEvent(new CustomEvent('vnfest-tool-viewchange', { detail: active }));
+      }
+
+      function playFallbackTransition(active, updateHash) {
+        applyToolView(active, updateHash);
+        const panel = panels.find(item => item.dataset.toolPanel === active);
+        panel?.classList.remove('is-view-entering');
+        requestAnimationFrame(() => panel?.classList.add('is-view-entering'));
+        window.setTimeout(() => panel?.classList.remove('is-view-entering'), 260);
+      }
+
+      function setToolView(view, updateHash) {
+        const active = view === 'meme' ? 'meme' : 'resume';
+        const animate = hasInitializedToolView;
+        let applied = false;
+        const update = () => {
+          if (applied) return;
+          applied = true;
+          applyToolView(active, updateHash);
+        };
+
+        if (animate && !document.hidden && typeof document.startViewTransition === 'function') {
+          try {
+            const transition = document.startViewTransition(update);
+            transition?.finished?.catch(() => {});
+            window.setTimeout(() => {
+              if (!applied && document.body.dataset.toolView !== active) {
+                applied = true;
+                playFallbackTransition(active, updateHash);
+              }
+            }, 120);
+          } catch (_) {
+            playFallbackTransition(active, updateHash);
+            applied = true;
+          }
+        } else {
+          if (animate) playFallbackTransition(active, updateHash);
+          else update();
+        }
+        hasInitializedToolView = true;
+      }
+
+      window.addEventListener('hashchange', () => setToolView(window.location.hash === '#meme' ? 'meme' : 'resume', false));
+      setToolView(window.location.hash === '#meme' ? 'meme' : 'resume', false);
+      window.switchToolView = setToolView;
+      window.handleMobileBangumiImport = function () {
+        if (document.body.dataset.toolView === 'meme') document.getElementById('memeBangumiImport')?.click();
+        else if (typeof window.openBangumiImportModal === 'function') window.openBangumiImportModal();
+      };
+    }());
+  </script>
+  <script src="./galgame-tool.js?v=20260903-bangumi-import2"></script>
+  <script src="./meme-tool.js?v=20260903-meme-v6"></script>
+</body>
+</html>

@@ -144,7 +144,7 @@ async function inspectViewport(cdp, baseUrl, viewport) {
       const summary = details && details.querySelector('summary');
       return { title: document.querySelector('#guideArticle h1')?.textContent || '', open: Boolean(details?.open), linkCount: details?.querySelectorAll('a[data-guide-id]').length || 0, summaryHeight: summary?.getBoundingClientRect().height || 0, overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth };
     })()`);
-    if (initial.open || initial.linkCount !== 4 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
+    if (initial.open || initial.linkCount !== 7 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
 
     await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"] > summary').click()`);
     if (!await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"]').open`)) throw new Error(`${viewport.name} click did not open release history`);

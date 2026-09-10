@@ -42,10 +42,16 @@ switch ($action) {
             $where[] = 'status = ?';
             $params[] = $status;
         }
-        $stmt = $db->prepare('SELECT * FROM vote_projects WHERE ' . implode(' AND ', $where) . ' ORDER BY updated_at DESC, id DESC LIMIT 100');
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $offset = ($page - 1) * 100;
+        $stmt = $db->prepare('SELECT * FROM vote_projects WHERE ' . implode(' AND ', $where) . ' ORDER BY updated_at DESC, id DESC LIMIT 100 OFFSET ' . $offset);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $result = array_map('voteProjectRow', $rows);
+        // 全量计数（不受 LIMIT 100 影响）：前端据此决定是否显示“加载更多”
+        $totalStmt = $db->prepare('SELECT COUNT(*) FROM vote_projects WHERE ' . implode(' AND ', $where));
+        $totalStmt->execute($params);
+        $total = (int)$totalStmt->fetchColumn();
 
         // Enrich with current_stage (first non-settled stage)
         if (!empty($result)) {
@@ -83,7 +89,7 @@ switch ($action) {
             }
         }
 
-        voteRespond(['success' => true, 'data' => $result]);
+        voteRespond(['success' => true, 'data' => $result, 'total' => $total, 'limit' => 100]);
 
     case 'my_manageable':
         $user = requireLogin();
@@ -128,12 +134,26 @@ switch ($action) {
         }
         $stmt = $db->prepare('SELECT * FROM vote_stages WHERE project_id = ? ORDER BY sort_order ASC, id ASC');
         $stmt->execute([(int)$project['id']]);
+        $canManage = $user ? voteCanManageProject($user, $project) : false;
+        $shareParam = trim((string)($_GET['share'] ?? ''));
+        // 阶段输出白名单：config_json 仅管理者可见（内含 tie_break 裁定候选等内部信息）
+        $stageRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$canManage) {
+            $stageRows = array_map(function ($row) {
+                unset($row['config_json']);
+                return $row;
+            }, $stageRows);
+        }
         voteRespond([
             'success' => true,
             'data' => voteProjectRow($project),
-            'stages' => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'can_manage' => $user ? voteCanManageProject($user, $project) : false,
+            'stages' => $stageRows,
+            'can_manage' => $canManage,
             'can_participate' => voteCanParticipateProject($user, $project),
+            'authenticated' => (bool)$user,
+            'guest_vote_enabled' => (int)($project['guest_vote'] ?? 0) === 1,
+            'share_valid' => voteShareTokenMatches($project, $shareParam),
+            'share_token' => $canManage ? (string)($project['share_token'] ?? '') : null,
         ]);
 
     case 'create':
@@ -176,9 +196,12 @@ switch ($action) {
         [$user, $project] = voteRequireProjectManager((int)($_GET['id'] ?? 0));
         $input = voteReadJson();
         $now = voteNowExpr();
+        $guestVote = array_key_exists('guest_vote', $input)
+            ? (int)(!empty($input['guest_vote']) ? 1 : 0)
+            : (int)($project['guest_vote'] ?? 0);
         $stmt = $db->prepare(
             "UPDATE vote_projects
-             SET title = ?, year_label = ?, description = ?, cover_url = ?, visibility = ?, eligibility_mode = ?, result_visibility = ?, config_json = ?, updated_at = $now
+             SET title = ?, year_label = ?, description = ?, cover_url = ?, visibility = ?, eligibility_mode = ?, result_visibility = ?, guest_vote = ?, config_json = ?, updated_at = $now
              WHERE id = ?"
         );
         $stmt->execute([
@@ -189,11 +212,29 @@ switch ($action) {
             voteNormalize((string)($input['visibility'] ?? ($project['visibility'] ?? 'public')), VOTE_VISIBILITIES, 'public'),
             voteProjectEligibilityInput($input, $project),
             voteNormalize((string)($input['result_visibility'] ?? ($project['result_visibility'] ?? 'live_rank_only')), VOTE_RESULT_VISIBILITIES, 'live_rank_only'),
+            $guestVote,
             voteJson($input['config'] ?? voteDecode($project['config_json'] ?? '{}')),
             (int)$project['id'],
         ]);
-        logAction('vote_project.update', 'vote_projects', (int)$project['id'], null);
+        logAction('vote_project.update', 'vote_projects', (int)$project['id'], ['guest_vote' => $guestVote]);
         voteRespond(['success' => true]);
+
+    case 'share':
+        // 负责人获取（首次自动生成）企划分享令牌。
+        [$user, $project] = voteRequireProjectManager((int)($_GET['id'] ?? 0));
+        $token = trim((string)($project['share_token'] ?? ''));
+        if ($token === '') {
+            $token = bin2hex(random_bytes(16));
+            $stmt = $db->prepare('UPDATE vote_projects SET share_token = ?, updated_at = ' . voteNowExpr() . ' WHERE id = ?');
+            $stmt->execute([$token, (int)$project['id']]);
+            logAction('vote_project.share_token_issue', 'vote_projects', (int)$project['id'], null);
+        }
+        voteRespond([
+            'success' => true,
+            'share_token' => $token,
+            'guest_vote' => (int)($project['guest_vote'] ?? 0),
+            'status' => (string)($project['status'] ?? ''),
+        ]);
 
     case 'publish':
     case 'suspend':
@@ -203,19 +244,39 @@ switch ($action) {
         if ($action === 'delete') {
             $projectId = (int)$project['id'];
             $db->beginTransaction();
-            $db->prepare('DELETE FROM vote_results WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_votes WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_matches WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_stage_entries WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_nominations WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_entries WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_stages WHERE project_id = ?')->execute([$projectId]);
-            $db->prepare('DELETE FROM vote_projects WHERE id = ?')->execute([$projectId]);
-            $db->commit();
+            try {
+                // flow 机制六表无外键约束，必须随企划一并清理，避免孤儿行
+                $db->prepare('DELETE FROM vote_flow_events WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_flow_results WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_flow_pool_entries WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_flow_matches WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_flow_pools WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_flow_runs WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_results WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_votes WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_matches WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_stage_entries WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_nominations WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_entries WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_stages WHERE project_id = ?')->execute([$projectId]);
+                $db->prepare('DELETE FROM vote_projects WHERE id = ?')->execute([$projectId]);
+                $db->commit();
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
             logAction('vote_project.delete', 'vote_projects', $projectId, ['title' => $project['title'] ?? '']);
             voteRespond(['success' => true, 'deleted_id' => $projectId]);
         }
         $target = $action === 'publish' ? 'running' : ($action === 'suspend' ? 'suspended' : 'archived');
+        if ($action === 'publish') {
+            // 发布前置校验：至少配置一个阶段，避免用户端出现空活动
+            $stageCountStmt = $db->prepare('SELECT COUNT(*) FROM vote_stages WHERE project_id = ?');
+            $stageCountStmt->execute([(int)$project['id']]);
+            if ((int)$stageCountStmt->fetchColumn() === 0) {
+                voteRespond(['success' => false, 'message' => '请先配置赛程阶段再发布'], 400);
+            }
+        }
         $now = voteNowExpr();
         $publishedSql = $action === 'publish' ? ", published_at = COALESCE(published_at, $now)" : '';
         $db->prepare("UPDATE vote_projects SET status = ?, updated_at = $now $publishedSql WHERE id = ?")->execute([$target, (int)$project['id']]);

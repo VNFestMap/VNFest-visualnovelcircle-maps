@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ConfigProvider, Layout, Menu, Card, Avatar, Progress, Badge, Tag,
   Statistic, Button, Input, Upload, Empty, Drawer, Switch, Select,
@@ -12,7 +12,7 @@ import {
   MenuOutlined, CopyOutlined, LinkOutlined,
   TagOutlined, SettingOutlined, FundOutlined, BookOutlined,
   ReloadOutlined, TranslationOutlined, SunOutlined, MoonOutlined,
-  TrophyOutlined,
+  TrophyOutlined, ClockCircleOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 import { buildTheme, darkTokens, lightTokens } from './theme-tokens';
 import AchievementsTab from './AchievementsTab';
@@ -171,6 +171,7 @@ function completionScore(user, memberships) {
     !!user?.email,
     !!user?.qq_bound,
     !!user?.discord_bound,
+    !!user?.bangumi_bound,
     memberships.filter((m) => m.status === 'active').length > 0,
   ];
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
@@ -368,6 +369,62 @@ export default function App() {
     reloadData();
   }, [reloadData]);
 
+  const navRef = useRef(null);
+  const [tabSliderPosition, setTabSliderPosition] = useState(null);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const updateTabSlider = () => {
+      const activeItem = nav?.querySelector('.ant-menu-item-selected');
+      if (!nav || !activeItem || activeItem.offsetParent === null) {
+        setTabSliderPosition(null);
+        return;
+      }
+      const sliderHeight = Number.parseFloat(
+        getComputedStyle(nav).getPropertyValue('--vn-tab-slider-height')
+      ) || 24;
+      setTabSliderPosition(
+        activeItem.offsetTop + Math.max(0, (activeItem.offsetHeight - sliderHeight) / 2)
+      );
+    };
+
+    updateTabSlider();
+    const frame = window.requestAnimationFrame(updateTabSlider);
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(updateTabSlider) : null;
+    if (nav) observer?.observe(nav);
+    const activeItem = nav?.querySelector('.ant-menu-item-selected');
+    if (activeItem) observer?.observe(activeItem);
+    window.addEventListener('resize', updateTabSlider);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', updateTabSlider);
+    };
+  }, [activeTab, isMobile, loading, sidebarOpen]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('oauth');
+    const oauthMessage = params.get('message');
+    if (!status || !oauthMessage) return undefined;
+
+    params.delete('oauth');
+    params.delete('message');
+    try {
+      const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`;
+      window.history.replaceState(null, '', cleanUrl);
+    } catch {
+      // Removing the one-time status from the URL is best effort only.
+    }
+
+    const timer = window.setTimeout(() => {
+      if (status === 'success') messageApi.success(oauthMessage);
+      else messageApi.error(oauthMessage);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [messageApi]);
+
   const handleTabChange = useCallback((key) => {
     setActiveTab(key);
     setSidebarOpen(false);
@@ -381,7 +438,7 @@ export default function App() {
     }
   }, []);
 
-  const runAction = useCallback(async (action, successText) => {
+  const runAction = useCallback(async (action, successText, { reload = true } = {}) => {
     try {
       const dataResult = await action();
       if (dataResult && dataResult.success === false) {
@@ -389,7 +446,7 @@ export default function App() {
         return false;
       }
       messageApi.success(responseMessage(dataResult, successText));
-      await reloadData({ silent: true });
+      if (reload) await reloadData({ silent: true });
       return true;
     } catch (err) {
       messageApi.error(normalizeError(err));
@@ -412,7 +469,8 @@ export default function App() {
     sendEmailCode(email) {
       return runAction(
         () => apiPost('./api/auth.php?action=send_code', { email: email.trim() }),
-        '验证码已发送'
+        '验证码已发送',
+        { reload: false }
       );
     },
     bindEmail(email, code) {
@@ -515,7 +573,14 @@ export default function App() {
 
   const sidebarContent = (
     <div className="vn-sider-inner">
-      <div className="vn-nav-wrap">
+      <div
+        className="vn-nav-wrap"
+        ref={navRef}
+        data-slider-ready={tabSliderPosition !== null ? 'true' : undefined}
+        style={{
+          '--vn-tab-slider-y': `${tabSliderPosition || 0}px`,
+        }}
+      >
         <Menu
           mode="inline"
           selectedKeys={[activeTab]}
@@ -663,7 +728,7 @@ export default function App() {
           )}
 
           <div className="vn-content-scroll">
-            <div className="vn-page-inner">
+            <div className={`vn-page-inner${activeTab === 'notifications' ? ' vn-page-inner-full' : ''}`}>
               {activeTab === 'overview' && (
                 <OverviewPage
                   data={data}
@@ -724,7 +789,9 @@ export default function App() {
                 <section className="vn-animate-in" data-component="通知中心" data-od-id="notifications">
                   <NotificationsTab
                     notifications={data.notifications}
+                    unread={data.unread}
                     actions={actions}
+                    isMobile={isMobile}
                   />
                 </section>
               )}
@@ -1437,6 +1504,13 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
             bindUrl="./api/auth.php?action=discord_auth&mode=bind"
             onUnbind={() => actions.unbindProvider('discord')}
           />
+          <SocialRow
+            name="Bangumi"
+            bound={!!user?.bangumi_bound}
+            detail={user?.bangumi_username ? `已绑定 · ${user.bangumi_username}` : ''}
+            bindUrl="./api/auth.php?action=bangumi_auth&mode=bind"
+            onUnbind={() => actions.unbindProvider('bangumi')}
+          />
         </div>
       </Card>
       </div>
@@ -1444,12 +1518,12 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
   );
 }
 
-function SocialRow({ name, bound, bindUrl, onUnbind }) {
+function SocialRow({ name, bound, detail, bindUrl, onUnbind }) {
   return (
     <div className="vn-list-item">
       <div className="vn-list-body" style={{ flex: 1 }}>
         <strong>{name}</strong>
-        <span>{bound ? '已绑定' : '未绑定'}</span>
+        <span className="vn-social-detail" title={detail || undefined}>{bound ? (detail || '已绑定') : '未绑定'}</span>
       </div>
       <Space>
         {!bound && <Button size="small" href={bindUrl}>绑定</Button>}
@@ -1539,40 +1613,267 @@ function ClubsTab({ memberships, clubs, pending, isManager, actions }) {
   );
 }
 
-function NotificationsTab({ notifications, actions }) {
+const notificationMetaMap = {
+  system: { label: '系统通知', tone: 'system', icon: <BellOutlined /> },
+  announcement: { label: '站内公告', tone: 'system', icon: <BellOutlined /> },
+  galonly: { label: 'GalOnly 审核', tone: 'review', icon: <TrophyOutlined /> },
+  membership: { label: '同好会动态', tone: 'club', icon: <TeamOutlined /> },
+  club: { label: '同好会动态', tone: 'club', icon: <TeamOutlined /> },
+  column: { label: '专栏互动', tone: 'article', icon: <BookOutlined /> },
+  default: { label: '通知', tone: 'default', icon: <InfoCircleOutlined /> },
+};
+
+function getNotificationMeta(type) {
+  const normalizedType = String(type || '').toLowerCase();
+  if (normalizedType === 'system' || normalizedType === 'announcement') return notificationMetaMap.system;
+  if (normalizedType.startsWith('galonly')) return notificationMetaMap.galonly;
+  if (normalizedType.startsWith('membership') || normalizedType.startsWith('join_') || normalizedType.startsWith('role_') || normalizedType.startsWith('member_')) {
+    return notificationMetaMap.membership;
+  }
+  if (normalizedType.startsWith('club')) return notificationMetaMap.club;
+  if (normalizedType.startsWith('column_')) return notificationMetaMap.column;
+  return notificationMetaMap.default;
+}
+
+function notificationTitle(notification) {
+  return String(notification?.title || '通知').trim() || '通知';
+}
+
+function notificationMessage(notification) {
+  return String(notification?.message || '').trim();
+}
+
+function notificationExcerpt(notification) {
+  return notificationMessage(notification).replace(/\s+/g, ' ').trim() || '这条通知没有附加正文。';
+}
+
+function formatNotificationTime(value, includeTime = true) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '时间未知';
+
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  if (sameDay && includeTime) {
+    return `今天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+      + (includeTime ? ` ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : '');
+  }
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' })
+    + (includeTime ? ` ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : '');
+}
+
+function notificationHref(link) {
+  if (!link) return '';
+  try {
+    const resolved = new URL(String(link), window.location.href);
+    if (!['http:', 'https:'].includes(resolved.protocol)) return '';
+    return resolved.toString();
+  } catch {
+    return '';
+  }
+}
+
+function NotificationDetail({ notification, onClose }) {
+  if (!notification) {
+    return (
+      <div className="vn-notification-empty-detail">
+        <span className="vn-notification-empty-icon"><BellOutlined /></span>
+        <Title level={4}>选择一条通知查看详情</Title>
+        <Text type="secondary">通知正文、时间和关联操作会在这里完整展示。</Text>
+      </div>
+    );
+  }
+
+  const meta = getNotificationMeta(notification.type);
+  const isRead = Number(notification.is_read) === 1;
+  const href = notificationHref(notification.link);
+
   return (
-    <Card
-      title="通知中心"
-      size="small"
-      bordered={false}
-      extra={
-        <Button type="text" size="small" icon={<CheckOutlined />} onClick={actions.markAllRead}>
-          全部已读
-        </Button>
-      }
-    >
-      {notifications.length > 0 ? (
-        notifications.map((n) => (
-          <button
-            key={n.id}
-            className={`vn-notice-button${Number(n.is_read) ? '' : ' vn-notice-unread'}`}
-            type="button"
-            onClick={() => !Number(n.is_read) && actions.markNoticeRead(n.id)}
-          >
-            <div className="vn-list-body" style={{ flex: 1 }}>
-              <strong>{n.title || '通知'}</strong>
-              <span>{n.message || ''}</span>
-            </div>
-            <Tag color={Number(n.is_read) ? undefined : 'red'}>{Number(n.is_read) ? '已读' : '未读'}</Tag>
-          </button>
-        ))
-      ) : (
-        <Empty description="暂无通知" image={Empty.PRESENTED_IMAGE_SIMPLE}>
-          <Text type="secondary">审核结果、绑定反馈和系统消息会出现在这里。</Text>
-        </Empty>
+    <article className="vn-notification-detail">
+      <div className="vn-notification-detail-topline">
+        <span className={`vn-notification-icon is-${meta.tone}`}>{meta.icon}</span>
+        <div className="vn-notification-detail-heading">
+          <div className="vn-notification-detail-kicker">
+            <span className={`vn-notification-type is-${meta.tone}`}>{meta.label}</span>
+            <span className={`vn-notification-read-state${isRead ? '' : ' is-unread'}`}>
+              <span className="vn-notification-status-dot" />
+              {isRead ? '已读' : '未读'}
+            </span>
+          </div>
+          <Title level={2}>{notificationTitle(notification)}</Title>
+          <div className="vn-notification-detail-meta">
+            <ClockCircleOutlined />
+            <time dateTime={notification.created_at || undefined}>
+              {formatNotificationTime(notification.created_at)}
+            </time>
+          </div>
+        </div>
+        {onClose && (
+          <Button className="vn-notification-detail-close" type="text" onClick={onClose}>
+            返回列表
+          </Button>
+        )}
+      </div>
+
+      <Divider />
+
+      <div className="vn-notification-detail-content">
+        {notificationMessage(notification) || '这条通知没有附加正文。'}
+      </div>
+
+      {href && (
+        <div className="vn-notification-detail-actions">
+          <Button type="primary" icon={<LinkOutlined />} href={href}>
+            查看相关内容
+          </Button>
+        </div>
       )}
+    </article>
+  );
+}
+
+function NotificationsTab({ notifications, unread, actions, isMobile }) {
+  const [filter, setFilter] = useState('all');
+  const [selectedId, setSelectedId] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const selectedNotification = useMemo(
+    () => notifications.find((notification) => String(notification.id) === String(selectedId)) || null,
+    [notifications, selectedId]
+  );
+  const filteredNotifications = useMemo(
+    () => filter === 'unread'
+      ? notifications.filter((notification) => Number(notification.is_read) !== 1)
+      : notifications,
+    [filter, notifications]
+  );
+
+  useEffect(() => {
+    if (selectedId && !notifications.some((notification) => String(notification.id) === String(selectedId))) {
+      setSelectedId(null);
+      setDetailOpen(false);
+    }
+  }, [notifications, selectedId]);
+
+  const openNotification = useCallback(async (notification) => {
+    setSelectedId(notification.id);
+    if (isMobile) setDetailOpen(true);
+    if (Number(notification.is_read) !== 1) {
+      await actions.markNoticeRead(notification.id);
+    }
+  }, [actions, isMobile]);
+
+  const closeDetail = useCallback(() => setDetailOpen(false), []);
+
+  return (
+    <section className="vn-notification-card" aria-labelledby="notification-center-title">
+      <div className="vn-notification-header">
+        <div className="vn-notification-title-row">
+          <span className="vn-notification-title-icon"><BellOutlined /></span>
+          <Title id="notification-center-title" level={2}>通知中心</Title>
+          <Text type="secondary" className="vn-notification-summary">
+            {notifications.length} 条通知 · {unread} 条未读
+          </Text>
+        </div>
+        <div className="vn-notification-header-actions">
+          <div className="vn-notification-filter" role="group" aria-label="通知筛选">
+            <button
+              className={`vn-notification-filter-button${filter === 'all' ? ' is-active' : ''}`}
+              type="button"
+              data-filter="all"
+              aria-pressed={filter === 'all'}
+              onClick={() => setFilter('all')}
+            >
+              全部
+            </button>
+            <button
+              className={`vn-notification-filter-button${filter === 'unread' ? ' is-active' : ''}`}
+              type="button"
+              data-filter="unread"
+              aria-pressed={filter === 'unread'}
+              onClick={() => setFilter('unread')}
+            >
+              未读{unread > 0 && <span className="vn-notification-filter-count">{unread}</span>}
+            </button>
+          </div>
+          <Button
+            className="vn-notification-mark-all"
+            type="text"
+            icon={<CheckOutlined />}
+            onClick={actions.markAllRead}
+            disabled={unread <= 0}
+          >
+            全部已读
+          </Button>
+        </div>
+      </div>
+
+      <div className="vn-notification-workspace">
+        <div className="vn-notification-list" role="list" aria-label="通知列表">
+          {filteredNotifications.length > 0 ? filteredNotifications.map((notification) => {
+            const meta = getNotificationMeta(notification.type);
+            const isRead = Number(notification.is_read) === 1;
+            const isSelected = String(notification.id) === String(selectedId);
+            return (
+              <div key={notification.id} className="vn-notification-list-item" role="listitem">
+                <button
+                  className={`vn-notification-row${isRead ? '' : ' is-unread'}${isSelected ? ' is-selected' : ''}`}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => openNotification(notification)}
+                >
+                  <span className={`vn-notification-icon is-${meta.tone}`}>{meta.icon}</span>
+                  <span className="vn-notification-row-main">
+                    <span className="vn-notification-row-heading">
+                      <span className="vn-notification-row-title">{notificationTitle(notification)}</span>
+                      <time dateTime={notification.created_at || undefined}>
+                        {formatNotificationTime(notification.created_at, false)}
+                      </time>
+                    </span>
+                    <span className="vn-notification-row-excerpt">{notificationExcerpt(notification)}</span>
+                    <span className="vn-notification-row-footer">
+                      <span className={`vn-notification-type is-${meta.tone}`}>{meta.label}</span>
+                      {!isRead && <span className="vn-notification-unread-label"><span className="vn-notification-status-dot" />未读</span>}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            );
+          }) : (
+            <div className="vn-notification-filter-empty">
+              <Empty
+                description={filter === 'unread' ? '暂无未读通知' : '暂无通知'}
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              >
+                <Text type="secondary">审核结果、绑定反馈和系统消息会出现在这里。</Text>
+              </Empty>
+            </div>
+          )}
+        </div>
+
+        <aside className="vn-notification-detail-pane" aria-live="polite">
+          <NotificationDetail notification={selectedNotification} />
+        </aside>
+      </div>
+
+      <Drawer
+        className="vn-notification-detail-drawer"
+        title="通知详情"
+        placement="right"
+        open={isMobile && detailOpen && Boolean(selectedNotification)}
+        onClose={closeDetail}
+        width="100%"
+        styles={{ body: { padding: 0 } }}
+      >
+        <NotificationDetail notification={selectedNotification} onClose={closeDetail} />
+      </Drawer>
+
       <Divider />
       <Button href="./index.html?guest=1" icon={<EnvironmentOutlined />}>返回地图</Button>
-    </Card>
+    </section>
   );
 }

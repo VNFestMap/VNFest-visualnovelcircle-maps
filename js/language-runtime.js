@@ -34,7 +34,9 @@
     if (!values.length) {
       try { values = [navigator.language]; } catch (error) { values = []; }
     }
-    return values.some(function (value) { return /^ja(?:-|$)/i.test(String(value || '')); }) ? 'ja' : 'zh';
+    // Only the primary browser preference should drive automatic selection.
+    // A secondary Japanese fallback must not override the site's Chinese default.
+    return /^ja(?:-|$)/i.test(String(values[0] || '')) ? 'ja' : 'zh';
   }
 
   function urlOverride() {

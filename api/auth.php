@@ -18,6 +18,8 @@ require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/mailer.php';
 require_once __DIR__ . '/../includes/notifications.php';
 require_once __DIR__ . '/../includes/display_club.php';
+require_once __DIR__ . '/../includes/club_code.php';
+require_once __DIR__ . '/../includes/oauth_bangumi.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -80,6 +82,7 @@ function publicAuthUser(array $user): array {
     if ((int)($user['id'] ?? 0) > 0) {
         $displayClub = displayClubForUser(getDB(), (int)$user['id']);
     }
+    $bangumiBinding = bangumiPublicBindingForUser((int)($user['id'] ?? 0));
     return [
         'id' => (int)($user['id'] ?? 0),
         'username' => $user['username'] ?? '',
@@ -90,6 +93,8 @@ function publicAuthUser(array $user): array {
         'email_verified' => !empty($user['email_verified_at']),
         'qq_bound' => !empty($user['qq_openid']),
         'discord_bound' => !empty($user['discord_id']),
+        'bangumi_bound' => $bangumiBinding['bound'],
+        'bangumi_username' => $bangumiBinding['username'],
         'profile_bio' => $user['profile_bio'] ?? '',
         'is_audit' => (int)($user['is_audit'] ?? 0),
         'membership_application_email_enabled' => (int)($user['membership_application_email_enabled'] ?? 1) === 1,
@@ -172,6 +177,7 @@ switch ($action) {
         $password = $input['password'] ?? '';
         $email = normalizeEmail($input['email'] ?? '');
         $code = trim($input['code'] ?? '');
+        $clubBindCode = trim((string)($input['club_code'] ?? ''));
 
         // 验证用户名
         if (!preg_match('/^[a-zA-Z0-9_\x{4e00}-\x{9fff}]{2,20}$/u', $username)) {
@@ -194,6 +200,15 @@ switch ($action) {
         }
 
         $db = getDB();
+
+        // 绑定码是可选的；如果填写，则在创建账号前准备好兼容旧部署所需的列。
+        if ($clubBindCode !== '') {
+            if (strlen($clubBindCode) > 255) {
+                echo json_encode(['success' => false, 'message' => '同好会绑定码无效']);
+                exit();
+            }
+            clubCodeEnsureMembershipColumns($db);
+        }
 
         // 检查重复用户名
         $stmt = $db->prepare('SELECT id FROM users WHERE username = ?');
@@ -225,22 +240,51 @@ switch ($action) {
         }
 
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
-        $stmt = $db->prepare(
-            "INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at, created_at, updated_at, last_login_at)
-             VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-        );
-        $stmt->execute([$username, $username, $hash, $email]);
-        $userId = $db->lastInsertId();
+        $clubBinding = null;
+        try {
+            $db->beginTransaction();
 
-        $codes[$matchedIndex]['used'] = true;
-        $codes[$matchedIndex]['used_at'] = time();
-        writeRegisterCodes($codes);
+            $stmt = $db->prepare(
+                "INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at, created_at, updated_at, last_login_at)
+                 VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            );
+            $stmt->execute([$username, $username, $hash, $email]);
+            $userId = $db->lastInsertId();
+
+            if ($clubBindCode !== '') {
+                $clubBinding = clubCodeBindUser($db, (int)$userId, $clubBindCode);
+                if (!$clubBinding['success']) {
+                    throw new ClubCodeBindingException($clubBinding['message']);
+                }
+            }
+
+            $codes[$matchedIndex]['used'] = true;
+            $codes[$matchedIndex]['used_at'] = time();
+            writeRegisterCodes($codes);
+            $db->commit();
+        } catch (ClubCodeBindingException $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            http_response_code(422);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Unable to complete local registration: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => '注册失败，请稍后再试']);
+            exit();
+        }
 
         createSession($userId);
-        logAction('user.register', 'user', $userId, ['provider' => 'local', 'email' => $email]);
+        $registerAudit = ['provider' => 'local', 'email' => $email];
+        if ($clubBinding) {
+            $registerAudit['club_id'] = $clubBinding['club_id'];
+            $registerAudit['club_country'] = $clubBinding['country'];
+        }
+        logAction('user.register', 'user', $userId, $registerAudit);
         backfillAnnouncements((int)$userId);
 
-        echo json_encode([
+        $response = [
             'success' => true,
             'message' => '注册成功',
             'user' => publicAuthUser([
@@ -253,7 +297,20 @@ switch ($action) {
                 'email_verified_at' => date('Y-m-d H:i:s'),
                 'profile_bio' => '',
             ])
-        ]);
+        ];
+        if ($clubBinding) {
+            logAction('redeem_club_code', 'club_verification_codes', $clubBinding['code_id'], [
+                'club_id' => $clubBinding['club_id'],
+                'country' => $clubBinding['country'],
+                'registration' => true,
+            ]);
+            $response['club_binding'] = [
+                'club_id' => $clubBinding['club_id'],
+                'country' => $clubBinding['country'],
+                'club_name' => $clubBinding['club_name'],
+            ];
+        }
+        echo json_encode($response);
         exit();
 
     case 'send_register_code':
@@ -901,6 +958,21 @@ switch ($action) {
         header('Location: ' . $url);
         exit();
 
+    case 'bangumi_auth':
+        // Bangumi is a binding-only integration; it must not become a second
+        // VNFmap login path.
+        initSession();
+        requireLogin();
+        require_once __DIR__ . '/../includes/oauth_bangumi.php';
+        try {
+            $url = bangumiAuthorizationUrl();
+        } catch (Throwable $error) {
+            header('Location: ../user.html?tab=account&oauth=error&message=' . rawurlencode($error->getMessage()));
+            exit();
+        }
+        header('Location: ' . $url);
+        exit();
+
     case 'bind_qq':
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
@@ -990,11 +1062,33 @@ switch ($action) {
         echo json_encode(['success' => true, 'message' => 'Discord 已解绑']);
         exit();
 
+    case 'unbind_bangumi':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
+            exit();
+        }
+        authRequireSameOrigin();
+        $user = requireLogin();
+        $db = getDB();
+        try {
+            $db->prepare('DELETE FROM bangumi_bindings WHERE vnfmap_user_id = ?')
+                ->execute([(int)$user['id']]);
+        } catch (Throwable $error) {
+            http_response_code(503);
+            echo json_encode(['success' => false, 'message' => 'Bangumi 绑定功能尚未完成数据库初始化']);
+            exit();
+        }
+
+        logAction('user.unbind_bangumi', 'user', (int)$user['id']);
+        echo json_encode(['success' => true, 'message' => 'Bangumi 已解绑']);
+        exit();
+
     case 'oauth_config':
         echo json_encode([
             'success' => true,
             'qq_configured' => defined('QQ_APPID') && QQ_APPID !== '',
             'discord_configured' => defined('DISCORD_CLIENT_ID') && DISCORD_CLIENT_ID !== '',
+            'bangumi_configured' => bangumiOAuthConfigured(),
         ]);
         exit();
 
@@ -1004,7 +1098,8 @@ switch ($action) {
             'send_register_code', 'send_code', 'bind_email', 'unbind_email', 'update_profile',
             'update_membership_application_email_preference', 'update_language_preference', 'update_display_club',
             'bind_qq', 'unbind_qq', 'bind_discord', 'unbind_discord',
-            'qq_auth', 'discord_auth', 'oauth_config'
+            'unbind_bangumi',
+            'qq_auth', 'discord_auth', 'bangumi_auth', 'oauth_config'
         ]]);
         exit();
 }

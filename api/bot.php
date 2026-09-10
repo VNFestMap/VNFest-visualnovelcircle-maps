@@ -32,6 +32,9 @@ if (file_exists(__DIR__ . '/../includes/japan_prefectures.php')) {
     require_once __DIR__ . '/../includes/japan_prefectures.php';
 }
 require_once __DIR__ . '/../includes/image_proxy_helper.php';
+if (file_exists(__DIR__ . '/../includes/galonly_merchandise.php')) {
+    require_once __DIR__ . '/../includes/galonly_merchandise.php';
+}
 
 function botRespond(array $payload, int $status = 200): void {
     http_response_code($status);
@@ -1386,9 +1389,28 @@ switch ($action) {
                             ];
                         }
                     } catch (Throwable $e) {}
+                    $merchandiseItems = json_decode((string)($row['merchandise_items'] ?? ''), true);
+                    if (!is_array($merchandiseItems)) $merchandiseItems = [];
+                    foreach ($merchandiseItems as &$merchandiseItem) {
+                        if (!is_array($merchandiseItem)) continue;
+                        $itemImages = [];
+                        foreach (($merchandiseItem['images'] ?? []) as $itemImage) {
+                            $itemImageUrl = botAbsUrl(botString($itemImage));
+                            if ($itemImageUrl !== '') $itemImages[] = $itemImageUrl;
+                        }
+                        $merchandiseItem['images'] = $itemImages;
+                    }
+                    unset($merchandiseItem);
+                    $merchandiseAttachments = json_decode((string)($row['merchandise_attachments'] ?? ''), true);
+                    if (!is_array($merchandiseAttachments)) $merchandiseAttachments = [];
+                    $merchandiseAttachments = array_values(array_filter(array_map(fn($p) => botAbsUrl(botString($p)), $merchandiseAttachments)));
+                    $merchandiseVersion = max(0, (int)($row['merchandise_version'] ?? 0));
+                    $merchandiseStatus = botString($row['status'] ?? '');
                     $items[] = [
                         'id' => (int)($row['id'] ?? 0),
                         'event_id' => (int)($row['event_id'] ?? 0),
+                        'event_number' => isset($row['event_number']) ? (int)$row['event_number'] : null,
+                        'phase' => (int)($row['phase'] ?? 1),
                         'event_name' => botString($row['event_name'] ?? ''),
                         'booth_name' => botString($row['booth_name'] ?? ''),
                         'is_joint' => (int)($row['is_joint'] ?? 0),
@@ -1400,6 +1422,12 @@ switch ($action) {
                         'exhibition_experience' => botString($row['exhibition_experience'] ?? ''),
                         'notes' => botString($row['notes'] ?? ''),
                         'status' => botString($row['status'] ?? ''),
+                        'phase2_approved_status' => botString($row['phase2_approved_status'] ?? ''),
+                        'merchandise_version' => $merchandiseVersion,
+                        'merchandise_updated_at' => botString($row['merchandise_updated_at'] ?? ''),
+                        'merchandise_update_pending' => function_exists('galonlyMerchandiseIsUpdatePending') ? galonlyMerchandiseIsUpdatePending(['status' => $merchandiseStatus, 'merchandise_version' => $merchandiseVersion]) : ($merchandiseStatus === 'phase2_additional_pending'),
+                        'merchandise_items' => $merchandiseItems,
+                        'merchandise_attachments' => $merchandiseAttachments,
                         'image_paths' => $imageUrls,
                         'display_image' => botAbsUrl(botString($row['display_image'] ?? '')),
                         'clubs' => $clubs,

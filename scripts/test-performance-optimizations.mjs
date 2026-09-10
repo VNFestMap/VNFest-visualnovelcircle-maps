@@ -110,7 +110,8 @@ assert.ok(membershipApi.includes("'external'"), 'membership API should support t
 assert.ok(membershipApi.includes("status = 'active'"), 'membership API should expose active records for approved history');
 
 const clubCodesApi = read('api/club_codes.php');
-assert.ok(clubCodesApi.includes("join_method = 'school_code'") && clubCodesApi.includes("'school_code'"), 'club code redemption should mark direct joins as school_code');
+const clubCodeHelper = read('includes/club_code.php');
+assert.ok(clubCodesApi.includes('clubCodeBindUser') && clubCodeHelper.includes("join_method = 'school_code'") && clubCodeHelper.includes("'school_code'"), 'club code redemption should mark direct joins as school_code');
 
 const manager = read('admin/club_manager.html');
 assert.ok(manager.includes('data-tab="diplomatic"'), 'club manager should have a diplomatic applications tab');

@@ -20,6 +20,8 @@
   var CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3"><polyline points="3,8 7,12 13,4"/></svg>';
 
   var STATE = {
+    shareToken: '',
+    guestMode: false,
     project: null,
     stages: [],
     currentStage: null,
@@ -45,7 +47,9 @@
   }
 
   function init() {
-    var id = new URLSearchParams(window.location.search).get('id');
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    STATE.shareToken = params.get('share') || '';
     if (!id) { renderEmpty('缺少活动ID'); return; }
     bindSubmit();
     loadProject(id);
@@ -56,11 +60,30 @@
     $('mdStatusBadge').textContent = '-';
   }
 
+  // 免登录参与模式：持有有效分享链接 + 企划开启 guest_vote 且当前账号无参与资格。
+  function applyGuestMode(data) {
+    STATE.guestMode = false;
+    var banner = $('twGuestBanner');
+    if (!banner) return;
+    STATE.authenticated = !!data.authenticated;
+    var guestAllowed = !!data.guest_vote_enabled && !!data.share_valid;
+    var canParticipate = !!data.can_participate;
+    if (guestAllowed && !canParticipate && !STATE.authenticated) {
+      STATE.guestMode = true;
+      banner.hidden = false;
+    } else {
+      banner.hidden = true;
+    }
+  }
+
   function loadProject(projectId) {
     ensureClubNamesLoaded();
-    api('../api/twelve_contests.php?action=get&project_id=' + projectId).then(function (data) {
+    var getUrl = '../api/twelve_contests.php?action=get&project_id=' + encodeURIComponent(projectId);
+    if (STATE.shareToken) getUrl += '&share=' + encodeURIComponent(STATE.shareToken);
+    api(getUrl).then(function (data) {
       if (!data || !data.data) { renderEmpty('活动不存在'); return; }
       STATE.project = data.data;
+      applyGuestMode(data);
       $('mdContestTitle').textContent = data.data.title;
       $('mdInfoClub').textContent = resolveClubName(data.data.club_id, data.data.country);
       loadStages(projectId);
@@ -102,11 +125,14 @@
 
   function setActiveStage(stage) {
     STATE.currentStage = stage;
-    updateStatusBadge(stage.status === 'open' ? '进行中' : '已结束');
+    updateStatusBadge(
+      stage.status === 'open' ? '进行中' :
+      (stage.status === 'pending' || stage.status === 'locked') ? '未开始' : '已结束'
+    );
     $('mdInfoStage').textContent = (STAGE_META[stage.stage_type] || {}).label || stage.stage_type;
-    $('mdInfoStart').textContent = fmtDate(stage.start_time);
-    $('mdInfoEnd').textContent = fmtDate(stage.end_time);
-    startCountdown(stage.end_time);
+    $('mdInfoStart').textContent = fmtDate(stage.starts_at);
+    $('mdInfoEnd').textContent = fmtDate(stage.ends_at);
+    startCountdown(stage.ends_at);
 
     var chips = document.querySelectorAll('.md-stage-chip');
     for (var i = 0; i < chips.length; i++) {
@@ -173,6 +199,8 @@
           setActiveStage(stage);
           if (stage.status === 'settled' || stage.status === 'reviewing') {
             renderStageResults(stage);
+          } else if (stage.status !== 'open') {
+            renderEmpty('该阶段尚未开始，开始后可在此参与');
           } else {
             renderStage(stage);
           }
@@ -194,7 +222,7 @@
         '<div class="md-timeline-dot"></div>' +
         '<div>' +
           '<div class="md-timeline-label">' + esc(meta.label) + '</div>' +
-          '<div class="md-timeline-meta">' + fmtDate(s.start_time) + ' ~ ' + fmtDate(s.end_time) + '</div>' +
+          '<div class="md-timeline-meta">' + fmtDate(s.starts_at) + ' ~ ' + fmtDate(s.ends_at) + '</div>' +
         '</div>';
       wrap.appendChild(item);
     }
@@ -217,6 +245,16 @@
 
   // ==================== Nomination ====================
   function renderNomination(stage) {
+    // 提名需登录：免登录分享模式仅覆盖投票阶段
+    if (STATE.guestMode || STATE.authenticated === false) {
+      $('mdMainPanel').innerHTML =
+        '<div class="md-empty">' +
+          '<p style="font-weight:600;">提名需要登录后参与</p>' +
+          '<p style="color:var(--muted);font-size:13px;margin:6px 0 14px;">免登录分享链接仅用于投票阶段，登录后即可提名作品</p>' +
+          '<a class="md-btn md-btn--primary" href="../login.html">登录 / 注册</a>' +
+        '</div>';
+      return;
+    }
     var maxNoms = Number(stage.max_select) || 1;
     $('mdMainPanel').innerHTML =
       '<div class="md-action">' +
@@ -267,7 +305,7 @@
             '<div class="md-nom-name">' + esc(n.title) + '</div>' +
             '<div class="md-nom-meta">' + esc(n.subtitle || '') + '</div>' +
           '</div>' +
-          '<span class="md-nom-status ' + (n.status || 'pending') + '">' + esc(n.status || '待审核') + '</span>' +
+          '<span class="md-nom-status ' + (n.entry_status === 'approved' ? 'approved' : 'pending') + '">' + esc(n.entry_status === 'approved' ? '已通过' : '待审核') + '</span>' +
           '<button class="md-nom-remove" data-entry-id="' + Number(n.entry_id) + '" title="撤销提名">×</button>';
         list.appendChild(item);
       }
@@ -429,6 +467,13 @@
   function scoreBounds(stage) { return { min: Number(stage.score_min || 1), max: Number(stage.score_max || 10) }; }
   function selectedVoteIds() { return Object.keys(STATE.myVotes).filter(function (k) { return STATE.myVotes[k]; }); }
 
+  // 阶段是否允许改票（stage 列或池 runtime）
+  function stageAllowChange(stage) {
+    if (!stage) return false;
+    var v = stage.allow_vote_change;
+    return v === 1 || v === true || v === '1';
+  }
+
   // ==================== Score Voting ====================
   function renderScoreVoting(stage) {
     var maxVotes = Number(stage.max_select || 12);
@@ -449,13 +494,14 @@
       var votes = results[1] || [];
       var resultData = results[2] || {};
       var showVotes = canShowVoteNumbers(stage, resultData);
+      STATE.showVotes = showVotes;
       STATE.works = applyResultStats(works, resultData.data || []);
       votes.forEach(function (vote) {
         var entryId = Number(vote.entry_id);
         STATE.myVotes[entryId] = true;
         STATE.myScores[entryId] = Number(vote.score_value || bounds.max);
       });
-      STATE.votingLocked = votes.length > 0;
+      STATE.votingLocked = votes.length > 0 && !stageAllowChange(stage);
       renderRankPanel(STATE.works);
       renderScoreGrid(STATE.works, maxVotes, bounds, STATE.votingLocked, showVotes);
     }).catch(function (error) {
@@ -548,9 +594,10 @@
       var votes = results[1] || [];
       var resultData = results[2] || {};
       var showVotes = canShowVoteNumbers(stage, resultData);
+      STATE.showVotes = showVotes;
       STATE.works = applyResultStats(works, resultData.data || []);
       votes.forEach(function (v) { STATE.myVotes[Number(v.entry_id)] = true; });
-      STATE.votingLocked = votes.length > 0;
+      STATE.votingLocked = votes.length > 0 && !stageAllowChange(stage);
       renderRankPanel(STATE.works);
       renderWorkGrid(STATE.works, maxVotes, 'mdVoteGrid', 'md-work-grid', stage, STATE.votingLocked, showVotes);
     });
@@ -674,7 +721,7 @@
       STATE.works = works;
       STATE.showVotes = showVotes;
       votes.forEach(function (v) { STATE.myVotes[Number(v.entry_id)] = true; });
-      STATE.votingLocked = votes.length > 0;
+      STATE.votingLocked = votes.length > 0 && !stageAllowChange(stage);
       STATE.groups = groupWorksByKey(works, groupCount);
       renderRankPanel(works);
       renderGroupTabs(maxVotes);
@@ -798,6 +845,7 @@
       var votes = results[1] || [];
       var resultData = results[2] || {};
       var showVotes = canShowVoteNumbers(stage, resultData);
+      STATE.showVotes = showVotes;
       STATE.works = applyResultStats(works, resultData.data || []);
       votes.forEach(function (v) { STATE.myVotes[Number(v.entry_id)] = true; });
       renderRankPanel(STATE.works);
@@ -809,6 +857,8 @@
   function renderRankPanel(works) {
     var panel = $('mdRankPanel');
     var list = $('mdRankList');
+    // 票数指标未公开（result_visibility 裁剪）时不渲染，避免误导性的“0票”
+    if (STATE.showVotes === false) { panel.style.display = 'none'; return; }
     var ranked = works.filter(function (w) { return w.rank_no; }).sort(function (a, b) { return (a.rank_no || 9999) - (b.rank_no || 9999); }).slice(0, 5);
     if (!ranked.length) { panel.style.display = 'none'; return; }
     panel.style.display = '';
@@ -853,16 +903,27 @@
         payload.scores = scores;
       }
 
+      if (STATE.shareToken) payload.share = STATE.shareToken;
+
+      // 提交期间禁用按钮，防重复点击造成重复提交
+      btn.disabled = true;
       post('../api/twelve_votes.php?action=cast', payload).then(function (r) {
         if (r && r.success) {
-          toast('投票成功');
-          lockSubmit();
+          if (stageAllowChange(stage)) {
+            btn.disabled = false;
+            btn.textContent = '修改投票';
+            toast('投票成功，可再次修改');
+          } else {
+            toast('投票成功');
+            lockSubmit();
+          }
         } else {
+          btn.disabled = false;
           toast((r && r.message) || '投票失败');
         }
       }).catch(function (error) {
-        toast(error && error.message ? error.message : '投票提交失败');
         btn.disabled = false;
+        toast(error && error.message ? error.message : '投票提交失败');
       });
     });
   }

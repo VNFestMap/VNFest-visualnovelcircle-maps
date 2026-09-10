@@ -21,6 +21,7 @@ require_once __DIR__ . '/../includes/recognition/capability.php';
 require_once __DIR__ . '/../includes/recognition/roles.php';
 require_once __DIR__ . '/../includes/recognition/rules.php';
 require_once __DIR__ . '/../includes/recognition/pipeline.php';
+require_once __DIR__ . '/../includes/recognition/quiz.php';
 
 const RECOG_PROGRAM_TYPES = ['assessment', 'activity', 'mission', 'submission', 'competition', 'award', 'external'];
 
@@ -46,7 +47,8 @@ function recogDeriveCapabilities(array $content, string $type, array $fields = [
             $t = $q['type'] ?? '';
             if ($t === 'multiple') $caps[] = 'quiz.multiple_choice';
             if ($t === 'judge') $caps[] = 'quiz.judgement';
-            if ($t === 'fill_blank') $caps[] = 'quiz.fill_blank';
+            // 多空填空归入基础填空能力；排序题不新增能力维度（能力集为封闭注册表）
+            if ($t === 'fill_blank' || $t === 'fill_multi') $caps[] = 'quiz.fill_blank';
         }
     }
     foreach (($content['rules']['conditions'] ?? []) as $c) {
@@ -73,45 +75,15 @@ function recogAugmentCapsWithFields(array $caps, array $row): array {
 }
 
 /**
- * 校验并规范化版本内容（题目 + 规则 + 奖励）
+ * 校验并规范化版本内容（题目 + 考试设置 + 规则 + 奖励）
+ * @param array $content 按引用传入，题目/设置会被规范化后回写（保存新内容一律为 schema v2）
  * @return string|null 错误信息
  */
-function recogValidateContent(array $content, string $type, int $clubId, string $country): ?string {
-    $questions = $content['quiz']['questions'] ?? [];
-    if ($questions) {
-        if (!is_array($questions) || count($questions) > 200) {
-            return '题目数量非法（最多 200 题）';
-        }
-        foreach ($questions as $i => $q) {
-            $t = $q['type'] ?? '';
-            if (!in_array($t, ['single', 'multiple', 'judge', 'fill_blank'], true)) {
-                return '第 ' . ($i + 1) . ' 题题型不支持';
-            }
-            if (trim((string)($q['question'] ?? '')) === '') {
-                return '第 ' . ($i + 1) . ' 题题干为空';
-            }
-            if (in_array($t, ['single', 'multiple', 'judge'], true)) {
-                $options = $q['options'] ?? [];
-                if (!is_array($options) || count($options) < 2) {
-                    return '第 ' . ($i + 1) . ' 题选项不足';
-                }
-                $answer = $q['answer'] ?? [];
-                if (!is_array($answer) || !$answer) {
-                    return '第 ' . ($i + 1) . ' 题未设置答案';
-                }
-                foreach ($answer as $a) {
-                    if (!is_int($a) || $a < 0 || $a >= count($options)) {
-                        return '第 ' . ($i + 1) . ' 题答案索引越界';
-                    }
-                }
-                if ($t === 'single' && count($answer) !== 1) {
-                    return '第 ' . ($i + 1) . ' 题单选题只能有一个答案';
-                }
-            } else {
-                if (trim((string)($q['answer_text'] ?? '')) === '') {
-                    return '第 ' . ($i + 1) . ' 题填空题缺少参考答案';
-                }
-            }
+function recogValidateContent(array &$content, string $type, int $clubId, string $country): ?string {
+    if (!empty($content['quiz'])) {
+        $err = recogValidateQuizContent($content['quiz']);
+        if ($err !== null) {
+            return $err;
         }
     }
 
@@ -142,6 +114,8 @@ function recogStripAnswers(array $content): array {
     foreach (($content['quiz']['questions'] ?? []) as $i => $q) {
         unset($content['quiz']['questions'][$i]['answer']);
         unset($content['quiz']['questions'][$i]['answer_text']);
+        unset($content['quiz']['questions'][$i]['answer_texts']); // 多空填空逐空答案同样不得进入参与者视图；
+        // 排序题无答案字段（选项顺序即答案），组卷时已打乱呈现。
     }
     return $content;
 }

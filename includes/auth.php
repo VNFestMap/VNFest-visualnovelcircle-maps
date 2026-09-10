@@ -20,10 +20,55 @@ function initSession(): void {
         ini_set('session.cookie_samesite', 'Lax');
         ini_set('session.use_only_cookies', '1');
         ini_set('session.use_strict_mode', '1');
+        // map.vnfest.top 与 www.map.vnfest.top 是同一站点。OAuth 从任一入口发起时，
+        // 回调都可能回到 www；让两种主机名共享 PHP 会话，避免 Discord state 丢失。
+        $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+        $host = preg_replace('/:\d+$/', '', $host);
+        $migrateLegacyHostCookie = false;
+        $sessionScopeMarker = 'VNFEST_SESSION_SCOPE';
+        if (in_array($host, ['map.vnfest.top', 'www.map.vnfest.top'], true)) {
+            ini_set('session.cookie_domain', '.map.vnfest.top');
+            // 清理 2026-08-29 之前按单一主机保存的旧 cookie。Firefox 会按
+            // cookie 创建时间把旧的 host-only PHPSESSID 与新的共享 cookie
+            // 一起发送，PHP 可能因此恢复到未登录的旧 session，形成登录回跳。
+            // 记住是否有旧 cookie，待 session_start() 完成后再发删除头。
+            // PHP 可能会在 session_start() 中重写同名的 Set-Cookie 头。
+            $migrateLegacyHostCookie = isset($_COOKIE[session_name()])
+                && !isset($_COOKIE[$sessionScopeMarker]);
+        }
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
             ini_set('session.cookie_secure', '1');
         }
         session_start();
+        if ($migrateLegacyHostCookie) {
+            $secure = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
+            // 不带 domain 才能精确删除 host-only cookie，不影响新的共享 cookie。
+            setcookie(session_name(), '', [
+                'expires' => time() - 42000,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            // 旧 cookie 可能对应有效登录态；显式把当前 session 复制到共享域，
+            // 避免清理旧 cookie 的同时把用户登出。
+            setcookie(session_name(), session_id(), [
+                'expires' => time() + $lifetime,
+                'path' => '/',
+                'domain' => '.map.vnfest.top',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+            setcookie($sessionScopeMarker, 'shared', [
+                'expires' => time() + $lifetime,
+                'path' => '/',
+                'domain' => '.map.vnfest.top',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
     }
 }
 

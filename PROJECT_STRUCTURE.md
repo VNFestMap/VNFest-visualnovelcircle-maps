@@ -20,7 +20,9 @@ This repository is the public web root for the VNFest Galgame club map. Root-lev
 - `JUYOU/` - JUYOU event page and local assets.
 - `club-operation-portrait/` - standalone club operation portrait tool.
 - `Game/galgame_club_sim/` - standalone Galgame club simulator.
-- `tools/` - small public utility pages.
+- `Game/spy/` - served build output of the 谁是卧底 (spy game); entry card lives in `club_square.html`. Real multiplayer backend: `api/spy_rooms.php|spy_table.php|spy_actions.php` over the `spy_*` tables, rules engine in `includes/spy_game.php` (+ `includes/spy_rules.php`), phase timeouts and idle-room reaping by `scripts/spy_worker.php` (server cron, every minute; `--reap` hourly).
+- `Game/spy-react/` - Vite source project for `Game/spy/`. `npm install && npm run build` writes straight into `Game/spy/`; `node_modules/` is not part of the delivery. Contract check: `node scripts/test-page-i18n-contract.mjs` (with cwd = repo root); rules-engine assertions: `php scripts/test-spy-game.php`.
+- `tools/` - small public utility pages, including `tools/GalgameTool/` (Galgame 履历书自助工具).
 - `exam/` - club recognition assessment pages (list, detail, quiz, claim code redeem) and their assets; backed by the `recognition_*` tables and `includes/recognition/` modules. Renamed from `trial/` (同好会试炼 → 同好会考核); `trial/index.html` stays as a redirect stub for legacy links.
 - `user-v2-assets/` - built assets used by the root `user.html` entry.
 

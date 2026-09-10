@@ -4,11 +4,17 @@
 require_once __DIR__ . '/../includes/vote_projects.php';
 require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/image_proxy_helper.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 
 voteBootstrap();
 voteEnsureSchema();
 $action = trim((string)($_GET['action'] ?? ''));
 $db = getDB();
+
+// 提名提交按 IP 限频
+if ($action === 'submit' || $action === 'nominate') {
+    checkRateLimit('vote_nominate', 12, 1);
+}
 
 function voteEntryFromInput(array $input, array $project): array {
     $sourceType = trim((string)($input['source_type'] ?? 'manual'));
@@ -104,6 +110,15 @@ switch ($action) {
             $existingNom = $db->prepare("SELECT id, status FROM vote_nominations WHERE project_id = ? AND entry_id = ? AND user_id = ?");
             $existingNom->execute([(int)$project['id'], $entryId, (int)$user['id']]);
             $existingNomRow = $existingNom->fetch(PDO::FETCH_ASSOC);
+            // 提名数量上限后端强制（前端 stage.max_select 仅为引导，防绕过）
+            $maxNoms = max(1, (int)($openStages[0]['max_select'] ?? 1));
+            $cntStmt = $db->prepare("SELECT COUNT(DISTINCT entry_id) FROM vote_nominations WHERE project_id = ? AND user_id = ? AND status = 'active'");
+            $cntStmt->execute([(int)$project['id'], (int)$user['id']]);
+            $alreadyActiveThisEntry = $existingNomRow && $existingNomRow['status'] === 'active';
+            if (!$alreadyActiveThisEntry && (int)$cntStmt->fetchColumn() >= $maxNoms) {
+                $db->rollBack();
+                voteRespond(['success' => false, 'message' => '已达到最大提名数（' . $maxNoms . ' 个）'], 400);
+            }
             if ($existingNomRow) {
                 if ($existingNomRow['status'] === 'withdrawn') {
                     $now = voteNowExpr();
@@ -147,6 +162,10 @@ switch ($action) {
 
     case 'nomination_summary':
         $projectId = (int)($_GET['project_id'] ?? $_GET['contest_id'] ?? 0);
+        $project = voteGetProject($projectId);
+        if (!$project) voteRespond(['success' => false, 'message' => '企划不存在'], 404);
+        // 提名统计含 pending/rejected 内部状态，仅企划可读者可见
+        if (!voteCanReadProject(getCurrentUser(), $project)) voteRespond(['success' => false, 'message' => '无权查看该企划'], 403);
         $stmt = $db->prepare(
             "SELECT entry_status, COUNT(*) AS count
              FROM vote_entries
@@ -164,14 +183,24 @@ switch ($action) {
     case 'withdraw_nomination':
         $user = requireLogin();
         $entryId = (int)($_GET['entry_id'] ?? voteReadJson()['entry_id'] ?? 0);
-        $stmt = $db->prepare("UPDATE vote_nominations SET status = 'withdrawn' WHERE entry_id = ? AND user_id = ?");
-        $stmt->execute([$entryId, (int)$user['id']]);
-        // 若没有活跃提名了 → 移除条目
-        $stmt2 = $db->prepare("SELECT COUNT(*) FROM vote_nominations WHERE entry_id = ? AND status = 'active'");
-        $stmt2->execute([$entryId]);
-        if ((int)$stmt2->fetchColumn() === 0) {
-            $db->prepare("UPDATE vote_entries SET entry_status = 'removed' WHERE id = ? AND entry_status IN ('pending', 'approved')")
-                ->execute([$entryId]);
+        // 事务化：防“COUNT 与 UPDATE 之间并发新增提名”导致误移除条目
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare("UPDATE vote_nominations SET status = 'withdrawn' WHERE entry_id = ? AND user_id = ?");
+            $stmt->execute([$entryId, (int)$user['id']]);
+            $stmt2 = $db->prepare("SELECT COUNT(*) FROM vote_nominations WHERE entry_id = ? AND status = 'active'");
+            $stmt2->execute([$entryId]);
+            if ((int)$stmt2->fetchColumn() === 0) {
+                $db->prepare("UPDATE vote_entries SET entry_status = 'removed' WHERE id = ? AND entry_status IN ('pending', 'approved')")
+                    ->execute([$entryId]);
+                // 已被播种进阶段池/已有票的条目同步下线，避免撤销后仍可被投
+                $db->prepare("UPDATE vote_stage_entries SET status = 'removed' WHERE entry_id = ? AND status = 'active'")
+                    ->execute([$entryId]);
+            }
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
         }
         voteRespond(['success' => true]);
 

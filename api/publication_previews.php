@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/image_host.php';
 
 $dataFile = __DIR__ . '/../data/publication_previews.json';
 $uploadRoot = __DIR__ . '/../uploads/publication_previews';
@@ -311,8 +312,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($action === 'book_data') {
             $pages = [];
             $count = (int)($public['page_count'] ?? 0);
+            $storedPages = is_array($match['page_urls'] ?? null) ? $match['page_urls'] : [];
             for ($i = 1; $i <= $count; $i++) {
-                $pages[] = $public['pages_base_path'] . $i . '.jpg';
+                $pages[] = trim((string)($storedPages[$i - 1] ?? '')) ?: ($public['pages_base_path'] . $i . '.jpg');
             }
             $public['pages'] = $pages;
             $public['toc'] = array_map(fn($page) => ['caption' => '第 ' . $page . ' 页', 'page' => (string)$page], range(1, max(1, $count)));
@@ -367,6 +369,8 @@ if ($action === 'create') {
         'cover_path' => '',
         'page_count' => 0,
         'pages_base_path' => previewPageBasePath($id),
+        'page_urls' => [],
+        'page_local_paths' => [],
         'created_by' => (int)$user['id'],
         'created_by_name' => $user['nickname'] ?: ($user['username'] ?? ''),
         'created_at' => previewNow(),
@@ -407,12 +411,28 @@ if ($action === 'upload_page') {
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }
-    $dest = $dir . DIRECTORY_SEPARATOR . $page . '.jpg';
-    if (!move_uploaded_file($_FILES['image']['tmp_name'], $dest)) {
-        previewRespond(['success' => false, 'message' => '保存页面失败'], 500);
+    $fileName = 'page_' . $page . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.jpg';
+    $dest = $dir . DIRECTORY_SEPARATOR . $fileName;
+    $localUrl = previewPageBasePath($previewId) . $fileName;
+    $stored = imageHostStoreUploadedFile(
+        $_FILES['image']['tmp_name'],
+        $dest,
+        $localUrl,
+        (string)($_FILES['image']['name'] ?? ($page . '.jpg')),
+        'publication_preview:' . $previewId . ':' . $page,
+        'image/jpeg'
+    );
+    if (!$stored['ok']) {
+        previewRespond(['success' => false, 'message' => $stored['error'] ?? '保存页面失败'], 500);
     }
+    $data['previews'][$idx]['page_urls'] = is_array($data['previews'][$idx]['page_urls'] ?? null)
+        ? $data['previews'][$idx]['page_urls'] : [];
+    $data['previews'][$idx]['page_local_paths'] = is_array($data['previews'][$idx]['page_local_paths'] ?? null)
+        ? $data['previews'][$idx]['page_local_paths'] : [];
+    $data['previews'][$idx]['page_urls'][$page - 1] = $stored['url'];
+    $data['previews'][$idx]['page_local_paths'][$page - 1] = $localUrl;
     $data['previews'][$idx]['page_count'] = max((int)($row['page_count'] ?? 0), $page);
-    $data['previews'][$idx]['cover_path'] = $data['previews'][$idx]['cover_path'] ?: previewPageBasePath($previewId) . '1.jpg';
+    $data['previews'][$idx]['cover_path'] = $data['previews'][$idx]['page_urls'][0] ?? $data['previews'][$idx]['cover_path'];
     $data['previews'][$idx]['updated_at'] = previewNow();
     $data['previews'][$idx]['status'] = 'uploading';
     previewSaveAll($data);
@@ -425,13 +445,17 @@ if ($action === 'publish') {
         previewRespond(['success' => false, 'message' => '页数无效'], 400);
     }
     $dir = previewPageDir($previewId);
+    $pageUrls = is_array($row['page_urls'] ?? null) ? $row['page_urls'] : [];
+    $pageLocalPaths = is_array($row['page_local_paths'] ?? null) ? $row['page_local_paths'] : [];
     for ($i = 1; $i <= $pageCount; $i++) {
-        if (!is_file($dir . DIRECTORY_SEPARATOR . $i . '.jpg')) {
+        $localRelative = (string)($pageLocalPaths[$i - 1] ?? '');
+        $localAbsolute = $localRelative !== '' ? dirname(__DIR__) . '/' . ltrim($localRelative, '/') : '';
+        if (!is_file($localAbsolute) && trim((string)($pageUrls[$i - 1] ?? '')) === '' && !is_file($dir . DIRECTORY_SEPARATOR . $i . '.jpg')) {
             previewRespond(['success' => false, 'message' => '第 ' . $i . ' 页尚未上传'], 400);
         }
     }
     $data['previews'][$idx]['page_count'] = $pageCount;
-    $data['previews'][$idx]['cover_path'] = previewPageBasePath($previewId) . '1.jpg';
+    $data['previews'][$idx]['cover_path'] = $pageUrls[0] ?? ($data['previews'][$idx]['cover_path'] ?: previewPageBasePath($previewId) . '1.jpg');
     $data['previews'][$idx]['pages_base_path'] = previewPageBasePath($previewId);
     $data['previews'][$idx]['status'] = 'active';
     $data['previews'][$idx]['updated_at'] = previewNow();
@@ -443,7 +467,7 @@ if ($action === 'delete') {
     $data['previews'][$idx]['status'] = 'deleted';
     $data['previews'][$idx]['updated_at'] = previewNow();
     previewSaveAll($data);
-    previewRemoveDir(dirname(previewPageDir($previewId)));
+    // 本地图片是长期备份，删除预览记录时不删除文件。
     previewRespond(['success' => true]);
 }
 

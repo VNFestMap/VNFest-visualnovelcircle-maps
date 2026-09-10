@@ -1,0 +1,97 @@
+:root {
+  --column-legacy-surface: color-mix(in srgb, var(--vn-surface) 94%, transparent);
+}
+
+body.column-legacy-page {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--vn-text);
+  background: var(--vn-bg);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.column-legacy-main {
+  box-sizing: border-box;
+  width: min(1160px, calc(100% - 48px));
+  margin: 32px auto;
+  padding: 28px;
+  border: 1px solid var(--vn-border);
+  border-radius: 24px;
+  background: var(--column-legacy-surface);
+  box-shadow: 0 12px 32px var(--vn-shadow);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.column-legacy-notice {
+  max-width: 620px;
+  margin: 72px auto;
+  padding: 32px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 16px;
+  background: var(--vn-surface);
+  text-align: center;
+}
+
+.column-legacy-notice h1 {
+  margin: 10px 0 14px;
+  color: var(--vn-text-strong);
+  font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 650;
+}
+
+.column-legacy-notice p:not(.column-eyebrow) {
+  margin: 0;
+  color: var(--vn-text-muted);
+  line-height: 1.8;
+}
+
+.column-eyebrow {
+  margin: 0;
+  color: var(--vn-primary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.column-legacy-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.column-legacy-actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid var(--vn-border-strong);
+  border-radius: 12px;
+  color: var(--vn-text);
+  background: var(--vn-surface-raised);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.column-legacy-actions a:first-child {
+  color: var(--vn-text-strong);
+  background: var(--vn-primary-container);
+  border-color: color-mix(in srgb, var(--vn-primary) 35%, var(--vn-border));
+}
+
+.column-legacy-actions a:hover { border-color: var(--vn-primary); }
+.column-legacy-actions a:focus-visible { outline: 3px solid color-mix(in srgb, var(--vn-primary) 40%, transparent); outline-offset: 3px; }
+
+html.has-vnfest-wallpaper .column-legacy-main {
+  background: color-mix(in srgb, var(--vn-surface) 78%, transparent);
+}
+
+@media (max-width: 720px) {
+  .column-legacy-main { width: calc(100% - 24px); margin: 16px auto; padding: 14px; border-radius: 18px; }
+  .column-legacy-notice { margin: 36px auto; padding: 24px 18px; }
+}

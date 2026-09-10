@@ -124,11 +124,13 @@ body::before, body::after { display: none; }
 .stat-card .label { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
 .admin-sidebar.collapsed .sidebar-stats { display: none; }
 
-.sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.sidebar-nav { --tab-slider-y: 8px; --tab-slider-height: 22px; position: relative; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .sidebar-nav::-webkit-scrollbar { width: 4px; }
 .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.sidebar-tab-slider { position: absolute; z-index: 2; top: 0; left: 3px; width: 3px; height: var(--tab-slider-height); border-radius: var(--radius-pill); background: var(--primary); box-shadow: 0 0 10px rgba(231,76,60,0.28); opacity: 0; pointer-events: none; transform: translate3d(0, var(--tab-slider-y), 0); transition: transform 260ms var(--ease-smooth), height 260ms var(--ease-smooth), opacity 120ms ease; }
+.sidebar-nav.tab-slider-ready .sidebar-tab-slider { opacity: 1; }
 
-.sidebar-nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); white-space: nowrap; position: relative; border: none; background: none; width: 100%; text-align: left; font-family: var(--font); }
+.sidebar-nav-item { z-index: 1; display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); white-space: nowrap; position: relative; border: none; background: none; width: 100%; text-align: left; font-family: var(--font); }
 .sidebar-nav-item:hover { color: var(--text-primary); background: var(--surface-hover); }
 .sidebar-nav-item.active { color: var(--primary); background: var(--primary-bg); font-weight: 600; }
 .sidebar-nav-item .nav-icon { width: 18px; height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
@@ -523,16 +525,20 @@ body::before, body::after { display: none; }
 .stat-card:nth-child(4) .num { animation-delay: 0.36s; }
 
 .sidebar-nav-item { animation: fadeSlideUp 0.4s var(--ease-out) both; }
-.sidebar-nav-item:nth-child(1) { animation-delay: 0.08s; }
-.sidebar-nav-item:nth-child(2) { animation-delay: 0.12s; }
-.sidebar-nav-item:nth-child(3) { animation-delay: 0.16s; }
-.sidebar-nav-item:nth-child(4) { animation-delay: 0.20s; }
-.sidebar-nav-item:nth-child(5) { animation-delay: 0.24s; }
-.sidebar-nav-item:nth-child(6) { animation-delay: 0.28s; }
-.sidebar-nav-item:nth-child(7) { animation-delay: 0.32s; }
-.sidebar-nav-item:nth-child(8) { animation-delay: 0.36s; }
-.sidebar-nav-item:nth-child(9) { animation-delay: 0.40s; }
-.sidebar-nav-item:nth-child(10) { animation-delay: 0.44s; }
+.sidebar-nav-item:nth-of-type(1) { animation-delay: 0.08s; }
+.sidebar-nav-item:nth-of-type(2) { animation-delay: 0.12s; }
+.sidebar-nav-item:nth-of-type(3) { animation-delay: 0.16s; }
+.sidebar-nav-item:nth-of-type(4) { animation-delay: 0.20s; }
+.sidebar-nav-item:nth-of-type(5) { animation-delay: 0.24s; }
+.sidebar-nav-item:nth-of-type(6) { animation-delay: 0.28s; }
+.sidebar-nav-item:nth-of-type(7) { animation-delay: 0.32s; }
+.sidebar-nav-item:nth-of-type(8) { animation-delay: 0.36s; }
+.sidebar-nav-item:nth-of-type(9) { animation-delay: 0.40s; }
+.sidebar-nav-item:nth-of-type(10) { animation-delay: 0.44s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-tab-slider { transition: none; }
+}
 
 @media (max-width: 899px) {
   .admin-sidebar { width: var(--sidebar-collapsed-w); }
@@ -618,6 +624,156 @@ body::before, body::after { display: none; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 ::selection { background: var(--primary-bg); color: var(--primary); }
+
+/* ===== Top-level shell composition =====
+   The data cards below keep their existing layout. This layer only controls
+   the page header's reading order and responsive spacing. */
+.admin-topbar.admin-topbar--manual {
+  min-height: 68px;
+  padding-inline: clamp(16px, 3vw, 36px);
+  gap: clamp(16px, 2.5vw, 28px);
+}
+.admin-topbar.admin-topbar--manual .admin-topbar-leading {
+  gap: clamp(18px, 2.8vw, 32px);
+}
+.admin-topbar.admin-topbar--manual .topbar-breadcrumb {
+  gap: 8px;
+  font-size: 13px;
+}
+.admin-topbar.admin-topbar--manual .topbar-breadcrumb .bc-current {
+  font-weight: 700;
+}
+.admin-topbar.admin-topbar--manual .topbar-actions {
+  gap: 4px;
+}
+.admin-topbar.admin-topbar--manual .topbar-btn,
+.admin-topbar.admin-topbar--manual .topbar-theme-btn {
+  min-height: 40px;
+}
+.admin-mobile-brand {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  /* site-header.js intentionally unwraps manual headers on mobile. Keep the
+     mobile composition page-local so this admin header remains identifiable. */
+  .admin-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "menu breadcrumb";
+    align-items: center;
+    height: auto;
+    min-height: 0;
+    padding: 12px 16px 14px;
+    gap: 10px 14px;
+  }
+  .admin-topbar > .mobile-menu-btn {
+    grid-area: menu;
+    width: 44px;
+    height: 44px;
+  }
+  .admin-topbar > .admin-mobile-brand {
+    grid-area: brand;
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 44px;
+    color: var(--text-primary);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .admin-mobile-brand-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .admin-mobile-brand-divider {
+    width: 1px;
+    height: 18px;
+    margin-inline: 10px;
+    background: var(--border-strong);
+    flex: 0 0 auto;
+  }
+  .admin-mobile-brand-sub {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-overflow: ellipsis;
+  }
+  .admin-topbar > .topbar-breadcrumb {
+    grid-area: breadcrumb;
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    justify-self: end;
+    gap: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .admin-topbar > .topbar-breadcrumb > span:first-child,
+  .admin-topbar > .topbar-breadcrumb > .bc-sep {
+    display: none;
+  }
+  .admin-topbar > .topbar-actions {
+    grid-area: actions;
+    width: auto;
+    min-width: 0;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+  .admin-topbar > .topbar-actions .topbar-btn,
+  .admin-topbar > .topbar-actions .topbar-theme-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    line-height: 0;
+    vertical-align: middle;
+  }
+  .admin-topbar > .topbar-actions .topbar-btn svg,
+  .admin-topbar > .topbar-actions .topbar-theme-btn svg {
+    display: block;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    margin: 0;
+  }
+  .admin-topbar > .topbar-actions .topbar-divider {
+    flex: 0 0 1px;
+    width: 1px;
+    height: 24px;
+    margin: 0 2px;
+  }
+  .admin-topbar > .topbar-actions .topbar-btn span {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+    padding-inline: 12px;
+  }
+  .admin-mobile-brand-divider {
+    margin-inline: 7px;
+  }
+  .admin-mobile-brand-sub {
+    font-size: 12px;
+  }
+  .admin-topbar > .topbar-breadcrumb {
+    gap: 5px;
+    font-size: 11px;
+  }
+}
 </style>
 </head>
 <body>
@@ -638,6 +794,7 @@ body::before, body::after { display: none; }
       <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">总计</div></div>
     </div>
     <nav class="sidebar-nav" id="tabBar">
+      <span class="sidebar-tab-slider" aria-hidden="true"></span>
       <button class="sidebar-nav-item active" data-tab="pending" title="待审核"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">待审核</span></button>
       <button class="sidebar-nav-item" data-tab="diplomatic" title="外交申请"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg></span><span class="nav-label">外交申请</span></button>
       <button class="sidebar-nav-item" data-tab="approved" title="已通过"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><span class="nav-label">已通过</span></button>
@@ -658,6 +815,11 @@ body::before, body::after { display: none; }
   <div class="admin-main">
     <header class="admin-topbar vn-topbar admin-topbar--manual" data-page-header data-header-manual>
       <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="菜单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg></button>
+      <a class="admin-mobile-brand" href="../index.html?guest=1" aria-label="返回地图">
+        <span class="admin-mobile-brand-name">VNFest</span>
+        <span class="admin-mobile-brand-divider" aria-hidden="true"></span>
+        <span class="admin-mobile-brand-sub">同好会管理</span>
+      </a>
       <div class="vn-topbar-leading admin-topbar-leading">
         <a class="vn-topbar-brand" href="../index.html?guest=1" aria-label="返回地图">
           <span class="vn-topbar-name">VNFest</span>
@@ -709,9 +871,30 @@ function toggleMobileSidebar() {
   overlay.classList.toggle('active');
 }
 </script>
-<script src="club_manager_recognition.js?v=20260829-recognition-tab"></script>
+<script src="../js/vendor/qrcode.min.js?v=20260830-qr"></script>
+<script src="club_manager_recognition.js?v=20260831-recognition-scoring"></script>
 <script>
 var TAB_NAMES_MAP = { pending:'待审核', diplomatic:'外交申请', approved:'已通过', members:'成员', settings:'设置', jiangsu:'江苏专项', codes:'绑定码', bot_tokens:'Bot 接入', recommendations:'神器榜', projects:'企划枢纽', recognition:'考核设置', users:'用户管理' };
+var tabSliderFrame = 0;
+function updateSidebarTabSlider(tab) {
+  var tabBar = document.getElementById('tabBar');
+  if (!tabBar) return;
+  cancelAnimationFrame(tabSliderFrame);
+  tabSliderFrame = requestAnimationFrame(function() {
+    var activeBtn = tab
+      ? tabBar.querySelector('.sidebar-nav-item[data-tab="' + tab + '"]')
+      : tabBar.querySelector('.sidebar-nav-item.active');
+    if (!activeBtn || activeBtn.offsetParent === null) {
+      tabBar.classList.remove('tab-slider-ready');
+      return;
+    }
+    var sliderHeight = Math.max(20, activeBtn.offsetHeight - 16);
+    var sliderY = activeBtn.offsetTop + ((activeBtn.offsetHeight - sliderHeight) / 2);
+    tabBar.style.setProperty('--tab-slider-y', sliderY + 'px');
+    tabBar.style.setProperty('--tab-slider-height', sliderHeight + 'px');
+    tabBar.classList.add('tab-slider-ready');
+  });
+}
 document.getElementById('tabBar').addEventListener('click', function(e) { var btn = e.target.closest('.sidebar-nav-item'); if (btn && btn.dataset.tab) { switchTab(btn.dataset.tab); if (window.innerWidth <= 640) toggleMobileSidebar(); } });
 (function() {
   var _origSwitchTab = null;
@@ -723,12 +906,18 @@ document.getElementById('tabBar').addEventListener('click', function(e) { var bt
         if ((tab === 'users' || tab === 'jiangsu') && typeof isSuperAdminUser === 'function' && !isSuperAdminUser()) return;
         _origSwitchTab(tab);
         document.querySelectorAll('.sidebar-nav-item').forEach(function(btn) { btn.classList.toggle('active', btn.dataset.tab === tab); });
+        updateSidebarTabSlider(tab);
         var bc = document.getElementById('bcCurrent');
         if (bc && TAB_NAMES_MAP[tab]) bc.textContent = TAB_NAMES_MAP[tab];
       };
     }
   }, 50);
   setTimeout(function() { clearInterval(_patchTimer); }, 10000);
+  updateSidebarTabSlider();
+  window.addEventListener('resize', function() { updateSidebarTabSlider(); });
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(function() { updateSidebarTabSlider(); }).observe(document.getElementById('tabBar'));
+  }
 })();
 </script>
 <script>

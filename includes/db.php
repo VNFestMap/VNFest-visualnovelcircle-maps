@@ -17,6 +17,7 @@ function getDB(): PDO {
             $pdo = new PDO('sqlite:' . DB_PATH);
             $pdo->exec('PRAGMA journal_mode=WAL');
             $pdo->exec('PRAGMA foreign_keys=ON');
+            $pdo->exec('PRAGMA busy_timeout=5000'); // 并发写时等待而非立即报锁冲突
         }
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);

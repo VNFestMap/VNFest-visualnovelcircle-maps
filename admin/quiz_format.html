@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题库 JSON 规范 - Galgame 同好会地图</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
+<script src="../js/theme-runtime.js?v=20260702-theme"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #090b10; --surface: #131823; --surface-raised: #161c28;
+  --text-primary: #edf0f7; --text-secondary: #94a3b8; --text-muted: #5a6578;
+  --border: rgba(148, 163, 184, 0.12); --border-strong: rgba(148, 163, 184, 0.22);
+  --accent-purple: #a78bfa; --accent-gold: #f4c95d; --accent-green: #34d399; --danger: #ef4444;
+  --gold-bg: rgba(244, 201, 93, .12); --gold-border: rgba(244, 201, 93, .3);
+  --radius: 8px; --radius-lg: 12px;
+  --font: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  --mono: Consolas, "JetBrains Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  --bg: #f4f5f8; --surface: #ffffff; --surface-raised: #f7f8fa;
+  --text-primary: #1c2433; --text-secondary: #4a5568; --text-muted: #8a94a6;
+  --border: rgba(15, 23, 42, 0.10); --border-strong: rgba(15, 23, 42, 0.22);
+  --accent-purple: #7c3aed; --accent-gold: #b45309; --accent-green: #059669; --danger: #dc2626;
+  --gold-bg: rgba(180, 83, 9, 0.10); --gold-border: rgba(180, 83, 9, 0.35);
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.7; }
+.qd-topbar-wrap { position: sticky; top: 0; z-index: 50; }
+.qd-topbar-wrap .vn-topbar { background: var(--surface); }
+.doc { max-width: 860px; margin: 0 auto; padding: 26px 16px 80px; }
+.doc h2 { font-size: 18px; margin: 30px 0 10px; color: var(--accent-gold); }
+.doc h2:first-of-type { margin-top: 0; }
+.doc p { color: var(--text-secondary); margin: 8px 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+th, td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+th { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+td { color: var(--text-secondary); }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-raised); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--accent-purple); }
+html[data-theme="light"] code { color: #7c3aed; }
+pre { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--text-primary); margin: 10px 0; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--gold-border); background: var(--gold-bg); color: var(--accent-gold); margin-left: 6px; }
+.tag.must { border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.1); color: var(--danger); }
+.note { font-size: 12.5px; color: var(--text-muted); }
+ul { padding-left: 22px; color: var(--text-secondary); }
+li { margin: 4px 0; }
+a.back { color: var(--accent-purple); text-decoration: none; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="qd-topbar-wrap">
+  <header class="vn-topbar" data-page-header data-header-manual>
+    <div class="vn-topbar-leading">
+      <a class="vn-topbar-brand" href="../index.html" aria-label="返回地图">
+        <span class="vn-topbar-name">VNFest</span>
+        <span class="vn-topbar-divider" aria-hidden="true"></span>
+        <span class="vn-topbar-sub">题库 JSON 规范</span>
+      </a>
+    </div>
+    <nav class="vn-topbar-actions" aria-label="页面操作">
+      <a class="back" href="quiz_designer.html">返回题目设计器</a>
+    </nav>
+  </header>
+</div>
+
+<div class="doc">
+  <h2>文件结构</h2>
+  <div class="card">
+    <p>一份题库是一个 JSON 文件，包含 <code>questions</code>（题目列表）和 <code>settings</code>（考试设置，可省略）两部分。在题目设计器顶栏点「导入」即可载入。</p>
+    <pre>{
+  "questions": [ /* 题目，见下文 */ ],
+  "settings": { /* 考试设置，可省略，见下文 */ }
+}</pre>
+  </div>
+
+  <h2>题型一览</h2>
+  <div class="card">
+    <table>
+      <tr><th>type</th><th>题型</th><th>答案怎么填</th><th>判分规则</th></tr>
+      <tr><td><code>single</code></td><td>单选题</td><td><code>answer</code> 填 1 个选项序号（从 0 起）</td><td>全对得分</td></tr>
+      <tr><td><code>multiple</code></td><td>多选题</td><td><code>answer</code> 填多个序号，如 <code>[0,1,3]</code></td><td>按考试设置：全对得分，或选对得分、选错扣分</td></tr>
+      <tr><td><code>judge</code></td><td>判断题</td><td>选项固定为 对/错；<code>answer</code> 填 <code>[0]</code>（对）或 <code>[1]</code>（错）</td><td>全对得分</td></tr>
+      <tr><td><code>fill_blank</code></td><td>填空题</td><td><code>answer_text</code> 填参考答案文本</td><td>忽略大小写与首尾空格后比对</td></tr>
+      <tr><td><code>fill_multi</code></td><td>多空填空</td><td><code>answer_texts</code> 填答案数组，数组长度即空数（1–10）</td><td>逐空判分，得分 = 分值 × 正确空数 ÷ 总空数</td></tr>
+      <tr><td><code>order</code></td><td>排序题</td><td><code>options</code> 的排列顺序即正确答案，无需 answer 字段</td><td>按位置正确率给分</td></tr>
+    </table>
+    <p class="note">选项序号从 <b>0</b> 开始：第 1 个选项是 0，第 2 个是 1，依此类推。</p>
+  </div>
+
+  <h2>题目字段</h2>
+  <div class="card">
+    <table>
+      <tr><th>字段</th><th>适用题型</th><th>必填</th><th>说明</th></tr>
+      <tr><td><code>type</code></td><td>全部</td><td><span class="tag must">必填</span></td><td>题型，取值见上表</td></tr>
+      <tr><td><code>question</code></td><td>全部</td><td><span class="tag must">必填</span></td><td>题干</td></tr>
+      <tr><td><code>options</code></td><td>单选/多选/判断/排序</td><td><span class="tag must">必填</span></td><td>选项文本数组，至少 2 个；判断题固定 <code>["对","错"]</code>；排序题最多 20 个</td></tr>
+      <tr><td><code>answer</code></td><td>单选/多选/判断</td><td><span class="tag must">必填</span></td><td>正确选项序号数组（整数）</td></tr>
+      <tr><td><code>answer_text</code></td><td>填空</td><td><span class="tag must">必填</span></td><td>参考答案</td></tr>
+      <tr><td><code>answer_texts</code></td><td>多空填空</td><td><span class="tag must">必填</span></td><td>逐空参考答案数组，1–10 个，均不得为空</td></tr>
+      <tr><td><code>points</code></td><td>全部</td><td><span class="tag">建议</span></td><td>分值 1–100，省略默认 10；最终成绩按总分折算百分制</td></tr>
+      <tr><td><code>explanation</code></td><td>全部</td><td><span class="tag">可选</span></td><td>交卷后展示给参与者的解析</td></tr>
+      <tr><td><code>image</code></td><td>全部</td><td><span class="tag">可选</span></td><td>题干图，仅限设计器上传生成的站内地址（<code>data/quiz_images/…</code>）</td></tr>
+      <tr><td><code>option_images</code></td><td>有选项的题型</td><td><span class="tag">可选</span></td><td>选项图数组，长度必须与选项一致，无图的选项留空字符串 <code>""</code></td></tr>
+    </table>
+  </div>
+
+  <h2>完整示例</h2>
+  <div class="card">
+    <pre>{
+  "questions": [
+    {
+      "type": "single",
+      "question": "《千恋＊万花》中，有地将臣第一个遇见的可攻略角色是谁？",
+      "options": ["芦花", "芳乃", "茉子", "丛雨"],
+      "answer": [0],
+      "points": 10,
+      "explanation": "序章首先登场的是芦花。"
+    },
+    {
+      "type": "multiple",
+      "question": "以下作品中，属于柚子社出品的是？",
+      "options": ["天神乱漫", "Parquet", "青夏轨迹", "管乐恋曲"],
+      "answer": [0, 1, 3],
+      "points": 15
+    },
+    {
+      "type": "judge",
+      "question": "《交汇协奏曲》被玩家称为「桐月的绝唱」。",
+      "options": ["对", "错"],
+      "answer": [0],
+      "points": 5
+    },
+    {
+      "type": "fill_blank",
+      "question": "《秽翼的尤斯蒂娅》中，「牢狱」是由第几次大崩落产生的？",
+      "answer_text": "1",
+      "points": 10
+    },
+    {
+      "type": "fill_multi",
+      "question": "被誉为「姬野家的坏女人」的是姬野星奏与谁？",
+      "answer_texts": ["姬野永远"],
+      "points": 10
+    },
+    {
+      "type": "order",
+      "question": "将 Key 社以下作品按发售时间先后排序：",
+      "options": ["Kanon", "AIR", "CLANNAD", "Little Busters!"],
+      "points": 10,
+      "explanation": "1999 / 2000 / 2004 / 2007。"
+    }
+  ],
+  "settings": {
+    "shuffle": true,
+    "shuffle_options": true,
+    "pick_count": 0,
+    "time_limit": 20,
+    "multiple_partial": true,
+    "result_mode": "immediate"
+  }
+}</pre>
+  </div>
+
+  <h2>考试设置（settings）</h2>
+  <div class="card">
+    <table>
+      <tr><th>字段</th><th>取值</th><th>说明</th></tr>
+      <tr><td><code>shuffle</code></td><td>true / false</td><td>题目乱序</td></tr>
+      <tr><td><code>shuffle_options</code></td><td>true / false</td><td>选项乱序（排序题始终打乱呈现，不受此开关影响）</td></tr>
+      <tr><td><code>pick_count</code></td><td>0 或正整数</td><td>每次随机抽题数量，0 = 全部出</td></tr>
+      <tr><td><code>time_limit</code></td><td>0–180</td><td>限时（分钟），0 = 不限时；超时提交不通过、不签发</td></tr>
+      <tr><td><code>multiple_partial</code></td><td>true / false</td><td>多选半分：开 = 选对得分、选错扣分；关 = 全对才得分</td></tr>
+      <tr><td><code>result_mode</code></td><td><code>immediate</code> / <code>pass_only</code> / <code>hidden</code></td><td>立即显示分数与解析 / 只显示通过与否 / 交卷后不显示</td></tr>
+    </table>
+  </div>
+
+  <h2>保存前检查清单</h2>
+  <div class="card">
+    <ul>
+      <li>题干不为空；每题分值在 1–100 之间</li>
+      <li>选择题选项 ≥ 2 个，且答案序号不越界；单选题答案只能有 1 个</li>
+      <li>填空题参考答案不为空；多空填空每个空都有答案</li>
+      <li>选项图数组与选项等长（无图位置用 <code>""</code> 占位）；图片地址必须是设计器上传生成的站内地址</li>
+      <li>抽题数不超过总题数；限时不超过 180 分钟</li>
+    </ul>
+    <p class="note">以上规则与系统保存时的校验完全一致——导入后点「完成」若提示错误，按提示定位对应题目即可。</p>
+  </div>
+
+  <h2>使用方式</h2>
+  <div class="card">
+    <p>1. 按本规范编写题库，保存为 <code>.json</code> 文件（UTF-8 编码）。</p>
+    <p>2. 管理后台 → 考核设置 → 新建或编辑「知识问答」考核 → 打开题目设计器。</p>
+    <p>3. 顶栏点「导入」选择文件；检查无误后点「完成」带回，保存或发布考核。</p>
+    <p>4. 也可反向操作：在设计器里出好题后点「导出」，得到的文件同样符合本规范，可存档或交接给他人。</p>
+  </div>
+</div>
+</body>
+</html>

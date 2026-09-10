@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题库区 - Galgame 同好会地图</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
+<script src="../js/theme-runtime.js?v=20260702-theme"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* 类选择器里的 display:flex/inline-flex 会盖掉 hidden 属性的默认样式，强制兼容 */
+[hidden] { display: none !important; }
+:root {
+  --bg: #090b10; --surface: #131823; --surface-hover: #1a2030; --surface-raised: #161c28;
+  --text-primary: #edf0f7; --text-secondary: #94a3b8; --text-muted: #5a6578;
+  --border: rgba(148, 163, 184, 0.12); --border-strong: rgba(148, 163, 184, 0.22);
+  --accent-purple: #a78bfa; --accent-gold: #f4c95d; --accent-green: #34d399; --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12); --success-bg: rgba(52, 211, 153, 0.12);
+  --gold-bg: rgba(244, 201, 93, .12); --gold-border: rgba(244, 201, 93, .3);
+  --radius: 8px; --radius-lg: 12px;
+  --font: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  --bg: #f4f5f8; --surface: #ffffff; --surface-hover: #eef1f5; --surface-raised: #f7f8fa;
+  --text-primary: #1c2433; --text-secondary: #4a5568; --text-muted: #8a94a6;
+  --border: rgba(15, 23, 42, 0.10); --border-strong: rgba(15, 23, 42, 0.22);
+  --accent-purple: #7c3aed; --accent-gold: #b45309; --accent-green: #059669; --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.08); --success-bg: rgba(5, 150, 105, 0.10);
+  --gold-bg: rgba(180, 83, 9, 0.10); --gold-border: rgba(180, 83, 9, 0.35);
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+.qd-topbar-wrap { position: sticky; top: 0; z-index: 50; }
+.qd-topbar-wrap .vn-topbar { background: var(--surface); }
+.hub { max-width: 1000px; margin: 0 auto; padding: 24px 16px 80px; }
+.hub-intro { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+.tab { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-secondary); border-radius: 999px; padding: 7px 18px; font-size: 13px; cursor: pointer; font-family: inherit; transition: all .2s; }
+.tab.active { background: var(--gold-bg); border-color: var(--gold-border); color: var(--accent-gold); font-weight: 600; }
+.tabs .spacer { flex: 1; }
+.tabs input { background: var(--surface-raised); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: 999px; padding: 7px 14px; font-size: 13px; width: 200px; font-family: inherit; }
+.tabs input:focus { outline: none; border-color: var(--gold-border); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color .2s; }
+.card:hover { border-color: var(--border-strong); }
+.card .cover { width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-raised); }
+.card h3 { font-size: 15px; line-height: 1.4; }
+.card .desc { font-size: 12.5px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 20px; }
+.card .meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.card .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-secondary); }
+.tag.gold { border-color: var(--gold-border); background: var(--gold-bg); color: var(--accent-gold); }
+.card .actions { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); border-radius: var(--radius); padding: 6px 13px; font-size: 12.5px; cursor: pointer; transition: all .2s; font-family: inherit; text-decoration: none; }
+.btn:hover { background: var(--surface-hover); }
+.btn.primary { background: var(--gold-bg); border-color: var(--gold-border); color: var(--accent-gold); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.empty { color: var(--text-muted); text-align: center; padding: 70px 0; }
+.login-hint { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; padding: 9px 14px; border: 1px solid var(--gold-border); background: var(--gold-bg); border-radius: var(--radius); color: var(--accent-gold); font-size: 13px; }
+.login-hint a { color: var(--accent-gold); font-weight: 700; text-decoration: underline; }
+.qh-modal-mask { position: fixed; inset: 0; background: rgba(3, 6, 12, .55); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.qh-modal { background: var(--surface-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 18px; width: min(430px, 100%); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+.qh-modal .m-title { font-weight: 700; font-size: 15px; }
+.qh-modal .m-file { font-size: 12px; color: var(--text-muted); }
+.qh-modal input, .qh-modal textarea { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: var(--radius); padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical; }
+.qh-modal input:focus, .qh-modal textarea:focus { outline: none; border-color: var(--gold-border); }
+.qh-modal .m-note { font-size: 12px; color: var(--text-muted); }
+.qh-modal .m-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.qh-toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: var(--surface-raised); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: 999px; padding: 9px 20px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 999; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 86vw; }
+.qh-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="qd-topbar-wrap">
+  <header class="vn-topbar" data-page-header data-header-manual>
+    <div class="vn-topbar-leading">
+      <a class="vn-topbar-brand" href="../index.html" aria-label="返回地图">
+        <span class="vn-topbar-name">VNFest</span>
+        <span class="vn-topbar-divider" aria-hidden="true"></span>
+        <span class="vn-topbar-sub">题库区</span>
+      </a>
+    </div>
+    <nav class="vn-topbar-actions" aria-label="页面操作">
+      <a class="btn" href="quiz_designer.html">题目设计器</a>
+      <a class="btn" href="quiz_format.html" target="_blank" rel="noopener">JSON 规范</a>
+    </nav>
+  </header>
+</div>
+
+<div class="hub">
+  <p class="hub-intro">收集团内题库：本站已发布考核的题目、大家上传的共享题库，都可以载入设计器继续编辑；市集来自 makoquiz 活动答题系统，转译后同样能用。共享题库上传时会自动剥离答案。</p>
+  <div class="login-hint" id="hubLoginHint" hidden>上传共享题库、转译市集题库需要先 <a href="../login.html">登录</a>。</div>
+  <div class="tabs">
+    <button class="tab active" id="tabLocal">本站题库</button>
+    <button class="tab" id="tabShared">共享题库</button>
+    <button class="tab" id="tabGallery">makoquiz 市集</button>
+    <span class="spacer"></span>
+    <button class="btn" id="hubUpload" hidden>上传题库</button>
+    <input type="file" id="hubUploadFile" accept=".json,application/json" hidden>
+    <input id="hubSearch" placeholder="搜索标题 / 作者" hidden>
+  </div>
+  <div id="hubBody"><div class="empty">加载中…</div></div>
+</div>
+
+<div class="qh-modal-mask" id="hubModal" hidden>
+  <div class="qh-modal">
+    <div class="m-title">上传共享题库</div>
+    <div class="m-file" id="hubModalFile"></div>
+    <input id="hubShareTitle" placeholder="题库标题" maxlength="60">
+    <textarea id="hubShareDesc" rows="2" placeholder="一句话说明（可选）" maxlength="200"></textarea>
+    <div class="m-note">上传后对所有人可见；答案会在入库时自动剥离，只共享题目。</div>
+    <div class="m-actions">
+      <button class="btn" id="hubModalCancel">取消</button>
+      <button class="btn primary" id="hubModalOk">确认上传</button>
+    </div>
+  </div>
+</div>
+
+<div class="qh-toast" id="hubToast"></div>
+<script src="quiz_hub.js?v=20260830-quiz-hub-2"></script>
+</body>
+</html>

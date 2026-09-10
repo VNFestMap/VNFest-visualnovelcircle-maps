@@ -1,8 +1,7 @@
 <?php
-// api/image_proxy.php - Bangumi 图片服务端代理
-// 解决：lain.bgm.tv 旧路径 /pic/cover/ 只支持 HTTP，
-//       但现代浏览器在 HTTPS 页面上自动升级 HTTP 图片为 HTTPS 导致加载失败。
-// 方案：服务端去抓 HTTP 图片，通过本站输出，完全绕过 CDN 限制。
+// api/image_proxy.php - Bangumi / VNDB 图片服务端代理
+// 解决：第三方图片 CDN 在 HTTPS 页面、CORS 和 html2canvas 导出时不稳定。
+// 方案：服务端抓取允许列表中的图片，通过本站同源输出。
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -15,10 +14,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $url = $_GET['url'] ?? '';
 
-// 安全校验：只允许 lain.bgm.tv 的图片（支持新旧两种路径格式）
-// 旧格式: lain.bgm.tv/pic/cover/...
-// 新格式: lain.bgm.tv/r/400/pic/crt/...
-if (!preg_match('#^https?://lain\.bgm\.tv/(r/\d+/)?pic/#', $url)) {
+// 安全校验：只允许 Bangumi / VNDB / CnGal 的图片 CDN。
+// Bangumi: lain.bgm.tv/pic/... 或 lain.bgm.tv/r/400/pic/...
+// VNDB:    t.vndb.org/cv/...、t.vndb.org/v/... 等图片路径
+// CnGal:   tucang.cngal.top/api/image/show/...、image.cngal.org/images/... 等
+$parts = parse_url($url);
+$host = strtolower((string)($parts['host'] ?? ''));
+$path = (string)($parts['path'] ?? '');
+$isBangumiImage = $host === 'lain.bgm.tv' && preg_match('#^/(r/\d+/)?pic/#i', $path);
+$isVndbImage = in_array($host, ['t.vndb.org', 's.vndb.org'], true)
+    && preg_match('#^/[a-z0-9._-]+(?:/[a-z0-9._-]+)*\.(?:jpe?g|png|gif|webp)$#i', $path);
+$isCngalImage = ($host === 'tucang.cngal.top' && preg_match('#^/api/image/show/[a-z0-9_-]+$#i', $path))
+    || ($host === 'image.cngal.org' && preg_match('#^/(?:images|upload)/[a-z0-9._/-]+$#i', $path));
+if (!$isBangumiImage && !$isVndbImage && !$isCngalImage) {
     http_response_code(403);
     header('Content-Type: text/plain');
     echo 'invalid url';
@@ -53,19 +61,39 @@ $opts = [
 
 $context = stream_context_create($opts);
 
-// 尝试原协议
-$raw = @file_get_contents($url, false, $context);
+// CnGal 的 tucang 地址有时只是一个包装器，查询字符串中带着真实的
+// image.cngal.org 原图地址。优先请求包装器，失败后只回退到同样在白名单
+// 内的原图，避免把任意查询参数变成 SSRF 入口。
+$fetchUrls = [$url];
+if ($host === 'tucang.cngal.top') {
+    $wrappedOriginal = trim((string)($parts['query'] ?? ''));
+    $wrappedParts = parse_url($wrappedOriginal);
+    $wrappedHost = strtolower((string)($wrappedParts['host'] ?? ''));
+    $wrappedPath = (string)($wrappedParts['path'] ?? '');
+    if ($wrappedHost === 'image.cngal.org' && preg_match('#^/(?:images|upload)/[a-z0-9._/-]+$#i', $wrappedPath)) {
+        $fetchUrls[] = $wrappedOriginal;
+    }
+}
+
+$raw = false;
+foreach ($fetchUrls as $fetchUrl) {
+    $raw = @file_get_contents($fetchUrl, false, $context);
+    if ($raw !== false && strlen($raw) > 0) break;
+}
 
 // 失败则换协议重试
 if ($raw === false || strlen($raw) === 0) {
-    $altUrl = '';
-    if (strncasecmp($url, 'https://', 8) === 0) {
-        $altUrl = 'http://' . substr($url, 8);
-    } elseif (strncasecmp($url, 'http://', 7) === 0) {
-        $altUrl = 'https://' . substr($url, 7);
-    }
-    if ($altUrl !== '') {
-        $raw = @file_get_contents($altUrl, false, $context);
+    foreach ($fetchUrls as $fetchUrl) {
+        $altUrl = '';
+        if (strncasecmp($fetchUrl, 'https://', 8) === 0) {
+            $altUrl = 'http://' . substr($fetchUrl, 8);
+        } elseif (strncasecmp($fetchUrl, 'http://', 7) === 0) {
+            $altUrl = 'https://' . substr($fetchUrl, 7);
+        }
+        if ($altUrl !== '') {
+            $raw = @file_get_contents($altUrl, false, $context);
+            if ($raw !== false && strlen($raw) > 0) break;
+        }
     }
 }
 

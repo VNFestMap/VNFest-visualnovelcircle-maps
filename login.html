@@ -608,6 +608,7 @@ body.ready .shell-enter {
   }
 }
 </style>
+<script defer src="js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
 
@@ -722,6 +723,10 @@ body.ready .shell-enter {
           <div class="auth-field">
             <label for="regCode">验证码</label>
             <input class="auth-input" type="text" id="regCode" placeholder="6位验证码" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+          </div>
+          <div class="auth-field">
+            <label for="regClubCode">同好会绑定码（可选）</label>
+            <input class="auth-input" type="text" id="regClubCode" placeholder="如有同好会提供的绑定码，可在这里填写" maxlength="255" autocomplete="off" spellcheck="false">
           </div>
           <button class="auth-btn auth-btn-primary" id="registerBtn">注 册</button>
           <div class="auth-msg" id="regMsg" style="display:none"></div>
@@ -1167,7 +1172,7 @@ function updateCooldownUI() {
 
 /* ── Register Handler ── */
 document.getElementById('registerBtn').addEventListener('click', handleRegister);
-var regInputs = ['regUsername', 'regPassword', 'regEmail', 'regCode'];
+var regInputs = ['regUsername', 'regPassword', 'regEmail', 'regCode', 'regClubCode'];
 for (var i = 0; i < regInputs.length; i++) {
   document.getElementById(regInputs[i]).addEventListener('keydown', function(e) {
     if (e.key === 'Enter') handleRegister();
@@ -1179,6 +1184,7 @@ async function handleRegister() {
   var password = document.getElementById('regPassword').value;
   var email = document.getElementById('regEmail').value.trim();
   var code = document.getElementById('regCode').value.trim();
+  var clubCode = document.getElementById('regClubCode').value.trim();
 
   if (!username || !password || !email || !code) {
     showMsg('regMsg', '请填写所有字段', 'error');
@@ -1210,11 +1216,14 @@ async function handleRegister() {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username, password: password, email: email, code: code })
+      body: JSON.stringify({ username: username, password: password, email: email, code: code, club_code: clubCode })
     });
     var data = await resp.json();
     if (data.success) {
-      showMsg('regMsg', '注册成功，正在跳转...', 'success');
+      var bindingMessage = data.club_binding && data.club_binding.club_name
+        ? '，已加入「' + data.club_binding.club_name + '」'
+        : '';
+      showMsg('regMsg', '注册成功' + bindingMessage + '，正在跳转...', 'success');
       setTimeout(function() { window.location.replace(getSafeRedirectTarget()); }, 800);
     } else {
       showMsg('regMsg', data.message || '注册失败', 'error');

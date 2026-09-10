@@ -10,6 +10,17 @@ require_once __DIR__ . '/../../includes/rate_limit.php';
 require_once __DIR__ . '/../../includes/audit.php';
 require_once __DIR__ . '/../../includes/notifications.php';
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(410);
+    echo json_encode([
+        'success' => false,
+        'archived' => true,
+        'message' => '论坛功能已停止；当前内容发布请进入 VNFest 专栏。',
+        'column_url' => '/column/',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 $db = getDB();
 $action = strtolower(trim((string)($_GET['action'] ?? 'bootstrap')));
 $user = getCurrentUser();

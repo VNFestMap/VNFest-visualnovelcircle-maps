@@ -89,8 +89,6 @@
     applyContestWallpaper: applyContestWallpaper
   };
 
-  if (document.documentElement.getAttribute('data-theme') === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'light');
-  }
+  // 尊重用户主题偏好（由 theme-runtime 管理），不再强制亮色
   applyFallbackWallpaper();
 })();

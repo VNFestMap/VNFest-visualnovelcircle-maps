@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/image_host.php';
 $authUser = requireLogin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -118,31 +119,29 @@ if (!is_writable($dir)) {
     exit();
 }
 
-$fileBase = $scope === 'club' ? $country . '_' . $id : $id;
-
-foreach (['jpg', 'jpeg', 'png', 'gif', 'webp'] as $oldExt) {
-    $oldPath = $dir . '/' . $fileBase . '.' . $oldExt;
-    if (is_file($oldPath)) {
-        @unlink($oldPath);
-    }
-}
-
-$destPath = $dir . '/' . $fileBase . '.' . $ext;
-if (!move_uploaded_file($file['tmp_name'], $destPath)) {
-    echo json_encode(['success' => false, 'message' => '文件保存失败，请检查服务器目录权限: ' . basename($dir)]);
-    exit();
-}
-
-$timestamp = time();
+$fileBase = ($scope === 'club' ? $country . '_' . $id : $id)
+    . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4));
+$fileName = $fileBase . '.' . $ext;
+$destPath = $dir . '/' . $fileName;
 $urlPrefixes = [
     'publication' => 'data/publication_images/',
     'event' => 'data/event_images/',
 ];
 $urlPrefix = $urlPrefixes[$scope] ?? 'data/club_avatars/';
-$imageUrl = $urlPrefix . $fileBase . '.' . $ext . '?t=' . $timestamp;
+$localUrl = $urlPrefix . $fileName;
+$stored = imageHostStoreUploadedFile($file['tmp_name'], $destPath, $localUrl, (string)$file['name'], 'club_avatar:' . $scope);
+if (!$stored['ok']) {
+    echo json_encode(['success' => false, 'message' => $stored['error'] ?? '文件保存失败，请检查服务器目录权限: ' . basename($dir)]);
+    exit();
+}
+
+$timestamp = time();
+$imageUrl = $stored['url'] . (str_contains($stored['url'], '?') ? '&' : '?') . 't=' . $timestamp;
 
 echo json_encode([
     'success' => true,
     'message' => '上传成功',
     'image_url' => $imageUrl,
+    'storage' => $stored['storage'],
+    'local_backup' => $stored['local_backup'],
 ]);

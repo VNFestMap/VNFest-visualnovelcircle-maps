@@ -116,6 +116,7 @@ function renderPage(content, club, lang = 'zh') {
   <script src="../../js/language-runtime.js?v=20260813-language"></script>
   <script src="../../js/language-catalog.js?v=20260813-language"></script>
   <script src="../../js/language-static-ja.js?v=20260813-language"></script>
+  <script defer src="../../js/analytics.js?v=20260905-analytics"></script>
   <title>${escapeHtml(articleContent.title)} - ${interfaceLabels.page}</title>
   <link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header">
   <script defer src="../../js/site-header.js?v=20260827-site-header"></script>
@@ -375,6 +376,7 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
   <script src="../js/language-runtime.js?v=20260813-language"></script>
   <script src="../js/language-catalog.js?v=20260813-language"></script>
   <script src="../js/language-static-ja.js?v=20260813-language"></script>
+  <script defer src="../js/analytics.js?v=20260905-analytics"></script>
   <title>VNFest WIKI</title>
   <link rel="stylesheet" href="./wiki.css">
 </head>

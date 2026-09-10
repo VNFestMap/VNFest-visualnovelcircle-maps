@@ -165,15 +165,6 @@ body {
   padding: 24px 20px 56px;
 }
 
-.wiki-index-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 24px;
-  align-items: end;
-  padding: 28px 0 22px;
-  border-bottom: 1px solid var(--wiki-border);
-}
-
 .wiki-index-kicker {
   margin: 0 0 6px;
   color: var(--wiki-muted);
@@ -261,10 +252,10 @@ body {
 
 .wiki-index-tools {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 120px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  margin: 18px 0;
+  margin: 0;
 }
 
 .wiki-index-tools input {
@@ -297,18 +288,16 @@ body {
   text-decoration: underline;
 }
 
-.wiki-index-notice {
-  display: grid;
-  gap: 4px;
-  margin: 0 0 22px;
-  padding: 12px 14px;
-  border: 1px solid var(--wiki-border-soft);
-  background: var(--wiki-surface);
-  font-size: 13px;
+.wiki-index-finenote {
+  margin: 0;
+  color: var(--wiki-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
-.wiki-index-notice span {
-  color: var(--wiki-muted);
+.wiki-index-finenote strong {
+  color: var(--wiki-text);
+  font-weight: 700;
 }
 
 .wiki-index-country {
@@ -339,12 +328,15 @@ body {
 }
 
 .wiki-index-region {
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 .wiki-index-region h3 {
-  margin: 0 0 10px;
-  font-size: 16px;
+  margin: 0 0 8px;
+  color: var(--wiki-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .wiki-index-grid,
@@ -1099,11 +1091,15 @@ body {
 }
 
 .wiki-index-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
   align-items: start;
   margin: 0;
   padding: 22px 24px;
 }
 
+.wiki-index-hero h1,
 .wiki-index-hero h2 {
   margin: 0 0 8px;
   padding-bottom: 7px;
@@ -1112,11 +1108,6 @@ body {
   font-size: 32px;
   font-weight: 400;
   line-height: 1.25;
-}
-
-.wiki-index-tools {
-  grid-template-columns: 120px minmax(0, 1fr);
-  margin: 0;
 }
 
 .wiki-index-tools p {
@@ -1152,7 +1143,7 @@ body {
 
 .wiki-entry h3 {
   margin: 4px 0 6px;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .wiki-entry h3 a {
@@ -1236,8 +1227,85 @@ body {
   display: none;
 }
 
-.wiki-index-section-heading {
-  scroll-margin-top: 90px;
+.wiki-article-shell.is-hidden {
+  display: none;
+}
+
+/* —— 首页排版优化（2026-08）：仅作用于 wiki/index.html（.wiki-encyclopedia-index），
+   不影响 daily / publications 等共用 .wiki-encyclopedia-layout 的页面 —— */
+.wiki-encyclopedia-index {
+  grid-template-columns: 220px minmax(0, 800px) 300px;
+  justify-content: center;
+}
+
+.wiki-encyclopedia-index [id] {
+  scroll-margin-top: 84px;
+}
+
+.wiki-encyclopedia-index .wiki-index-country {
+  margin-top: 0;
+}
+
+.wiki-encyclopedia-index .wiki-index-featured {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.wiki-encyclopedia-index .wiki-index-aside .wiki-index-section-heading h2,
+.wiki-encyclopedia-index .wiki-index-aside .wiki-sidebar-card h2 {
+  font-size: 18px;
+}
+
+.wiki-maintenance-reserved-list {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wiki-panel);
+}
+
+.wiki-maintenance-reserved {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  color: var(--wiki-muted);
+  font-size: 13px;
+}
+
+.wiki-maintenance-reserved-state {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+/* 折叠面板：桌面端始终展开、隐藏摘要；移动端（≤760px）显示为可折叠面板 */
+.wiki-index-toc-wrap summary,
+.wiki-maintenance-reserved-details summary {
+  display: none;
+}
+
+.wiki-entry p.wiki-entry-links {
+  margin-top: 8px;
+}
+
+@media (max-width: 1199px) {
+  .wiki-encyclopedia-index .wiki-index-sidebar {
+    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-toc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    align-content: start;
+    margin-bottom: -1px;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-toc a {
+    border-right: 0;
+    border-bottom: 1px solid var(--wiki-panel);
+  }
 }
 
 @media (max-width: 1199px) {
@@ -1481,6 +1549,108 @@ body {
 
   .wiki-index-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* —— 移动端专属设计（≤760px，仅作用于 wiki/index.html）—— */
+@media (max-width: 760px) {
+  .wiki-encyclopedia-index .wiki-index-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  /* 折叠面板摘要行：页面目录 / 预留模块 */
+  .wiki-encyclopedia-index .wiki-index-toc-wrap,
+  .wiki-maintenance-reserved-details {
+    border: 1px solid var(--wiki-border-soft);
+    background: var(--wiki-surface);
+  }
+
+  .wiki-encyclopedia-index .wiki-index-toc-wrap summary,
+  .wiki-maintenance-reserved-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    color: var(--wiki-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-toc-wrap summary::-webkit-details-marker,
+  .wiki-maintenance-reserved-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .wiki-index-toc-caret {
+    color: var(--wiki-muted);
+    font-size: 11px;
+    transition: transform 140ms ease;
+  }
+
+  details[open] > summary .wiki-index-toc-caret {
+    transform: rotate(180deg);
+  }
+
+  /* 目录：折叠面板内两列网格，替代横向滚动条 */
+  .wiki-encyclopedia-index .wiki-index-toc {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border: 0;
+    border-top: 1px solid var(--wiki-panel);
+    margin: 0 -1px -1px 0;
+    overflow: hidden;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-toc a {
+    border-bottom: 1px solid var(--wiki-panel);
+    border-right: 1px solid var(--wiki-panel);
+  }
+
+  /* hero 与搜索的触控密度 */
+  .wiki-encyclopedia-index .wiki-index-hero {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-hero h1 {
+    font-size: 24px;
+    padding-bottom: 6px;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-tools {
+    gap: 10px;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-tools input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* 分区标题与条目密度 */
+  .wiki-encyclopedia-index .wiki-index-section-heading {
+    margin-bottom: 10px;
+  }
+
+  .wiki-encyclopedia-index .wiki-index-section-heading h2 {
+    font-size: 20px;
+  }
+
+  .wiki-encyclopedia-index .wiki-entry {
+    padding: 12px 0;
+  }
+
+  .wiki-encyclopedia-index .wiki-entry h3 {
+    font-size: 16px;
+  }
+
+  .wiki-encyclopedia-index .wiki-maintenance-reserved-list {
+    margin-top: 0;
+    padding-top: 2px;
   }
 }
 

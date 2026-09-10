@@ -1,0 +1,12 @@
+{
+  "name": "vnfest/column",
+  "description": "VNFest 专栏 Markdown 渲染依赖",
+  "type": "project",
+  "require": {
+    "league/commonmark": "^2.6"
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {}
+  }
+}

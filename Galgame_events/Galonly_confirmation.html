@@ -448,12 +448,34 @@
 
     @media print {
       @page { size: A4; margin: 14mm; }
+      :root,
+      :root[data-theme="dark"],
+      :root[data-theme="light"] {
+        color-scheme: light !important;
+        --paper: #fff;
+        --paper-raised: #f7f0e4;
+        --ink: #17233a;
+        --ink-soft: #3f4b5d;
+        --ink-muted: #596579;
+        --rule: rgba(23, 35, 58, .16);
+        --blue: #3e77b5;
+        --blue-deep: #29548d;
+        --orange: #c96e22;
+        --coral: #c85f64;
+        --yellow: #c89a2e;
+      }
       html,
-      body {
-        background: #fff;
+      html.has-vnfest-wallpaper,
+      body,
+      html.has-vnfest-wallpaper body,
+      :root.has-vnfest-wallpaper[data-theme] body {
+        background: #fff !important;
+        background-image: none !important;
+        transition: none !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
+      #vnfestWallpaperLayer { display: none !important; }
       body::before,
       body::after,
       .back-link,
@@ -516,6 +538,7 @@
       .button:hover { transform: none; }
     }
   </style>
+<script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
   <main class="page-shell">
@@ -693,6 +716,7 @@
       var meta = applicationStatusMeta(status);
       var eventName = event && (event.name || event.event_name) || application.event_name || ('活动 #' + eventId);
       var applicationId = application.id || requestedApplicationId;
+      var displayNumber = parseInt(application.event_number, 10) || parseInt(applicationId, 10) || '—';
       var dateText = formatEventDate(event && event.date);
       var locationText = (event && event.location) || '待主办方公布';
 
@@ -718,7 +742,7 @@
       $('letter-stamp').textContent = meta.stamp;
       $('letter-stamp').className = 'letter-stamp ' + meta.className;
       $('letter-lead').innerHTML = escapeHtml(meta.lead).replace(/(摊主资格|摊位位置|现场安排|拼摊安排)/g, '<strong>$1</strong>');
-      $('letter-reference').textContent = 'Application #' + (applicationId || '—');
+      $('letter-reference').textContent = 'Application #' + displayNumber;
 
       renderInfoGrid($('event-info-grid'), [
         ['活动名称', eventName],
@@ -728,7 +752,7 @@
       ]);
       renderInfoGrid($('booth-info-grid'), [
         ['摊位名称', application.booth_name || '未填写'],
-        ['申请编号', '#' + (applicationId || '—')],
+        ['申请编号', '#' + displayNumber],
         ['摊位形式', application.booth_type_label || boothTypeLabel(application.booth_type)],
         ['摊位规格', upgradeLabel(application.wants_upgrade)],
         ['预计参展人数', Number(application.expected_members || 0) > 0 ? application.expected_members + ' 人' : '未填写'],

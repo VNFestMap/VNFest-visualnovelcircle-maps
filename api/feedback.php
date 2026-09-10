@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'read') 
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT' && ($_GET['action'] ?? '') === 'save') {
     require_once __DIR__ . '/../includes/auth.php';
-    requireAdmin();
+    require_once __DIR__ . '/../includes/admin_insights.php';
+    $reviewer = requireAdmin();
 
     $input = json_decode(file_get_contents('php://input'), true);
     if (!is_array($input)) {
@@ -49,6 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && ($_GET['action'] ?? '') === 'save') 
         exit();
     }
 
+    $previous = readFeedback($feedbackFile);
+    $input = adminInsightsStampReviewTransitions($previous, $input, (int)($reviewer['id'] ?? 0));
     echo json_encode(['success' => writeFeedback($feedbackFile, $input)]);
     exit();
 }

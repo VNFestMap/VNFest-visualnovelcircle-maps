@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/image_host.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -73,29 +74,25 @@ switch ($action) {
         ];
         $ext = $extMap[$detectedType];
 
-        // 确保目录存在
+        // 保存唯一的本地副本；旧头像不删除，便于长期备份和回退。
         $avatarDir = __DIR__ . '/../data/avatars';
         if (!is_dir($avatarDir)) {
             mkdir($avatarDir, 0755, true);
         }
 
-        // 删除旧头像文件（不同扩展名的）
+        // 旧头像文件不删除，保持长期本地备份。
         $userId = (int)$user['id'];
-        foreach (['jpg', 'jpeg', 'png', 'gif', 'webp'] as $oldExt) {
-            $oldPath = $avatarDir . '/' . $userId . '.' . $oldExt;
-            if (is_file($oldPath)) {
-                @unlink($oldPath);
-            }
-        }
-
-        $destPath = $avatarDir . '/' . $userId . '.' . $ext;
-        if (!move_uploaded_file($file['tmp_name'], $destPath)) {
-            echo json_encode(['success' => false, 'message' => '文件保存失败']);
+        $fileName = 'avatar_' . $userId . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $destPath = $avatarDir . '/' . $fileName;
+        $localUrl = 'data/avatars/' . $fileName;
+        $stored = imageHostStoreUploadedFile($file['tmp_name'], $destPath, $localUrl, (string)$file['name'], 'avatar');
+        if (!$stored['ok']) {
+            echo json_encode(['success' => false, 'message' => $stored['error'] ?? '文件保存失败']);
             exit();
         }
 
         $timestamp = time();
-        $avatarUrl = 'data/avatars/' . $userId . '.' . $ext . '?t=' . $timestamp;
+        $avatarUrl = $stored['url'] . (str_contains($stored['url'], '?') ? '&' : '?') . 't=' . $timestamp;
 
         // 更新数据库
         $db = getDB();
@@ -109,6 +106,8 @@ switch ($action) {
             'success' => true,
             'message' => '头像上传成功',
             'avatar_url' => $avatarUrl,
+            'storage' => $stored['storage'],
+            'local_backup' => $stored['local_backup'],
         ]);
         exit();
 

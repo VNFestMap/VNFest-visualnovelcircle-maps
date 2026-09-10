@@ -12,7 +12,7 @@ const pages = [
   'Galgame_events/galonly_staff_guidelines.html', 'Galgame_events/galonly_staff_submit.html',
   'Galgame_events/Shanghai_Galonly_staff.html', 'Galgame_events/Shanghai_Galonly_submit.html',
   'moe/bracket.html', 'moe/contest.html', 'moe/index.html', 'twelve/contest.html', 'twelve/index.html', 'twelve/vote.html',
-  'club-operation-portrait/index.html', 'Game/galgame_club_sim/index.html',
+  'club-operation-portrait/index.html', 'Game/galgame_club_sim/index.html', 'Game/spy/index.html',
   'Game/galgame_club_sim/card-creator/index.html', 'JUYOU/HAIGUITANG.html',
   'wiki/index.html', 'wiki/guide/index.html', 'wiki/library/wiki-writing-guide.html',
   'wiki/publications.html', 'wiki/publication-upload.html', 'wiki/publication-manage.html', 'tools/pdf-reader/index.html',

@@ -75,9 +75,20 @@ switch ($action) {
         if (!$project) voteRespond(['success' => false, 'message' => '企划不存在'], 404);
         $user = getCurrentUser();
         if (!voteCanReadProject($user, $project)) voteRespond(['success' => false, 'message' => '无权查看该企划'], 403);
+        $canManage = $user ? voteCanManageProject($user, $project) : false;
         $stmt = $db->prepare('SELECT * FROM vote_stages WHERE project_id = ? ORDER BY sort_order ASC, id ASC');
         $stmt->execute([(int)$project['id']]);
-        voteRespond(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'can_manage' => $user ? voteCanManageProject($user, $project) : false]);
+        $stageRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$canManage) {
+            // 非管理者剥离结算裁定候选等内部信息，保留 bracket_size 等展示配置
+            $stageRows = array_map(function ($row) {
+                $config = voteDecode($row['config_json'] ?? '{}');
+                unset($config['tie_break'], $config['tie_breaks']);
+                $row['config_json'] = voteJson($config);
+                return $row;
+            }, $stageRows);
+        }
+        voteRespond(['success' => true, 'data' => $stageRows, 'can_manage' => $canManage]);
 
     case 'create':
         $input = voteReadJson();
@@ -229,7 +240,18 @@ switch ($action) {
         if (!$project) voteRespond(['success' => false, 'message' => '企划不存在'], 404);
         $user = getCurrentUser();
         if (!voteCanReadProject($user, $project)) voteRespond(['success' => false, 'message' => '无权查看'], 403);
-        voteRespond(array_merge(['success' => true, 'can_manage' => $user ? voteCanManageProject($user, $project) : false], voteFlowStatus($db, (int)$project['id'])));
+        $canManageFlow = $user ? voteCanManageProject($user, $project) : false;
+        $flowStatus = voteFlowStatus($db, (int)$project['id']);
+        if (!$canManageFlow) {
+            foreach ($flowStatus['pools'] as &$poolStrip) {
+                if (isset($poolStrip['runtime'])) $poolStrip['runtime'] = voteStripTieBreaks($poolStrip['runtime']);
+            }
+            unset($poolStrip);
+            if (isset($flowStatus['active_pool']['runtime'])) {
+                $flowStatus['active_pool']['runtime'] = voteStripTieBreaks($flowStatus['active_pool']['runtime']);
+            }
+        }
+        voteRespond(array_merge(['success' => true, 'can_manage' => $canManageFlow], $flowStatus));
 
     case 'rebuild_from_nomination_and_open':
         $input = voteReadJson();
@@ -414,7 +436,7 @@ switch ($action) {
         $db->beginTransaction();
         $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE project_id = ? AND status = 'open' AND id <> ?")
             ->execute([(int)$project['id'], (int)$targetStage['id']]);
-        $db->prepare("UPDATE vote_stages SET status = 'open', updated_at = $now WHERE id = ?")
+        $db->prepare("UPDATE vote_stages SET status = 'open', starts_at = COALESCE(starts_at, $now), updated_at = $now WHERE id = ?")
             ->execute([(int)$targetStage['id']]);
         $db->commit();
         logAction('vote_stage.advance_from_stage', 'vote_stages', (int)$targetStage['id'], $result);
@@ -529,7 +551,7 @@ switch ($action) {
                 ->execute([(int)$project['id'], (int)$qualifierStage['id']]);
             $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE id = ?")
                 ->execute([(int)$nominationStage['id']]);
-            $db->prepare("UPDATE vote_stages SET status = 'open', updated_at = $now WHERE id = ?")
+            $db->prepare("UPDATE vote_stages SET status = 'open', starts_at = COALESCE(starts_at, $now), updated_at = $now WHERE id = ?")
                 ->execute([(int)$qualifierStage['id']]);
             $db->commit();
         } catch (Throwable $e) {
@@ -645,7 +667,11 @@ switch ($action) {
             voteRespond(['success' => true, 'status' => 'locked', 'pool_id' => (int)$flowPool['id']]);
         }
         if ($action === 'settle') {
-            voteSettleStage($db, $stage);
+            try {
+                voteSettleStage($db, $stage);
+            } catch (Throwable $e) {
+                voteRespond(['success' => false, 'code' => 'SETTLE_FAILED', 'message' => $e->getMessage()], 400);
+            }
             $fresh = voteFetchStage((int)$stage['id']);
             $advancedStmt = $db->prepare('SELECT COUNT(*) FROM vote_results WHERE stage_id = ? AND advanced = 1');
             $advancedStmt->execute([(int)$stage['id']]);
@@ -695,7 +721,7 @@ switch ($action) {
             $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE project_id = ? AND status = 'open' AND id <> ?")
                 ->execute([(int)$stage['project_id'], (int)$stage['id']]);
         }
-        $db->prepare("UPDATE vote_stages SET status = ?, updated_at = $now WHERE id = ?")->execute([$status, (int)$stage['id']]);
+        $db->prepare("UPDATE vote_stages SET status = ?, starts_at = CASE WHEN ? = 'open' THEN COALESCE(starts_at, $now) ELSE starts_at END, updated_at = $now WHERE id = ?")->execute([$status, $status, (int)$stage['id']]);
         $db->commit();
         logAction('vote_stage.' . $action, 'vote_stages', (int)$stage['id'], null);
         voteRespond(['success' => true, 'status' => $status, 'seeded_count' => $seededCount]);

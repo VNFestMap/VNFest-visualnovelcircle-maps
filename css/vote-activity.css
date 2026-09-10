@@ -12,6 +12,10 @@
   --activity-green: #34765b;
   --activity-shadow: 0 18px 54px rgba(54, 45, 34, 0.12);
   --activity-hover: 0 12px 34px rgba(49, 94, 145, 0.16);
+  --activity-page-veil: linear-gradient(125deg, rgba(255, 252, 246, 0.96), rgba(248, 244, 236, 0.9) 48%, rgba(239, 234, 225, 0.94));
+  --activity-wallpaper-veil: linear-gradient(120deg, rgba(255, 253, 248, 0.84), rgba(255, 250, 242, 0.66) 46%, rgba(248, 244, 236, 0.9));
+  --activity-grid-strong: rgba(23, 21, 18, 0.035);
+  --activity-grid-soft: rgba(23, 21, 18, 0.025);
   --activity-wallpaper-image: none;
   --activity-wallpaper-opacity: 0.28;
   --wallpaper-image: var(--activity-wallpaper-image);
@@ -63,7 +67,7 @@ body {
   min-height: 100vh;
   color: var(--activity-ink);
   background:
-    linear-gradient(125deg, rgba(255, 252, 246, 0.96), rgba(248, 244, 236, 0.9) 48%, rgba(239, 234, 225, 0.94)),
+    var(--activity-page-veil),
     var(--activity-bg) !important;
   font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
   overflow-x: hidden;
@@ -77,7 +81,7 @@ body::before {
   z-index: -2;
   pointer-events: none;
   background-image:
-    linear-gradient(120deg, rgba(255, 253, 248, 0.84), rgba(255, 250, 242, 0.66) 46%, rgba(248, 244, 236, 0.9)),
+    var(--activity-wallpaper-veil),
     var(--activity-wallpaper-image);
   background-size: cover;
   background-position: center;
@@ -94,8 +98,8 @@ body::after {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(rgba(23, 21, 18, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(23, 21, 18, 0.025) 1px, transparent 1px);
+    linear-gradient(var(--activity-grid-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--activity-grid-soft) 1px, transparent 1px);
   background-size: 42px 42px;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent 88%);
 }
@@ -486,4 +490,99 @@ select:focus,
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ===== 暗色主题（与全站梅紫黑体系一致） ===== */
+:root[data-theme='dark'] {
+  --activity-bg: #16141d;
+  --activity-surface: rgba(33, 30, 43, 0.86);
+  --activity-surface-solid: #211e2b;
+  --activity-surface-soft: rgba(40, 36, 52, 0.66);
+  --activity-ink: #e8e4f0;
+  --activity-muted: #9d96ad;
+  --activity-line: rgba(255, 255, 255, 0.10);
+  --activity-red: #e0837c;
+  --activity-blue: #82aaf0;
+  --activity-gold: #d9a95e;
+  --activity-green: #5cb88a;
+  --activity-shadow: 0 18px 54px rgba(0, 0, 0, 0.45);
+  --activity-hover: 0 12px 34px rgba(0, 0, 0, 0.4);
+  --activity-page-veil: linear-gradient(125deg, rgba(22, 20, 29, 0.97), rgba(22, 20, 29, 0.92) 48%, rgba(19, 17, 24, 0.96));
+  --activity-wallpaper-veil: linear-gradient(120deg, rgba(22, 20, 29, 0.84), rgba(22, 20, 29, 0.62) 46%, rgba(22, 20, 29, 0.9));
+  --activity-grid-strong: rgba(255, 255, 255, 0.05);
+  --activity-grid-soft: rgba(255, 255, 255, 0.035);
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] {
+  --surface-3: rgba(46, 42, 58, 0.72);
+  --br-champion: linear-gradient(180deg, rgba(46, 42, 58, 0.92), rgba(38, 34, 50, 0.78));
+  --br-btn-bg: rgba(46, 42, 58, 0.82);
+}
+
+:root[data-theme='dark'] .btn,
+:root[data-theme='dark'] .submit-btn,
+:root[data-theme='dark'] .theme-btn,
+:root[data-theme='dark'] .source-btn {
+  background: rgba(33, 30, 43, 0.82) !important;
+}
+:root[data-theme='dark'] .btn.secondary,
+:root[data-theme='dark'] .btn.warning {
+  background: rgba(40, 36, 52, 0.62) !important;
+}
+:root[data-theme='dark'] .panel-head {
+  background: rgba(40, 36, 52, 0.68) !important;
+}
+:root[data-theme='dark'] .contest-card,
+:root[data-theme='dark'] .stage-tab,
+:root[data-theme='dark'] .candidate-card,
+:root[data-theme='dark'] .match-card,
+:root[data-theme='dark'] .step-card,
+:root[data-theme='dark'] .match-box,
+:root[data-theme='dark'] .slot,
+:root[data-theme='dark'] .finalist-card,
+:root[data-theme='dark'] .champion-card {
+  background: rgba(33, 30, 43, 0.78) !important;
+}
+:root[data-theme='dark'] .contest-card.active,
+:root[data-theme='dark'] .stage-tab.active,
+:root[data-theme='dark'] .source-btn.active,
+:root[data-theme='dark'] .flow-step.active,
+:root[data-theme='dark'] .work-row.selected,
+:root[data-theme='dark'] .slot.win {
+  border-color: rgba(224, 131, 124, 0.48) !important;
+  background: rgba(224, 131, 124, 0.10) !important;
+}
+:root[data-theme='dark'] .empty,
+:root[data-theme='dark'] .notice,
+:root[data-theme='dark'] .section-help {
+  background: rgba(40, 36, 52, 0.72) !important;
+}
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] .select,
+:root[data-theme='dark'] .text-input,
+:root[data-theme='dark'] .search-box input,
+:root[data-theme='dark'] .round-picker select,
+:root[data-theme='dark'] .nomination-search input {
+  background: rgba(26, 23, 34, 0.86) !important;
+}
+:root[data-theme='dark'] input:focus,
+:root[data-theme='dark'] select:focus,
+:root[data-theme='dark'] .select:focus,
+:root[data-theme='dark'] .text-input:focus,
+:root[data-theme='dark'] .search-box input:focus,
+:root[data-theme='dark'] .round-picker select:focus,
+:root[data-theme='dark'] .nomination-search input:focus {
+  box-shadow: 0 0 0 3px rgba(224, 131, 124, 0.14) !important;
+}
+:root[data-theme='dark'] .submit-bar {
+  background: rgba(33, 30, 43, 0.92) !important;
+}
+:root[data-theme='dark'] .selected-chip {
+  background: rgba(130, 170, 240, 0.10) !important;
+  border-color: rgba(130, 170, 240, 0.2);
+}
+:root[data-theme='dark'] .toast {
+  background: rgba(33, 30, 43, 0.94) !important;
 }

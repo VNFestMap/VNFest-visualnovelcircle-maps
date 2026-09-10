@@ -135,7 +135,7 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 
 | Highlight | Description |
 |-----------|-------------|
-| **Standalone Forum** | A brand-new forum plaza: posts, replies, likes, favorites, Markdown and image attachments |
+| **Editorial Column** | A dedicated article space with series, rich-text writing, comments and optional club attribution |
 | **Super Admin Console** | Operations dashboards: review trends, top-12 circle regions, operation logs |
 | **Beijing GalOnly 2nd** | Dual flows for booth applications and staff recruitment, with dedicated review and event logos |
 | **MakoQuiz Integration** | Quiz score reporting + HMAC bind tokens for secure cross-site account sharing |
@@ -206,7 +206,7 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 ├─ login.html              Login / registration entry
 ├─ user.html               User Center (React SPA)
 ├─ star_map.html           United Star Map
-├─ club_square.html        Circle Square
+├─ club_square.html        Events Hub
 ├─ vote.html               Voting event entry
 ├─ submit*.html            Submission entry points (events / publications / general)
 │
@@ -284,7 +284,7 @@ For detailed deployment configuration, environment variable documentation, and o
 
 | Version | Key Theme |
 |---------|-----------|
-| **v2.1.0** | Standalone forum, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |
+| **v2.1.0** | Editorial column, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |
 | **v2.0.0** | User Center SPA, Staff recruitment, Public Archives, bracket visualization, unified design system |
 | v1.7.x | Project Hub, Twelve, Moe Contest engine, voting events, Circle Square, Docker CI/CD |
 | v1.6.x | Wiki subsystem, circle binding codes, notification system, multi-platform publishing (desktop / Android) |

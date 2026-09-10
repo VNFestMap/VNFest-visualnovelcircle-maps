@@ -40,7 +40,10 @@
     preVotedCurrentRound: false,
     countdownTimer: null,
     bracketSize: 0,
-    showVotes: false
+    showVotes: false,
+    shareToken: '',
+    guestMode: false,
+    authenticated: true
   };
 
   var SELECT_MODE = false;
@@ -56,9 +59,21 @@
       String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
+  // 提名接口历史上同时出现过 entry_id 和 id，统一成稳定的字符串键，
+  // 这样候选列表和本人提名列表在数字/字符串混用时仍能正确匹配。
+  function entryIdOf(row) {
+    if (!row) return '';
+    var value = row.entry_id != null ? row.entry_id : row.id;
+    if (value == null || value === '') return '';
+    var numeric = Number(value);
+    return isNaN(numeric) ? String(value) : String(numeric);
+  }
+
   function init() {
     ensureClubNamesLoaded();
-    var id = new URLSearchParams(window.location.search).get('id');
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    STATE.shareToken = params.get('share') || '';
     if (!id) { renderEmpty('缺少活动ID'); return; }
     loadProject(id);
   }
@@ -68,12 +83,32 @@
     $('mdStatusBadge').textContent = '-';
   }
 
+  // 免登录参与模式：未登录访客持有效分享链接 + 企划开启 guest_vote 且无参与资格。
+  function applyGuestMode(data) {
+    STATE.guestMode = false;
+    STATE.authenticated = !!data.authenticated;
+    var banner = $('mdGuestBanner');
+    if (!banner) return;
+    var guestAllowed = !!data.guest_vote_enabled && !!data.share_valid;
+    var canParticipate = !!data.can_participate;
+    if (guestAllowed && !canParticipate && !STATE.authenticated) {
+      STATE.guestMode = true;
+      banner.hidden = false;
+    } else {
+      banner.hidden = true;
+    }
+  }
+
   function loadProject(projectId) {
-    api('../api/moe_contests.php?action=get&project_id=' + projectId).then(function (data) {
+    var getUrl = '../api/moe_contests.php?action=get&project_id=' + encodeURIComponent(projectId);
+    if (STATE.shareToken) getUrl += '&share=' + encodeURIComponent(STATE.shareToken);
+    api(getUrl).then(function (data) {
       if (!data || !data.data) { renderEmpty('活动不存在'); return; }
       STATE.project = data.data;
+      applyGuestMode(data);
       $('mdContestTitle').textContent = data.data.title;
       $('mdInfoClub').textContent = resolveClubName(data.data.club_id, data.data.country);
+      $('mdInfoLaunch').textContent = fmtDate(data.data.published_at);
       var bracketLink = $('mdBracketLink');
       if (bracketLink) {
         bracketLink.href = 'bracket.html?project_id=' + encodeURIComponent(projectId);
@@ -118,16 +153,24 @@
 
   function setActiveStage(stage) {
     STATE.currentStage = stage;
-    updateStatusBadge(stage.status === 'open' ? '进行中' : '已结束');
+    updateStatusBadge(
+      stage.status === 'open' ? '进行中' :
+      (stage.status === 'pending' || stage.status === 'locked') ? '未开始' : '已结束'
+    );
     var meta = STAGE_META[stage.stage_type] || { label: stage.stage_type };
     $('mdInfoStage').textContent = meta.label;
-    $('mdInfoStart').textContent = fmtDate(stage.start_time);
-    $('mdInfoEnd').textContent = fmtDate(stage.end_time);
-    startCountdown(stage.end_time);
+    $('mdInfoStart').textContent = fmtDate(stage.starts_at);
+    $('mdInfoEnd').textContent = fmtDate(stage.ends_at);
+    startCountdown(stage.ends_at);
 
     var chips = document.querySelectorAll('.md-stage-chip');
     for (var i = 0; i < chips.length; i++) {
-      chips[i].classList.toggle('active', Number(chips[i].dataset.stageId) === Number(stage.id));
+      var isActive = Number(chips[i].dataset.stageId) === Number(stage.id);
+      chips[i].classList.toggle('active', isActive);
+      if (isActive) chips[i].setAttribute('aria-current', 'step');
+      else chips[i].removeAttribute('aria-current');
+      var step = chips[i].closest('.md-stage-step');
+      if (step) step.classList.toggle('is-active', isActive);
     }
   }
 
@@ -153,9 +196,10 @@
   function startCountdown(endTime) {
     if (STATE.countdownTimer) clearInterval(STATE.countdownTimer);
     var el = $('mdCountdown');
-    if (!endTime) { el.textContent = '--天 --:--:--'; return; }
+    var endMs = endTime ? new Date(endTime).getTime() : NaN;
+    if (isNaN(endMs)) { el.textContent = '--天 --:--:--'; return; }
     function tick() {
-      var diff = new Date(endTime) - Date.now();
+      var diff = endMs - Date.now();
       if (diff <= 0) {
         el.textContent = '已结束';
         el.classList.add('ended');
@@ -179,21 +223,31 @@
     for (var i = 0; i < STATE.stages.length; i++) {
       var s = STATE.stages[i];
       var meta = STAGE_META[s.stage_type] || { label: s.stage_type };
-      var chip = document.createElement('span');
+      var step = document.createElement('li');
+      step.className = 'md-stage-step' +
+        (s.status === 'settled' || s.status === 'reviewing' ? ' is-settled' : '') +
+        (s.status === 'open' ? ' is-open' : '') +
+        (s.status === 'pending' || s.status === 'locked' ? ' is-pending' : '');
+      var chip = document.createElement('button');
+      chip.type = 'button';
       chip.className = 'md-stage-chip' + (s.status === 'settled' || s.status === 'reviewing' ? ' settled' : '');
-      chip.dataset.stageId = s.id;
+      chip.dataset.stageId = String(s.id);
+      chip.setAttribute('aria-label', meta.label);
       chip.textContent = meta.label;
       chip.addEventListener('click', (function (stage) {
         return function () {
           setActiveStage(stage);
           if (stage.status === 'settled' || stage.status === 'reviewing') {
             renderStageResults(stage);
+          } else if (stage.status !== 'open') {
+            renderEmpty('该阶段尚未开始，开始后可在此参与');
           } else {
             renderStage(stage);
           }
         };
       })(s));
-      list.appendChild(chip);
+      step.appendChild(chip);
+      list.appendChild(step);
     }
   }
 
@@ -209,7 +263,7 @@
         '<div class="md-timeline-dot"></div>' +
         '<div>' +
           '<div class="md-timeline-label">' + esc(meta.label) + '</div>' +
-          '<div class="md-timeline-meta">' + fmtDate(s.start_time) + ' ~ ' + fmtDate(s.end_time) + '</div>' +
+          '<div class="md-timeline-meta">' + fmtDate(s.starts_at) + ' ~ ' + fmtDate(s.ends_at) + '</div>' +
         '</div>';
       wrap.appendChild(item);
     }
@@ -265,16 +319,26 @@
 
   // ==================== Nomination ====================
   function renderNomination(stage) {
+    // 提名需登录：免登录分享模式仅覆盖投票阶段，未登录访客展示引导而非可交互表单
+    if (STATE.guestMode || STATE.authenticated === false) {
+      $('mdMainPanel').innerHTML =
+        '<div class="md-empty">' +
+          '<p style="font-weight:600;">提名需要登录后参与</p>' +
+          '<p style="color:var(--muted);font-size:13px;margin:6px 0 14px;">免登录分享链接仅用于投票阶段，登录后即可提名角色</p>' +
+          '<a class="md-btn md-btn--primary" href="../login.html">登录 / 注册</a>' +
+        '</div>';
+      return;
+    }
     var maxNoms = Number(stage.max_select) || 3;
     $('mdMainPanel').innerHTML =
       '<div class="md-action">' +
         '<div class="md-action-hint">每人可提名 <strong>' + maxNoms + '</strong> 个角色 · 已提名 <strong id="mdNomCount">0</strong> 个</div>' +
         '<div class="md-search-row">' +
           '<input class="md-input" id="mdNomSearch" placeholder="搜索角色名称..." autocomplete="off">' +
-          '<button class="md-btn md-btn--primary" id="mdNomBtn">搜索并提名</button>' +
+          '<button type="button" class="md-btn md-btn--primary" id="mdNomBtn">搜索并提名</button>' +
         '</div>' +
         '<div class="md-search-row" style="margin-top:10px;">' +
-          '<button class="md-btn md-btn--ghost" id="mdNomSelectBtn">选择模式</button>' +
+          '<button type="button" class="md-btn md-btn--ghost" id="mdNomSelectBtn" aria-pressed="false">选择模式</button>' +
         '</div>' +
       '</div>' +
       '<div class="md-char-grid" id="mdNomGrid"><div class="md-loading" style="grid-column:1/-1">加载中...</div></div>';
@@ -291,15 +355,16 @@
     var grid = $('mdNomGrid');
     grid.onclick = function (ev) {
       var target = ev.target;
-      if (!SELECT_MODE && target.classList.contains('md-char-remove')) {
-        var entryId = target.getAttribute('data-entry-id');
+      var remove = target && target.closest ? target.closest('.md-char-remove') : null;
+      if (!SELECT_MODE && remove && grid.contains(remove)) {
+        var entryId = remove.getAttribute('data-entry-id');
         if (!entryId) return;
         if (!confirm('确定撤销对该角色的提名吗？')) return;
-        target.style.opacity = '0.3';
-        target.style.pointerEvents = 'none';
+        remove.style.opacity = '0.3';
+        remove.style.pointerEvents = 'none';
         post('../api/moe_candidates.php?action=withdraw_nomination', { entry_id: Number(entryId) }).then(function (r) {
-          target.style.opacity = '';
-          target.style.pointerEvents = '';
+          remove.style.opacity = '';
+          remove.style.pointerEvents = '';
           if (r && r.success) {
             toast('已撤销提名');
             reloadNominations(stage, maxNoms);
@@ -307,25 +372,23 @@
             toast((r && r.message) || '撤销失败');
           }
         }).catch(function () {
-          target.style.opacity = '';
-          target.style.pointerEvents = '';
+          remove.style.opacity = '';
+          remove.style.pointerEvents = '';
           toast('撤销失败');
         });
         return;
       }
-      if (SELECT_MODE && target.closest('.md-char-item--mine')) {
-        var item = target.closest('.md-char-item--mine');
-        var eid = item.getAttribute('data-entry-id');
-        if (!eid) return;
-        if (SELECTED_ENTRIES.has(eid)) {
-          SELECTED_ENTRIES.delete(eid);
-          item.classList.remove('md-char-item--checked');
-        } else {
-          SELECTED_ENTRIES.add(eid);
-          item.classList.add('md-char-item--checked');
-        }
-        updateSelectBar();
-      }
+      if (!SELECT_MODE) return;
+      var item = target && target.closest ? target.closest('[data-selectable="true"]') : null;
+      if (!item || !grid.contains(item)) return;
+      toggleNominationSelection(item);
+    };
+    grid.onkeydown = function (ev) {
+      if (!SELECT_MODE || (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar')) return;
+      var item = ev.target && ev.target.closest ? ev.target.closest('[data-selectable="true"]') : null;
+      if (!item || !grid.contains(item)) return;
+      ev.preventDefault();
+      toggleNominationSelection(item);
     };
 
     $('mdNomBtn').addEventListener('click', function () { doSearch(stage); });
@@ -342,7 +405,8 @@
       STATE.entries = (data && data.data) || [];
       var q = $('mdNomSearch').value.trim().toLowerCase();
       var filtered = q ? STATE.entries.filter(function (e) {
-        return (e.title || '').toLowerCase().indexOf(q) !== -1;
+        return (e.title || '').toLowerCase().indexOf(q) !== -1 ||
+               (e.title_cn || '').toLowerCase().indexOf(q) !== -1;
       }) : STATE.entries;
       renderNomGrid(filtered, maxNoms);
     });
@@ -371,7 +435,11 @@
     var grid = $('mdNomGrid');
     if (grid) grid.innerHTML = '<div class="md-loading" style="grid-column:1/-1">搜索中...</div>';
     var btn = $('mdNomBtn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="md-loading" style="display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px;"></span>搜索中...'; }
+    if (btn) {
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.innerHTML = '<span class="md-inline-spinner" aria-hidden="true"></span><span>搜索中...</span>';
+    }
 
     api('../api/vote_sources.php?action=search&project_type=moe&keyword=' + encodeURIComponent(keyword)).then(function (data) {
       var results = (data && data.data) || [];
@@ -404,7 +472,11 @@
     }).catch(function () {
       if (grid) grid.innerHTML = '<div class="md-empty" style="grid-column:1/-1">搜索失败，请重试</div>';
     }).then(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '搜索并提名'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.textContent = '搜索并提名';
+      }
     });
   }
 
@@ -462,19 +534,45 @@
     var btn = $('mdNomSelectBtn');
     var bar = $('mdSelectBar');
     if (SELECT_MODE) {
-      if (btn) { btn.textContent = '取消选择'; btn.className = 'md-btn md-btn--danger'; }
+      if (btn) {
+        btn.type = 'button';
+        btn.textContent = '取消选择';
+        btn.className = 'md-btn md-btn--danger';
+        btn.setAttribute('aria-pressed', 'true');
+      }
       document.body.classList.add('md-select-mode');
       if (bar) bar.style.display = 'flex';
     } else {
-      if (btn) { btn.textContent = '选择模式'; btn.className = 'md-btn md-btn--ghost'; }
+      if (btn) {
+        btn.type = 'button';
+        btn.textContent = '选择模式';
+        btn.className = 'md-btn md-btn--ghost';
+        btn.setAttribute('aria-pressed', 'false');
+      }
       document.body.classList.remove('md-select-mode');
       if (bar) bar.style.display = 'none';
     }
     var q = $('mdNomSearch').value.trim().toLowerCase();
     var filtered = q ? STATE.entries.filter(function (e) {
-      return (e.title || '').toLowerCase().indexOf(q) !== -1;
+      return (e.title || '').toLowerCase().indexOf(q) !== -1 ||
+             (e.title_cn || '').toLowerCase().indexOf(q) !== -1;
     }) : STATE.entries;
     renderNomGrid(filtered, maxNoms);
+    updateSelectBar();
+  }
+
+  function toggleNominationSelection(item) {
+    var eid = item && item.getAttribute('data-entry-id');
+    if (!eid) return;
+    if (SELECTED_ENTRIES.has(eid)) {
+      SELECTED_ENTRIES.delete(eid);
+      item.classList.remove('md-char-item--checked');
+      item.setAttribute('aria-selected', 'false');
+    } else {
+      SELECTED_ENTRIES.add(eid);
+      item.classList.add('md-char-item--checked');
+      item.setAttribute('aria-selected', 'true');
+    }
     updateSelectBar();
   }
 
@@ -520,32 +618,45 @@
   function renderNomGrid(entries, maxNoms) {
     var grid = $('mdNomGrid');
     if (!grid) return;
-    if (!entries.length) { grid.innerHTML = '<div class="md-empty" style="grid-column:1/-1">暂无可提名角色</div>'; return; }
 
     var myEntryIds = {};
     for (var ni = 0; ni < STATE.myNominations.length; ni++) {
       var nom = STATE.myNominations[ni];
-      if (nom.status !== 'withdrawn') myEntryIds[String(nom.entry_id)] = true;
+      var nominationId = entryIdOf(nom);
+      if (nom.status !== 'withdrawn' && nominationId) myEntryIds[nominationId] = true;
+    }
+    if (!entries.length || (SELECT_MODE && !Object.keys(myEntryIds).length)) {
+      grid.innerHTML = '<div class="md-empty" style="grid-column:1/-1">' +
+        (SELECT_MODE ? '暂无本人提名可选择' : '暂无可提名角色') +
+        '</div>';
+      return;
     }
 
     grid.innerHTML = '';
     for (var i = 0; i < entries.length; i++) {
       var e = entries[i];
-      var isMine = myEntryIds[String(e.id)];
-      var isChecked = SELECT_MODE && SELECTED_ENTRIES.has(String(e.id));
+      var entryId = entryIdOf(e);
+      var isMine = !!entryId && !!myEntryIds[entryId];
+      var isChecked = SELECT_MODE && !!entryId && SELECTED_ENTRIES.has(entryId);
       var cls = 'md-char-item';
       if (isMine) cls += ' md-char-item--mine';
       if (isChecked) cls += ' md-char-item--checked';
       var div = document.createElement('div');
       div.className = cls;
-      if (isMine) div.setAttribute('data-entry-id', String(e.id));
+      if (isMine) {
+        div.setAttribute('data-entry-id', entryId);
+        div.setAttribute('data-selectable', 'true');
+        div.setAttribute('role', 'button');
+        div.setAttribute('tabindex', '0');
+        div.setAttribute('aria-selected', isChecked ? 'true' : 'false');
+      }
       div.innerHTML =
         '<div class="md-char-avatar" style="background-image:' + (e.image_url ? 'url(' + esc(e.image_url) + ')' : avatarGradient(i)) + '">' +
           '<div class="md-char-check">' + CHECK_SVG + '</div>' +
         '</div>' +
         '<div class="md-char-name">' + esc(e.title || '?') + '</div>' +
         '<div class="md-char-work">' + esc(e.subtitle || '') + '</div>' +
-        (isMine && !SELECT_MODE ? '<div class="md-char-remove" data-entry-id="' + Number(e.id) + '">×</div>' : '');
+        (isMine && !SELECT_MODE ? '<div class="md-char-remove" data-entry-id="' + esc(entryId) + '">×</div>' : '');
       grid.appendChild(div);
     }
   }
@@ -644,6 +755,9 @@
 
   // ==================== Simple voting ====================
   function renderVoting(stage) {
+    STATE.myVotes = {};
+    // 重置跨阶段残留的提交锁：上一阶段投完票不应锁死当前阶段的提交按钮
+    STATE.voteLocked = false;
     var maxVotes = Number(stage.max_select) || 8;
     STATE.myVotes = {};
     $('mdMainPanel').innerHTML =
@@ -686,7 +800,8 @@
       } else {
         renderVoteGrid(entries, maxVotes, locked, showVotes);
       }
-      updateVoteBottomBar(0, maxVotes);
+      var firstGroupEntries = STATE.groups.length > 1 ? STATE.groups[0].entries : entries;
+      updateVoteBottomBar(selectedCountForEntries(firstGroupEntries), maxVotes);
       if (locked) lockSubmit();
     }).catch(function () {
       $('mdVoteGrid').innerHTML = '<div class="md-empty" style="grid-column:1/-1">加载失败</div>';
@@ -791,7 +906,7 @@
     if (!selected.length) { toast('请至少选择一个角色'); return; }
     var btn = $('mdBottomSubmit');
     setBtnLoading(btn, true);
-    post('../api/moe_votes.php?action=cast', { stage_id: stage.id, entry_ids: selected }).then(function (r) {
+    post('../api/moe_votes.php?action=cast', { stage_id: stage.id, entry_ids: selected, share: STATE.shareToken }).then(function (r) {
       if (r && r.success) {
         toast('投票成功');
         if (STATE.runtime && STATE.runtime.allow_vote_change) {
@@ -986,31 +1101,27 @@
     }
     var btn = $('mdBottomSubmit');
     setBtnLoading(btn, true);
-    post('../api/moe_votes.php?action=cast', { stage_id: stage.id, entry_ids: entryIds, scores: scores }).then(function (result) {
+    post('../api/moe_votes.php?action=cast', { stage_id: stage.id, entry_ids: entryIds, scores: scores, share: STATE.shareToken }).then(function (result) {
       if (!result || !result.success) {
         setBtnLoading(btn, false);
         btn.textContent = '提交评分';
         toast((result && result.message) || '评分失败');
         return;
       }
-      // 标记已提交过，切换组后已投票项不可修改
+      // 标记已提交过，已投票项不可修改（除非开启 allow_vote_change）
       STATE.myVotesSubmitted = true;
-      // 检查是否所有组都已投票
-      var totalEntries = 0;
-      for (var g = 0; g < STATE.groups.length; g++) {
-        totalEntries += (STATE.groups[g].entries || []).length;
-      }
-      var allVoted = Object.keys(STATE.myVotes).filter(function (k) { return STATE.myVotes[k]; }).length >= totalEntries;
-      toast(allVoted ? '所有组评分已提交' : '当前组已提交，请切换组继续投票');
-      if (allVoted && STATE.runtime && !STATE.runtime.allow_vote_change) {
-        lockSubmit();
-      } else {
+      var allowScoreChange = STATE.runtime && STATE.runtime.allow_vote_change;
+      // 后端按阶段整体去重：一次提交即完成本阶段评分，不存在“切换组继续投票”
+      toast(allowScoreChange ? '评分已提交，可再次修改' : '评分已提交');
+      if (allowScoreChange) {
         setBtnLoading(btn, false);
-        btn.textContent = allVoted ? '已完成' : '提交评分';
-        updateVoteBottomBar(entryIds.length, 999);
+        btn.textContent = '修改评分';
+        updateVoteBottomBar(entryIds.length, entryIds.length);
+      } else {
+        lockSubmit();
       }
       // 刷新组标签显示勾号
-      renderScoreGroupTabs(runtime);
+      renderScoreGroupTabs(STATE.runtime || stage);
     }).catch(function () {
       setBtnLoading(btn, false);
       btn.textContent = '提交评分';
@@ -1361,9 +1472,21 @@
           btn.textContent = '失败 ' + failed + ' 个';
           toast(failed + ' 个对阵投票失败');
         } else {
-          btn.textContent = '已投票';
-          btn.disabled = true;
-          toast('全部投票成功');
+          var allowChange = STATE.runtime
+            ? STATE.runtime.allow_vote_change
+            : stage.allow_vote_change;
+          if (allowChange) {
+            // 允许改票：保持可提交，按钮转为修改入口（后端按 allow_vote_change 覆盖旧票）
+            btn.textContent = '修改投票';
+            btn.disabled = false;
+            STATE.voteLocked = false;
+            toast('全部投票成功，可再次修改');
+          } else {
+            btn.textContent = '已投票';
+            btn.disabled = true;
+            STATE.voteLocked = true;
+            toast('全部投票成功');
+          }
         }
         return;
       }
@@ -1376,7 +1499,7 @@
       if (!match) { failed++; done++; submitOne(); return; }
       var entryId = side === 'a' ? Number(match.slot_a_entry_id) : Number(match.slot_b_entry_id);
       if (!entryId) { failed++; done++; submitOne(); return; }
-      post('../api/moe_votes.php?action=cast', { stage_id: stage.id, match_id: matchId, entry_ids: [entryId] }).then(function (r) {
+      post('../api/moe_votes.php?action=cast', { stage_id: stage.id, match_id: matchId, entry_ids: [entryId], share: STATE.shareToken }).then(function (r) {
         if (!r || !r.success) failed++;
       }).catch(function () { failed++; }).finally(function () {
         done++;
@@ -1449,6 +1572,8 @@
   function renderRankPanel(entries) {
     var panel = $('mdRankPanel');
     var list = $('mdRankList');
+    // 票数指标未公开（result_visibility 裁剪）时不渲染，避免误导性的“0票”
+    if (!STATE.metricsVisible) { panel.style.display = 'none'; return; }
     var ranked = entries.filter(function (w) { return w.rank_no; }).sort(function (a, b) { return (a.rank_no || 9999) - (b.rank_no || 9999); }).slice(0, 5);
     if (!ranked.length) { panel.style.display = 'none'; return; }
     panel.style.display = '';

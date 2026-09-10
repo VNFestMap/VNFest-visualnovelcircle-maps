@@ -182,6 +182,15 @@ function voteEnsureFlowSchema(PDO $db): void {
         voteTryExec($db, "CREATE INDEX idx_vote_flow_matches_pool ON vote_flow_matches(pool_id, round_no, match_no)");
         voteTryExec($db, "ALTER TABLE vote_flow_results ADD COLUMN score_total INT NOT NULL DEFAULT 0");
         voteTryExec($db, "ALTER TABLE vote_flow_results ADD COLUMN rating_count INT NOT NULL DEFAULT 0");
+        voteTryExec($db, "ALTER TABLE vote_projects ADD COLUMN share_token VARCHAR(40) NOT NULL DEFAULT ''");
+        voteTryExec($db, "ALTER TABLE vote_projects ADD COLUMN guest_vote TINYINT(1) NOT NULL DEFAULT 0");
+        voteTryExec($db, "ALTER TABLE vote_votes ADD COLUMN guest_key VARCHAR(64) NOT NULL DEFAULT ''");
+        // 免登录投票：访客票 user_id 置 NULL（外键允许 NULL），靠 guest_key 去重
+        voteTryExec($db, "ALTER TABLE vote_votes MODIFY user_id INT NULL");
+        voteTryExec($db, "CREATE INDEX idx_vote_projects_share ON vote_projects(share_token)");
+        voteTryExec($db, "CREATE INDEX idx_vote_votes_match ON vote_votes(stage_id, match_id)");
+        voteTryExec($db, "CREATE INDEX idx_vote_votes_user ON vote_votes(user_id)");
+        voteTryExec($db, "CREATE INDEX idx_vote_votes_guest ON vote_votes(guest_key)");
         return;
     }
 
@@ -289,6 +298,44 @@ function voteEnsureFlowSchema(PDO $db): void {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_vote_flow_matches_pool ON vote_flow_matches(pool_id, round_no, match_no)");
     voteTryExec($db, "ALTER TABLE vote_flow_results ADD COLUMN score_total INTEGER NOT NULL DEFAULT 0");
     voteTryExec($db, "ALTER TABLE vote_flow_results ADD COLUMN rating_count INTEGER NOT NULL DEFAULT 0");
+    voteTryExec($db, "ALTER TABLE vote_projects ADD COLUMN share_token TEXT NOT NULL DEFAULT ''");
+    voteTryExec($db, "ALTER TABLE vote_projects ADD COLUMN guest_vote INTEGER NOT NULL DEFAULT 0");
+    voteTryExec($db, "ALTER TABLE vote_votes ADD COLUMN guest_key TEXT NOT NULL DEFAULT ''");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_vote_projects_share ON vote_projects(share_token)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_vote_votes_match ON vote_votes(stage_id, match_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_vote_votes_user ON vote_votes(user_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_vote_votes_guest ON vote_votes(guest_key)");
+    // 旧库 vote_votes.user_id 带 NOT NULL，重建为可空以支持免登录访客票（NULL 过外键）。
+    $voteVotesSql = (string)$db->query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'vote_votes'")->fetchColumn();
+    if ($voteVotesSql && strpos($voteVotesSql, 'user_id INTEGER NOT NULL') !== false) {
+        $db->exec('PRAGMA foreign_keys=OFF');
+        $db->exec("
+            CREATE TABLE vote_votes_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL REFERENCES vote_projects(id),
+                stage_id INTEGER NOT NULL REFERENCES vote_stages(id),
+                entry_id INTEGER NOT NULL REFERENCES vote_entries(id),
+                match_id INTEGER,
+                user_id INTEGER REFERENCES users(id),
+                guest_key TEXT NOT NULL DEFAULT '',
+                vote_value INTEGER NOT NULL DEFAULT 1,
+                score_value INTEGER,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        ");
+        $db->exec("
+            INSERT INTO vote_votes_new
+                (id, project_id, stage_id, entry_id, match_id, user_id, guest_key, vote_value, score_value, created_at)
+            SELECT id, project_id, stage_id, entry_id, match_id, user_id, COALESCE(guest_key, ''), vote_value, score_value, created_at
+            FROM vote_votes
+        ");
+        $db->exec('DROP TABLE vote_votes');
+        $db->exec('ALTER TABLE vote_votes_new RENAME TO vote_votes');
+        $db->exec('PRAGMA foreign_keys=ON');
+        $db->exec('CREATE INDEX IF NOT EXISTS idx_vote_votes_stage_user ON vote_votes(stage_id, user_id)');
+        $db->exec('CREATE INDEX IF NOT EXISTS idx_vote_votes_entry ON vote_votes(stage_id, entry_id)');
+        $db->exec('CREATE INDEX IF NOT EXISTS idx_vote_votes_guest ON vote_votes(stage_id, guest_key)');
+    }
 }
 
 function voteEnsureSchema(?PDO $db = null): void {
@@ -569,7 +616,7 @@ function voteEnsureSchema(?PDO $db = null): void {
             stage_id INTEGER NOT NULL REFERENCES vote_stages(id),
             entry_id INTEGER NOT NULL REFERENCES vote_entries(id),
             match_id INTEGER,
-            user_id INTEGER NOT NULL REFERENCES users(id),
+            user_id INTEGER REFERENCES users(id),
             vote_value INTEGER NOT NULL DEFAULT 1,
             score_value INTEGER,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -652,6 +699,7 @@ function voteProjectRow(array $row): array {
         'visibility' => $row['visibility'] ?? 'public',
         'eligibility_mode' => $row['eligibility_mode'] ?? 'club_member',
         'result_visibility' => $row['result_visibility'] ?? 'live_rank_only',
+        'guest_vote' => (int)($row['guest_vote'] ?? 0),
         'config' => voteDecode($row['config_json'] ?? '{}'),
         'created_by' => (int)($row['created_by'] ?? 0),
         'created_at' => $row['created_at'] ?? '',
@@ -668,6 +716,41 @@ function voteGetProject(int $id): ?array {
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
+}
+
+function voteShareTokenMatches(array $project, string $token): bool {
+    $token = trim($token);
+    return $token !== '' && hash_equals(trim((string)($project['share_token'] ?? '')), $token);
+}
+
+// 非管理者剥离结算裁定候选（tie_breaks）等内部信息
+function voteStripTieBreaks(array $runtime): array {
+    unset($runtime['tie_breaks'], $runtime['match_tie_breaks']);
+    return $runtime;
+}
+
+// 免登录投票的访客标识：首访签发长期 Cookie，服务端读取，用于同设备去重。
+function voteGuestKey(): string {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    $name = 'vnGuestVoteKey';
+    $value = trim((string)($_COOKIE[$name] ?? ''));
+    if (!preg_match('/^[a-f0-9]{32}$/', $value)) {
+        $value = bin2hex(random_bytes(16));
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || stripos((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''), 'https') !== false;
+        if (!headers_sent()) {
+            setcookie($name, $value, [
+                'expires' => time() + 63115200,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+    }
+    $cached = $value;
+    return $value;
 }
 
 function voteCanManageProject(array $user, array $project): bool {
@@ -1247,7 +1330,7 @@ function voteFlowRebuildFromNominationAndOpen(PDO $db, array $project, ?int $use
                     ->execute([(int)$existingPool['id']]);
                 $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE project_id = ? AND status = 'open' AND id <> ?")
                     ->execute([$projectId, (int)$qualifier['id']]);
-                $db->prepare("UPDATE vote_stages SET status = 'open', updated_at = $now WHERE id = ?")
+                $db->prepare("UPDATE vote_stages SET status = 'open', starts_at = COALESCE(starts_at, $now), updated_at = $now WHERE id = ?")
                     ->execute([(int)$qualifier['id']]);
                 $nomination = voteFlowStageByType($db, $projectId, 'nomination');
                 if ($nomination) {
@@ -1311,7 +1394,7 @@ function voteFlowRebuildFromNominationAndOpen(PDO $db, array $project, ?int $use
             $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE id = ?")->execute([(int)$nomination['id']]);
         }
         $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE project_id = ? AND status = 'open' AND id <> ?")->execute([$projectId, (int)$qualifier['id']]);
-        $db->prepare("UPDATE vote_stages SET status = 'open', updated_at = $now WHERE id = ?")->execute([(int)$qualifier['id']]);
+        $db->prepare("UPDATE vote_stages SET status = 'open', starts_at = COALESCE(starts_at, $now), updated_at = $now WHERE id = ?")->execute([(int)$qualifier['id']]);
         $db->prepare("UPDATE vote_flow_pools SET status = 'locked' WHERE run_id = ? AND status = 'open' AND id <> ?")->execute([(int)$run['id'], (int)$pool['id']]);
         $db->prepare("UPDATE vote_flow_pools SET status = 'open', opened_at = COALESCE(opened_at, $now) WHERE id = ?")->execute([(int)$pool['id']]);
 
@@ -1348,7 +1431,7 @@ function voteFlowOpenPool(PDO $db, array $pool): array {
         $db->prepare("UPDATE vote_flow_pools SET status = 'locked' WHERE run_id = ? AND status = 'open' AND id <> ?")->execute([(int)$pool['run_id'], (int)$pool['id']]);
         $db->prepare("UPDATE vote_flow_pools SET status = 'open', opened_at = COALESCE(opened_at, $now) WHERE id = ?")->execute([(int)$pool['id']]);
         $db->prepare("UPDATE vote_stages SET status = 'locked', updated_at = $now WHERE project_id = ? AND status = 'open' AND id <> ?")->execute([(int)$pool['project_id'], (int)$pool['stage_id']]);
-        $db->prepare("UPDATE vote_stages SET status = 'open', updated_at = $now WHERE id = ?")->execute([(int)$pool['stage_id']]);
+        $db->prepare("UPDATE vote_stages SET status = 'open', starts_at = COALESCE(starts_at, $now), updated_at = $now WHERE id = ?")->execute([(int)$pool['stage_id']]);
         voteFlowLog($db, (int)$pool['run_id'], (int)$pool['id'], (int)$pool['project_id'], 'open_pool');
         $db->commit();
         return voteFlowPoolById($db, (int)$pool['id']);
@@ -1489,33 +1572,45 @@ function voteFlowRankRowsForPool(array $pool, array $rows): array {
 
 function voteFlowSettlePool(PDO $db, array $pool): array {
     if (!in_array($pool['status'] ?? '', ['open', 'locked'], true)) throw new RuntimeException('阶段池尚未打开，不能结算');
-    $runtime = voteFlowPoolRuntime($pool);
-    $aggregate = ($pool['vote_mode'] ?? '') === 'score'
-        ? ($runtime['rule_version'] >= 2
-            ? 'COALESCE(SUM(v.score_value), 0) AS votes, COALESCE(SUM(v.score_value), 0) AS score_total, COUNT(v.id) AS rating_count, AVG(v.score_value) AS score_avg'
-            : 'COALESCE(SUM(v.vote_value), 0) AS votes, COALESCE(SUM(v.score_value), 0) AS score_total, COUNT(v.id) AS rating_count, AVG(v.score_value) AS score_avg')
-        : 'COALESCE(SUM(v.vote_value), 0) AS votes, 0 AS score_total, COUNT(v.id) AS rating_count, NULL AS score_avg';
-    $stmt = $db->prepare(
-        "SELECT fpe.entry_id, fpe.seed_no, fpe.group_key, $aggregate
-         FROM vote_flow_pool_entries fpe
-         LEFT JOIN vote_votes v ON v.entry_id = fpe.entry_id AND v.stage_id = ?
-         WHERE fpe.pool_id = ? AND fpe.status = 'active'
-         GROUP BY fpe.entry_id, fpe.seed_no, fpe.group_key
-         ORDER BY fpe.group_key ASC, fpe.seed_no ASC"
-    );
-    $stmt->execute([(int)$pool['stage_id'], (int)$pool['id']]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $config = voteDecode($pool['config_json'] ?? '{}');
-    if (($pool['vote_mode'] ?? '') === 'score' && empty($config['allow_zero_fill'])) {
-        $rows = array_values(array_filter($rows, fn($row) => (int)($row['rating_count'] ?? 0) > 0));
-    }
-    if (!$rows) throw new RuntimeException('阶段池没有候选，不能结算');
-    $ranking = voteFlowRankRowsForPoolDetailed($pool, $rows);
-    $rankedRows = $ranking['rows'];
-    $tieBreaks = $ranking['tie_breaks'];
-    $now = voteNowExpr();
+    if (($pool['vote_mode'] ?? '') === 'match_single') throw new RuntimeException('1v1 对决池按对阵自动结算，不支持整池结算');
     $db->beginTransaction();
     try {
+        // 事务内锁池行并复查状态：聚合与写入基于同一快照，防止与投票/并发结算竞态丢票或互相覆盖
+        if (voteIsMysql()) {
+            $db->prepare('SELECT status FROM vote_flow_pools WHERE id = ? FOR UPDATE')->execute([(int)$pool['id']]);
+        } else {
+            $db->prepare('UPDATE vote_flow_pools SET status = status WHERE id = ?')->execute([(int)$pool['id']]);
+        }
+        $stmt = $db->prepare('SELECT status FROM vote_flow_pools WHERE id = ?');
+        $stmt->execute([(int)$pool['id']]);
+        $currentStatus = (string)$stmt->fetchColumn();
+        if (!in_array($currentStatus, ['open', 'locked'], true)) throw new RuntimeException('阶段池状态已变化，不能结算');
+
+        $runtime = voteFlowPoolRuntime($pool);
+        $aggregate = ($pool['vote_mode'] ?? '') === 'score'
+            ? ($runtime['rule_version'] >= 2
+                ? 'COALESCE(SUM(v.score_value), 0) AS votes, COALESCE(SUM(v.score_value), 0) AS score_total, COUNT(v.id) AS rating_count, AVG(v.score_value) AS score_avg'
+                : 'COALESCE(SUM(v.vote_value), 0) AS votes, COALESCE(SUM(v.score_value), 0) AS score_total, COUNT(v.id) AS rating_count, AVG(v.score_value) AS score_avg')
+            : 'COALESCE(SUM(v.vote_value), 0) AS votes, 0 AS score_total, COUNT(v.id) AS rating_count, NULL AS score_avg';
+        $stmt = $db->prepare(
+            "SELECT fpe.entry_id, fpe.seed_no, fpe.group_key, $aggregate
+             FROM vote_flow_pool_entries fpe
+             LEFT JOIN vote_votes v ON v.entry_id = fpe.entry_id AND v.stage_id = ?
+             WHERE fpe.pool_id = ? AND fpe.status = 'active'
+             GROUP BY fpe.entry_id, fpe.seed_no, fpe.group_key
+             ORDER BY fpe.group_key ASC, fpe.seed_no ASC"
+        );
+        $stmt->execute([(int)$pool['stage_id'], (int)$pool['id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $config = voteDecode($pool['config_json'] ?? '{}');
+        if (($pool['vote_mode'] ?? '') === 'score' && empty($config['allow_zero_fill'])) {
+            $rows = array_values(array_filter($rows, fn($row) => (int)($row['rating_count'] ?? 0) > 0));
+        }
+        if (!$rows) throw new RuntimeException('阶段池没有候选，不能结算');
+        $ranking = voteFlowRankRowsForPoolDetailed($pool, $rows);
+        $rankedRows = $ranking['rows'];
+        $tieBreaks = $ranking['tie_breaks'];
+        $now = voteNowExpr();
         $db->prepare('DELETE FROM vote_flow_results WHERE pool_id = ?')->execute([(int)$pool['id']]);
         $ins = $db->prepare(
             'INSERT INTO vote_flow_results (run_id, pool_id, project_id, entry_id, rank_no, votes, score_total, rating_count, score_avg, advanced, snapshot_json)
@@ -1910,7 +2005,7 @@ function voteFlowSettleMatch(PDO $db, array $match, int $winnerEntryId): array {
             $db->prepare("UPDATE vote_flow_pools SET config_json = ?, status = CASE WHEN status = 'reviewing' AND ? = 0 THEN 'open' ELSE status END WHERE id = ?")
                 ->execute([voteJson($config), count($config['match_tie_breaks']), (int)$pool['id']]);
             if (!$config['match_tie_breaks']) {
-                $db->prepare("UPDATE vote_stages SET status = CASE WHEN status = 'reviewing' THEN 'open' ELSE status END WHERE id = ?")
+                $db->prepare("UPDATE vote_stages SET status = CASE WHEN status = 'reviewing' THEN 'open' ELSE status END, starts_at = COALESCE(starts_at, CASE WHEN status = 'reviewing' THEN $now ELSE NULL END) WHERE id = ?")
                     ->execute([(int)$pool['stage_id']]);
             }
         }
@@ -1976,10 +2071,27 @@ function voteFlowMaybeSettleTerminalMatches(PDO $db, array $pool): void {
 }
 
 function voteSettleStage(PDO $db, array $stage): array {
+    if (!in_array($stage['status'] ?? '', ['open', 'locked'], true)) {
+        // 已 settled/reviewing 的阶段禁止重入结算，防止覆盖人工裁定结果
+        throw new RuntimeException('当前阶段不在可结算状态（已结算或待裁定请走对应流程）');
+    }
     $stageId = (int)$stage['id'];
     $projectId = (int)$stage['project_id'];
     $mode = $stage['vote_mode'] ?? 'multi_select';
-    if ($mode === 'nomination' || ($stage['stage_type'] ?? '') === 'nomination') {
+    $db->beginTransaction();
+    try {
+        // 事务内锁阶段行并复查状态：聚合与写入基于同一快照，防并发结算竞态
+        if (voteIsMysql()) {
+            $db->prepare('SELECT status FROM vote_stages WHERE id = ? FOR UPDATE')->execute([$stageId]);
+        } else {
+            $db->prepare('UPDATE vote_stages SET status = status WHERE id = ?')->execute([$stageId]);
+        }
+        $stmt = $db->prepare('SELECT status FROM vote_stages WHERE id = ?');
+        $stmt->execute([$stageId]);
+        if (!in_array((string)$stmt->fetchColumn(), ['open', 'locked'], true)) {
+            throw new RuntimeException('当前阶段状态已变化，不能结算');
+        }
+        if ($mode === 'nomination' || ($stage['stage_type'] ?? '') === 'nomination') {
         $stmt = $db->prepare(
             "SELECT id AS entry_id, 0 AS votes, NULL AS score_avg
              FROM vote_entries
@@ -2065,12 +2177,18 @@ function voteSettleStage(PDO $db, array $stage): array {
     if ($tieBreak) {
         $config['tie_break'] = $tieBreak;
         $db->prepare("UPDATE vote_stages SET status = 'reviewing', config_json = ?, updated_at = $now WHERE id = ?")->execute([voteJson($config), $stageId]);
+        $db->commit();
         return $rows;
     }
     unset($config['tie_break']);
     $db->prepare("UPDATE vote_stages SET status = 'settled', config_json = ?, updated_at = $now WHERE id = ?")->execute([voteJson($config), $stageId]);
     voteAdvanceNextStage($db, array_merge($stage, ['config_json' => voteJson($config)]));
+    $db->commit();
     return $rows;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
 }
 
 function voteResolveStageTie(PDO $db, array $stage, array $selectedEntryIds): void {

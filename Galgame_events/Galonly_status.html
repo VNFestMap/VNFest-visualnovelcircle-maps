@@ -110,6 +110,7 @@
     }
   </style>
   <link rel="stylesheet" href="../css/galonly-poster-theme.css">
+    <script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
   <main class="page-shell">
@@ -212,8 +213,9 @@
     }
 
     function renderSummary(app) {
+      var displayNumber = parseInt(app.event_number, 10) || parseInt(app.id, 10) || '—';
       var items = [
-        ['申请编号', '#' + app.id],
+        ['申请编号', '#' + displayNumber],
         ['摊位名称', app.booth_name || '—'],
         ['摊位类型', boothTypeLabel(app.booth_type)],
         ['是否升级摊位', upgradeLabel(app.wants_upgrade)],
@@ -261,7 +263,9 @@
       } else if (status === 'phase2_pending') {
         cls = 'pending';
         html = '<h3><span class="status-icon" aria-hidden="true"></span>阶段二 · 制品审核中</h3>'
-          + '<div>制品审核材料已提交，审核完成后将在站内通知和本页更新。9 月 19 日后仅允许追加个别制品，须在 2026 年 10 月 1 日前向摊位组报备并提交审核。</div>';
+          + '<div>制品审核材料已提交，仍可编辑并提交新版本；每次提交都会开启当前材料的新一轮审核。9 月 19 日后仅允许追加个别制品，须在 2026 年 10 月 1 日前向摊位组报备并提交审核。</div>'
+          + '<div class="deadline">材料版本：v' + (app.merchandise_version || 0) + ' · 最近更新：' + escapeHtml(app.merchandise_updated_at || '未记录') + '</div>'
+          + '<div class="status-actions"><a class="btn primary" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">编辑/更新制品材料</a></div>';
       } else if (status === 'phase2_revision') {
         cls = 'revision';
         var dl2 = daysLeft(app.revision_at);
@@ -270,11 +274,18 @@
         if (dl2 !== null && dl2 > 0) {
           html += '<div class="status-actions"><a class="btn primary" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">修改后重新提交</a></div>';
         }
+      } else if (status === 'phase2_additional_pending') {
+        cls = 'revision';
+        html = '<h3><span class="status-icon" aria-hidden="true"></span>已通过 · 追加检查中</h3>'
+          + '<div>原有 ' + escapeHtml(app.phase2_approved_status || '已通过') + ' 资格继续保留。本次材料更新正在进行追加检查，只有审核端明确撤回通过才会改变资格。</div>'
+          + '<div class="deadline">材料版本：v' + (app.merchandise_version || 0) + ' · 最近更新：' + escapeHtml(app.merchandise_updated_at || '未记录') + '</div>'
+          + '<div class="status-actions"><a class="btn primary" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">编辑追加材料</a></div>';
       } else if (status === 'confirmed') {
         cls = 'confirmed';
         html = '<h3><span class="status-icon" aria-hidden="true"></span>正式摊主</h3>'
           + '<div>制品审核已通过，您已获得本届活动摊主资格。摊位位置及现场安排以主办方后续通知为准。2026 年 10 月 1 日前如需追加个别制品，请先向摊位组报备并提交审核。</div>'
           + '<div class="status-actions">'
+          + '<a class="btn" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">编辑追加材料</a>'
           + '<a class="btn success" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + app.id + '">查看确认函</a>'
           + '<a class="btn" href="Galonly_manual.html?event_id=' + eventId + '&application_id=' + app.id + '">查看摊主手册</a>'
           + '</div>';
@@ -283,6 +294,7 @@
         html = '<h3><span class="status-icon" aria-hidden="true"></span>拼摊安排中（保留摊主资格）</h3>'
           + '<div>本次申请保留摊主资格，拼摊安排以主办方后续通知为准。请留意相关通知。</div>'
           + '<div class="status-actions">'
+          + '<a class="btn" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + app.id + '">编辑追加材料</a>'
           + '<a class="btn success" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + app.id + '">查看确认函</a>'
           + '<a class="btn" href="Galonly_manual.html?event_id=' + eventId + '&application_id=' + app.id + '">查看摊主手册</a>'
           + '</div>';

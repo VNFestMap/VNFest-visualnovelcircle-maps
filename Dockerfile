@@ -3,6 +3,8 @@
 
 FROM php:8.4-apache
 
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 LABEL org.opencontainers.image.source="https://github.com/VNFestMap/galgame-community-map"
 LABEL org.opencontainers.image.description="VNFest Galgame 同好会地图"
 
@@ -15,12 +17,14 @@ RUN set -eux \
         libjpeg-dev \
         libfreetype6-dev \
         libonig-dev \
+        libcurl4-openssl-dev \
         zip \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
         mbstring \
+        curl \
         gd \
         bcmath \
     && apt-get clean \
@@ -45,6 +49,9 @@ RUN sed -ri \
 
 # 复制应用代码
 COPY . /var/www/html/
+
+RUN cd /var/www/html \
+    && composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
 # 创建持久化目录并设置权限
 # uploads/ 和 wiki/uploads/ 被 .dockerignore 排除，需要提前创建作为挂载点

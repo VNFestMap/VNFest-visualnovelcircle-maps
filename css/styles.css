@@ -2655,7 +2655,7 @@ body {
 
 .mobile-drawer-content .card-title {
   font-size: 18px;
-  margin: 0 0 12px !important;
+  margin: 0 0 10px !important;
   padding-right: 32px;
   color: var(--md-on-surface);
 }
@@ -2664,14 +2664,139 @@ body {
   width: 100%;
   height: auto;
   border-radius: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .mobile-drawer-content .card-body {
   font-size: 13px;
   line-height: 1.6;
   color: var(--md-on-surface-variant);
-  margin: 0 0 12px !important;
+  margin: 0 0 10px !important;
+}
+
+/* 抽屉按钮区 · 主操作全宽 + 次级链接两列网格 */
+.mobile-drawer-content .intro-links {
+  margin-top: 12px;
+}
+
+.mobile-drawer-content .submit-buttons {
+  gap: 8px;
+}
+
+.mobile-drawer-content .submit-btn {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+/* 次级链接按钮 · 两列网格（抽屉/简介卡/列表侧栏共用） */
+.link-btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.link-btn-full {
+  grid-column: 1 / -1;
+}
+
+/* 底部小字区（抽屉/简介卡共用） */
+.intro-footnotes {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--md-outline-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.intro-footnotes .gpl-text {
+  margin: 0 !important;
+  font-size: 10.5px;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.intro-footnotes .qq-group-link {
+  margin-top: 2px;
+  padding: 3px 12px;
+  font-size: 11px;
+}
+
+.mobile-drawer-content .link-btn-grid .submit-btn {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 12px;
+  gap: 6px;
+  border-color: color-mix(in srgb, var(--md-outline) 72%, transparent);
+  color: var(--md-on-surface-variant);
+}
+
+.mobile-drawer-content .link-btn-grid .submit-btn .vn-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.mobile-drawer-content .link-btn-grid .submit-btn:hover {
+  color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+/* 桌面端简介卡 · 次级网格与小字区适配 */
+#introCard .link-btn-grid {
+  gap: 6px;
+}
+
+#introCard .link-btn-grid .submit-btn {
+  min-height: 30px;
+  padding: 7px 8px;
+  font-size: 11.5px;
+  gap: 5px;
+  border-color: color-mix(in srgb, var(--md-outline) 72%, transparent);
+  color: var(--md-on-surface-variant);
+}
+
+#introCard .link-btn-grid .submit-btn .vn-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+#introCard .link-btn-grid .submit-btn:hover {
+  color: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+#introCard .intro-footnotes {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+#introCard .intro-footnotes .gpl-text {
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+/* 列表侧栏 · 次级网格适配（容器较窄） */
+.list-intro-links .link-btn-grid {
+  gap: 6px;
+  margin-top: 0;
+}
+
+.list-intro-links .link-btn-grid .submit-btn {
+  font-size: 10.5px;
+  padding: 6px 8px;
+  min-height: 28px;
+  gap: 4px;
+}
+
+.list-intro-links .link-btn-grid .submit-btn .vn-icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
 }
 
 /* 链接区 */
@@ -12379,10 +12504,6 @@ textarea:focus-visible,
 }
 
 @media (max-width: 720px) {
-  #siteFooter {
-    display: none !important;
-  }
-
   #clubDetailModal {
     align-items: flex-end;
     justify-content: center;

@@ -12,8 +12,9 @@
   <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
   <script defer src="../js/site-header.js?v=20260827-site-header"></script>
   <script src="../js/theme-runtime.js?v=20260702-theme"></script>
-  <link rel="stylesheet" href="../css/vote-common.css">
-  <link rel="stylesheet" href="moe-detail.css?v=20260626">
+  <link rel="stylesheet" href="../css/vote-common.css?v=20260830-flowfix">
+  <link rel="stylesheet" href="moe-detail.css?v=20260903-moe-fixes">
+<script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
   <header class="md-topbar">
@@ -37,8 +38,10 @@
     <div class="md-countdown" id="mdCountdown">--天 --:--:--</div>
   </section>
 
+  <div class="guest-banner" id="mdGuestBanner" hidden role="status"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>免登录参与模式 — 通过分享链接打开，无需登录即可投票；票数记录在本设备，同一设备每阶段计一票。</span></div>
+
   <nav class="md-stage-nav" id="mdStageNav" aria-label="阶段导航">
-    <div class="md-stage-list" id="mdStageList"></div>
+    <ol class="md-stage-list" id="mdStageList"></ol>
   </nav>
 
   <div class="md-layout">
@@ -54,7 +57,8 @@
         <div class="md-info-list" id="mdInfoList">
           <div class="md-info-row"><span>同好会</span><span id="mdInfoClub">-</span></div>
           <div class="md-info-row"><span>当前阶段</span><span id="mdInfoStage">-</span></div>
-          <div class="md-info-row"><span>开始时间</span><span id="mdInfoStart">-</span></div>
+          <div class="md-info-row"><span>活动启动</span><span id="mdInfoLaunch">-</span></div>
+          <div class="md-info-row"><span>阶段开始</span><span id="mdInfoStart">-</span></div>
           <div class="md-info-row"><span>截止时间</span><span id="mdInfoEnd">-</span></div>
         </div>
       </div>
@@ -71,9 +75,9 @@
     </aside>
   </div>
 
-  <div class="md-select-bar" id="mdSelectBar" style="display:none;">
-    <span class="md-select-hint" id="mdSelectHint">已选 0 个</span>
-    <button class="md-btn md-btn--danger" id="mdSelectDelete" disabled>删除选中</button>
+  <div class="md-select-bar" id="mdSelectBar" style="display:none;" role="toolbar" aria-label="批量撤回提名">
+    <span class="md-select-hint" id="mdSelectHint" aria-live="polite">已选 0 个</span>
+    <button type="button" class="md-btn md-btn--danger" id="mdSelectDelete" disabled>删除选中</button>
   </div>
 
   <div class="md-bottom-bar" id="mdBottomBar" style="display:none;">
@@ -83,8 +87,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="../js/vote-common.js"></script>
-  <script src="moe-detail.js?v=20260626"></script>
+  <script src="../js/vote-common.js?v=20260830-flowfix"></script>
+  <script src="moe-detail.js?v=20260903-moe-fixes"></script>
   <script>initVoteThemeToggle('themeToggle');</script>
 </body>
 </html>

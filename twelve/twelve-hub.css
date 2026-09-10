@@ -8,8 +8,8 @@
 }
 
 [data-theme="dark"] {
-  --mh-hero-start: #162044;
-  --mh-hero-end: #101828;
+  --mh-hero-start: #1e2440;
+  --mh-hero-end: #15131f;
   --mh-hero-border: rgba(47, 111, 237, 0.14);
 }
 
@@ -367,4 +367,38 @@ body {
 /* === Motion === */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* === 动效与移动端增强（2026-08-30） === */
+.mh-card {
+  animation: tw-card-in .5s cubic-bezier(.2, .7, .3, 1) both;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.mh-card-list .mh-card:nth-child(2) { animation-delay: .04s; }
+.mh-card-list .mh-card:nth-child(3) { animation-delay: .08s; }
+.mh-card-list .mh-card:nth-child(4) { animation-delay: .12s; }
+.mh-card-list .mh-card:nth-child(5) { animation-delay: .16s; }
+.mh-card-list .mh-card:nth-child(6) { animation-delay: .2s; }
+.mh-card-list .mh-card:nth-child(n+7) { animation-delay: .24s; }
+.mh-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16); }
+.mh-card:active { transform: translateY(-1px) scale(0.985); }
+@keyframes tw-card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mh-chip, .mh-theme-toggle, .mh-link { transition: transform .15s ease, background .15s ease, border-color .15s ease; }
+.mh-chip:active, .mh-theme-toggle:active { transform: scale(0.95); }
+
+@media (max-width: 720px) {
+  .mh-chip { padding: 9px 18px; font-size: 13.5px; min-height: 38px; }
+  .mh-card-body { padding: 14px 15px; }
+  .mh-card-title { font-size: 15.5px; }
+  .mh-card { grid-template-columns: 4px 1fr; }
+  .mh-card:hover { transform: none; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* 桌面端顶栏由 site-header 注入共享品牌，隐藏本地品牌区（移动端保留） */
+@media (min-width: 681px) {
+  .mh-brand { display: none; }
 }

@@ -15,6 +15,7 @@ const moeJs = read('js/moe-contest.js');
 const twelveDetailJs = read('twelve/twelve-detail.js');
 const moeDetailHtml = read('moe/contest.html');
 const moeDetailJs = read('moe/moe-detail.js');
+const moeDetailCss = read('moe/moe-detail.css');
 const moeBracketHtml = read('moe/bracket.html');
 const moeBracketJs = read('moe/moe-bracket.js');
 const twelveJs = read('js/twelve-contest.js');
@@ -42,6 +43,7 @@ assert.ok(core.includes('voteFlowPoolEntryCount($db, (int)$pool'), 'atomic rebui
 assert.ok(core.includes('FLOW_POOL_READBACK_MISMATCH'), 'atomic rebuild should fail if seeded and readback counts diverge');
 assert.ok(core.includes("UPDATE vote_flow_pools SET status = 'open'"), 'atomic rebuild should open the qualifier pool in the same transaction');
 assert.ok(core.includes("UPDATE vote_stages SET status = 'open'"), 'atomic rebuild should open the qualifier stage in the same transaction');
+assert.ok(core.includes('starts_at = COALESCE(starts_at'), 'flow stage openings should record the first actual open time without overwriting a scheduled start');
 assert.ok(core.includes("UPDATE vote_flow_runs SET status = 'archived'"), 'rebuild should archive the previous active flow run');
 assert.ok(core.includes("eventType") || core.includes('rebuild_from_nomination_and_open'), 'atomic rebuild should write a flow event');
 
@@ -52,6 +54,7 @@ assert.ok(stagesApi.includes("'readback_count'"), 'stage API should return readb
 assert.ok(stagesApi.includes("'pool_id'") && stagesApi.includes("'stage_id'"), 'stage API should return pool and stage identifiers');
 assert.ok(stagesApi.includes("'qualifier_stage_id'"), 'stage API should return the qualifier stage id');
 assert.ok(stagesApi.includes("case 'advance_from_nomination'"), 'legacy one-click action should remain compatible');
+assert.ok(stagesApi.includes('starts_at = COALESCE(starts_at'), 'stage API openings should record the first actual open time without overwriting a scheduled start');
 assert.ok(stagesApi.includes("case 'flow_status'"), 'stage API should expose flow_status');
 assert.ok(stagesApi.includes("case 'stage_entries'"), 'stage API should expose stage_entries');
 assert.ok(stagesApi.includes("'pool_status' => 'missing'"), 'stage_entries should clearly report a missing flow pool');
@@ -88,6 +91,8 @@ assert.ok(!managerJs.includes('[data-advance-from-nomination]'), 'manager should
 assert.ok(!managerJs.includes('function advanceFromNomination'), 'manager should not keep the deprecated nomination advancement function');
 assert.ok(managerJs.includes('action=flow_status'), 'manager should refresh flow_status after operations');
 assert.ok(managerJs.includes('loadStageEntries(qualifierId)'), 'manager should reread stage_entries after generation');
+assert.ok(managerJs.includes("var canUseLegacySettlement = s.stage_type !== 'nomination';") && managerJs.includes("canUseLegacySettlement && s.status !== 'reviewing'"), 'manager should not expose legacy settle actions for nomination stages');
+assert.ok(managerJs.includes("if (stage.stage_type === 'nomination')") && managerJs.includes('data-rebuild-flow') && managerJs.includes('生成海选池并打开海选'), 'manager should expose an actionable nomination handoff instead of direct stage settlement');
 
 assert.ok(moeJs.includes('moe_stages.php?action=stage_entries'), 'moe page should read candidates from stage_entries compatibility API');
 assert.ok(twelveJs.includes('twelve_rounds.php?action=stage_entries'), 'twelve page should read candidates from stage_entries compatibility API');
@@ -121,6 +126,12 @@ assert.ok(sourcesApi.includes('https://api.vndb.org/kana/vn') && sourcesApi.incl
 assert.ok(vndbProxy.includes('ignore_errors') && vndbProxy.includes("'_error'") && vndbProxy.includes('https://api.vndb.org/kana/vn'), 'VNDB standalone proxy should surface upstream failures instead of silently returning empty data');
 assert.ok(moeJs.includes('renderScoreVoting') && moeJs.includes('mo-score-input') && moeJs.includes('group_rank'), 'moe page should support grouped score voting and grouped results');
 assert.ok(moeDetailHtml.includes('id="mdBracketLink"') && moeDetailJs.includes('bracket.html?project_id='), 'moe detail page should link to the standalone live bracket board by project id');
+assert.ok(moeDetailHtml.includes('活动启动') && moeDetailHtml.includes('id="mdInfoLaunch"') && moeDetailHtml.includes('阶段开始'), 'moe detail should expose activity launch and stage start as separate fields');
+assert.ok(moeDetailJs.includes('data.data.published_at') && moeDetailJs.includes('fmtDate(stage.starts_at)') && moeDetailJs.includes('fmtDate(stage.ends_at)'), 'moe detail should keep published_at separate from stage scheduling');
+assert.ok(moeDetailHtml.includes('<ol class="md-stage-list"') && moeDetailJs.includes('md-stage-step') && moeDetailJs.includes('aria-current'), 'moe detail should render semantic fishbone stage steps');
+assert.ok(moeDetailJs.includes('md-inline-spinner') && !/btn\.innerHTML\s*=\s*[^;]*md-loading/.test(moeDetailJs) && moeDetailCss.includes('.md-inline-spinner'), 'moe detail search should use a dedicated inline spinner instead of the full loading region');
+assert.ok(moeDetailJs.includes('data-selectable') && moeDetailJs.includes('entryIdOf') && moeDetailJs.includes('toggleNominationSelection'), 'moe detail selection mode should normalize and select owned entries');
+assert.ok(moeDetailCss.includes('.md-stage-step:not(:last-child)::after') && moeDetailCss.includes('body.md-select-mode .md-char-item:not([data-selectable="true"])'), 'moe detail CSS should provide fishbone connectors and selection-mode weakening');
 assert.ok(moeBracketHtml.includes('moe-bracket.css') && moeBracketHtml.includes('moe-bracket.js'), 'standalone bracket page should use dedicated bracket assets');
 assert.ok(moeBracketJs.includes("params.get('project_id')") && moeBracketJs.includes("params.get('id')") && moeBracketJs.includes("params.get('contest_id')"), 'standalone bracket page should accept project_id, id, and contest_id');
 assert.ok(moeBracketJs.includes('moe_contests.php?action=get') && moeBracketJs.includes('moe_stages.php?action=list') && moeBracketJs.includes('moe_matches.php?action=list') && moeBracketJs.includes('moe_votes.php?action=results'), 'standalone bracket page should load real contest, stage, match, and result APIs');

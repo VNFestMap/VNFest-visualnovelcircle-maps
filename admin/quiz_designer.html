@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>题目设计器 - Galgame 同好会地图</title>
+<link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
+<script defer src="../js/site-header.js?v=20260827-site-header"></script>
+<script src="../js/theme-runtime.js?v=20260702-theme"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #090b10;
+  --surface: #131823;
+  --surface-hover: #1a2030;
+  --surface-raised: #161c28;
+  --text-primary: #edf0f7;
+  --text-secondary: #94a3b8;
+  --text-muted: #5a6578;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --accent-purple: #a78bfa;
+  --accent-gold: #f4c95d;
+  --accent-green: #34d399;
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --success-bg: rgba(52, 211, 153, 0.12);
+  --gold-bg: rgba(244, 201, 93, .12);
+  --gold-border: rgba(244, 201, 93, .3);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  color-scheme: dark;
+}
+/* 明亮模式：随站点主题切换（theme-runtime 将 data-theme 写在 <html> 上） */
+html[data-theme="light"] {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-hover: #eef1f5;
+  --surface-raised: #f7f8fa;
+  --text-primary: #1c2433;
+  --text-secondary: #4a5568;
+  --text-muted: #8a94a6;
+  --border: rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.22);
+  --accent-purple: #7c3aed;
+  --accent-gold: #b45309;
+  --accent-green: #059669;
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --success-bg: rgba(5, 150, 105, 0.10);
+  --gold-bg: rgba(180, 83, 9, 0.10);
+  --gold-border: rgba(180, 83, 9, 0.35);
+  color-scheme: light;
+}
+html[data-theme="light"] .qd-toast { box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18); }
+body { background: var(--bg); color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+
+/* ---------- 顶栏（吸顶，与站点头部 vn-topbar 统一） ---------- */
+.qd-topbar-wrap { position: sticky; top: 0; z-index: 50; }
+.qd-topbar-wrap .vn-topbar { background: var(--surface); }
+.qd-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); border-radius: var(--radius); padding: 7px 14px; font-size: 13px; cursor: pointer; transition: all .2s; font-family: inherit; }
+.btn:hover { background: var(--surface-hover); }
+.btn.primary { background: var(--gold-bg); border-color: var(--gold-border); color: var(--accent-gold); font-weight: 600; }
+.btn.primary:hover { background: rgba(244,201,93,.2); }
+.btn.danger-ghost { background: transparent; border-color: transparent; color: var(--danger); }
+.btn.danger-ghost:hover { background: var(--danger-bg); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm { padding: 3px 9px; font-size: 12px; border-radius: 6px; }
+.btn-xs { padding: 2px 7px; font-size: 11px; border-radius: 5px; }
+.form-input { width: 100%; background: var(--surface-raised); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: var(--radius); padding: 8px 10px; font-size: 13px; font-family: inherit; line-height: 1.5; }
+.form-input:focus { outline: none; border-color: var(--gold-border); }
+textarea.form-input { resize: vertical; min-height: 56px; }
+
+/* ---------- 文档区 ---------- */
+.qd-doc { max-width: 900px; margin: 0 auto; padding: 22px 16px 80px; }
+
+/* 试卷头 */
+.qd-paper-head { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 18px; }
+.qd-paper-head h2 { font-size: 20px; letter-spacing: .02em; }
+.qd-paper-head .meta { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.qd-settings-toggle { margin-top: 12px; }
+.qd-settings-toggle summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-purple); }
+.qd-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
+.qd-settings-grid label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+
+/* 题目卡片 */
+.qd-q { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 24px; margin-bottom: 14px; position: relative; transition: border-color .2s; }
+.qd-q:focus-within { border-color: var(--gold-border); }
+.qd-q-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.qd-q-no { font-size: 18px; font-weight: 800; color: var(--accent-gold); font-variant-numeric: tabular-nums; }
+.qd-q-head select.qd-type { width: 96px; }
+.qd-q-head .pts-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+.qd-q-head .pts-wrap input { width: 74px; }
+.qd-q-tools { display: flex; gap: 4px; }
+.qd-stem textarea { font-size: 14px; background: transparent; border: 1px dashed transparent; padding: 8px; }
+.qd-stem textarea:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+.qd-stem textarea:focus { border-color: var(--gold-border); background: var(--surface-raised); }
+
+/* 图片（题干图 / 选项图） */
+.qd-img-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.qd-img-thumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-strong); flex-shrink: 0; }
+.qd-img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qd-img-thumb .rm { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; line-height: 18px; text-align: center; cursor: pointer; }
+
+/* 选项 */
+.qd-opts { margin-top: 10px; }
+.qd-opt { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.qd-opt .letter { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-secondary); flex-shrink: 0; cursor: pointer; user-select: none; transition: all .15s; }
+.qd-opt .letter.correct { background: var(--success-bg); border-color: rgba(52,211,153,.55); color: var(--accent-green); font-weight: 700; }
+.qd-opt .letter.no-mark { cursor: default; background: var(--surface-raised); }
+.qd-opt input[type=text] { flex: 1; background: transparent; border: 1px dashed transparent; }
+.qd-opt input[type=text]:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+.qd-opt input[type=text]:focus { border-color: var(--gold-border); background: var(--surface-raised); }
+.qd-opt .opt-img-mini { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-strong); flex-shrink: 0; }
+.qd-opt-mark { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.qd-add-opt { margin-top: 10px; }
+
+/* 排序题拖拽（↑↓ 按钮保留为后备） */
+.qd-order-row { cursor: grab; }
+.qd-order-row .drag { cursor: grab; color: var(--text-muted); font-size: 13px; letter-spacing: -1px; user-select: none; flex-shrink: 0; }
+.qd-order-row.dragging { opacity: .4; }
+.qd-drop-top { box-shadow: 0 -2px 0 0 var(--accent-gold); }
+.qd-drop-bottom { box-shadow: 0 2px 0 0 var(--accent-gold); }
+
+/* 多空填空的空位行 */
+.qd-blank { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.qd-blank .lbl { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+/* 排序题行内上下移 */
+.qd-opt .mv { padding: 2px 6px; }
+
+.qd-expl-row { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.qd-expl-row input { flex: 1; font-size: 12px; }
+.qd-expl-row .lbl { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.qd-add-q { width: 100%; justify-content: center; border-style: dashed; padding: 14px; font-size: 14px; }
+.qd-empty { color: var(--text-muted); text-align: center; padding: 70px 0; font-size: 13px; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); }
+
+/* ---------- 预览（考生视角试卷纸） ---------- */
+.qd-pv-paper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 34px 40px; }
+@media (max-width: 640px) { .qd-pv-paper { padding: 22px 16px; } }
+.qd-pv-title { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+.qd-pv-meta { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 22px; }
+.qd-pv-q { padding: 14px 0; border-top: 1px dashed var(--border); }
+.qd-pv-q:first-of-type { border-top: none; }
+.qd-pv-qt { font-size: 14px; font-weight: 600; }
+.qd-pv-qt .no { color: var(--accent-gold); margin-right: 6px; }
+.qd-pv-qt .pts { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+.qd-pv-img { margin-top: 8px; }
+.qd-pv-img img { max-width: 100%; max-height: 260px; border-radius: 8px; border: 1px solid var(--border); display: block; }
+.qd-pv-opt { display: flex; gap: 10px; align-items: center; margin-top: 9px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.qd-pv-opt.correct { border-color: rgba(52,211,153,.55); background: var(--success-bg); }
+.qd-pv-opt .mark { color: var(--text-muted); }
+.qd-pv-opt.correct .mark { color: var(--accent-green); font-weight: 700; }
+.qd-pv-opt img { max-height: 64px; max-width: 96px; border-radius: 6px; border: 1px solid var(--border); }
+.qd-pv-fill { margin-top: 9px; border-bottom: 1px solid var(--border-strong); padding: 6px 2px; min-height: 28px; color: var(--text-muted); font-size: 13px; }
+.qd-pv-ans { font-size: 12px; color: var(--accent-green); margin-top: 8px; }
+.qd-pv-expl { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+.qd-pv-note { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 18px; }
+
+.qd-toast { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); background: var(--surface-raised); border: 1px solid var(--border-strong); color: var(--text-primary); border-radius: 999px; padding: 9px 20px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 999; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.qd-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="qd-topbar-wrap">
+  <header class="vn-topbar" data-page-header data-header-manual>
+    <div class="vn-topbar-leading">
+      <a class="vn-topbar-brand" href="../index.html" aria-label="返回地图">
+        <span class="vn-topbar-name">VNFest</span>
+        <span class="vn-topbar-divider" aria-hidden="true"></span>
+        <span class="vn-topbar-sub">题目设计器</span>
+      </a>
+      <span class="sub" id="qdDocCount" style="font-size:12px;color:var(--text-muted);margin-left:12px">0 题</span>
+    </div>
+    <nav class="vn-topbar-actions qd-actions" aria-label="设计器操作">
+      <a class="btn" href="quiz_hub.html" target="_blank" rel="noopener">题库</a>
+      <a class="btn" href="quiz_format.html" target="_blank" rel="noopener">规范</a>
+      <button class="btn" id="qdTogglePreview">预览</button>
+      <button class="btn" id="qdExport">导出</button>
+      <button class="btn" id="qdImport">导入</button>
+      <button class="btn primary" id="qdDone">完成</button>
+    </nav>
+  </header>
+</div>
+
+<div class="qd-doc">
+  <!-- 试卷头 -->
+  <div class="qd-paper-head">
+    <h2>知识问答试卷</h2>
+    <div class="meta">点选项前的字母设为正确答案；排序题按正确顺序排列选项；题干和选项都可加图片。完成后点右上角「完成」带回。</div>
+    <details class="qd-settings-toggle">
+      <summary>考试设置</summary>
+      <div class="qd-settings-grid">
+        <div><label>题目乱序</label><select id="qdShuffle" class="form-input"><option value="0">关</option><option value="1">开</option></select></div>
+        <div><label>选项乱序</label><select id="qdShuffleOpt" class="form-input"><option value="0">关</option><option value="1">开</option></select></div>
+        <div><label>抽题数量（0=全部）</label><input id="qdPick" class="form-input" type="number" min="0" value="0"></div>
+        <div><label>限时（分钟，0=不限，≤180）</label><input id="qdTimeLimit" class="form-input" type="number" min="0" max="180" value="0"></div>
+        <div><label>多选半分</label><select id="qdPartial" class="form-input"><option value="0">关（全对才得分）</option><option value="1">开（选对得分、选错扣分）</option></select></div>
+        <div><label>成绩显示</label><select id="qdResultMode" class="form-input"><option value="immediate">立即显示分数与解析</option><option value="pass_only">只显示通过/未通过</option><option value="hidden">交卷后不显示</option></select></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- 文档流（编辑态）/ 试卷纸（预览态） -->
+  <div id="qdDoc"></div>
+  <button class="btn qd-add-q" id="qdAdd">+ 添加题目</button>
+</div>
+
+<div class="qd-toast" id="qdToast"></div>
+<input type="file" id="qdImportFile" accept="application/json,.json" style="display:none">
+<input type="file" id="qdImgFile" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+<script src="quiz_designer.js?v=20260831-quiz-designer-7"></script>
+</body>
+</html>

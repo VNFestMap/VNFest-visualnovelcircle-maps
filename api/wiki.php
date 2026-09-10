@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/image_host.php';
 
 $rootDir = dirname(__DIR__);
 $contentDir = $rootDir . '/wiki/content';
@@ -874,16 +875,21 @@ function wikiUploadImage(string $clubKey, string $uploadsDir): void {
     }
 
     $fileBase = date('YmdHis') . '_' . bin2hex(random_bytes(4));
-    $destPath = $dir . '/' . $fileBase . '.' . $ext;
-    if (!@move_uploaded_file($file['tmp_name'], $destPath)) {
-        wikiJsonResponse(['success' => false, 'message' => '图片保存失败']);
+    $fileName = $fileBase . '.' . $ext;
+    $destPath = $dir . '/' . $fileName;
+    $localUrl = '../uploads/' . $clubKey . '/' . $fileName;
+    $stored = imageHostStoreUploadedFile($file['tmp_name'], $destPath, $localUrl, (string)$file['name'], 'wiki:' . $clubKey);
+    if (!$stored['ok']) {
+        wikiJsonResponse(['success' => false, 'message' => $stored['error'] ?? '图片保存失败']);
     }
 
-    $imageUrl = '../uploads/' . $clubKey . '/' . $fileBase . '.' . $ext . '?t=' . time();
+    $imageUrl = $stored['url'] . (str_contains($stored['url'], '?') ? '&' : '?') . 't=' . time();
     wikiJsonResponse([
         'success' => true,
         'message' => '图片上传成功',
         'image_url' => $imageUrl,
+        'storage' => $stored['storage'],
+        'local_backup' => $stored['local_backup'],
     ]);
 }
 
@@ -965,7 +971,8 @@ function wikiGuideNormalizeArticle(array $article, string $id, string $lang): ar
                 }
             } else {
                 $src = trim((string)($block['src'] ?? ''));
-                if ($src === '' || (!str_starts_with($src, '../uploads/guide/') && !str_starts_with($src, './assets/'))) continue;
+                $isGuideLocal = str_starts_with($src, '../uploads/guide/');
+                if ($src === '' || (!$isGuideLocal && !str_starts_with($src, './assets/') && !imageHostIsTrustedUrl($src))) continue;
                 $clean['src'] = $src;
                 $clean['alt'] = wikiGuideTruncate((string)($block['alt'] ?? ''), 300);
                 $clean['caption'] = wikiGuideTruncate((string)($block['caption'] ?? ''), 500);

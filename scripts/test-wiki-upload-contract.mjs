@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const apiSource = fs.readFileSync(path.join(root, 'api/wiki.php'), 'utf8');
+const imageHostSource = fs.readFileSync(path.join(root, 'includes/image_host.php'), 'utf8');
 const editorSource = fs.readFileSync(path.join(root, 'admin/wiki_editor.html'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'wiki/index.html'), 'utf8');
 const wikiCssSource = fs.readFileSync(path.join(root, 'wiki/wiki.css'), 'utf8');
@@ -12,7 +13,8 @@ const wikiPageSource = fs.readFileSync(path.join(root, 'wiki/wiki-page.js'), 'ut
 
 assert.match(apiSource, /action\s*===\s*['"]upload['"]/, 'wiki API should expose an upload action');
 assert.match(apiSource, /wiki\/uploads/, 'wiki uploads should be stored under wiki/uploads');
-assert.match(apiSource, /move_uploaded_file/, 'wiki upload should move the uploaded file safely');
+assert.match(apiSource, /imageHostStoreUploadedFile/, 'wiki upload should save through the image-host backup adapter');
+assert.match(imageHostSource, /copy\(\$sourcePath, \$localPath\)/, 'image-host adapter should preserve a local backup');
 assert.match(apiSource, /UPLOAD_ERR_OK/, 'wiki upload should check PHP upload errors');
 assert.match(apiSource, /IMAGETYPE_WEBP/, 'wiki upload should allow WebP images');
 assert.match(apiSource, /10\s*\*\s*1024\s*\*\s*1024/, 'wiki upload should allow images up to 10MB');

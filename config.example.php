@@ -9,6 +9,20 @@ define('BOT_API_KEY', 'your_private_bot_api_key_here');
 define('DATA_PATH', __DIR__ . '/data/');
 define('SITE_URL', 'https://yourdomain.com');
 
+// ===== 专栏评论服务 =====
+define('COLUMN_WALINE_SERVER_URL', getenv('COLUMN_WALINE_SERVER_URL') ?: '');
+define('COLUMN_WALINE_SSO_SECRET', getenv('COLUMN_WALINE_SSO_SECRET') ?: '');
+define('COLUMN_WALINE_ALLOWED_REDIRECTS', getenv('COLUMN_WALINE_ALLOWED_REDIRECTS') ?: '');
+
+// ===== 公开图片图床（真实 Token 只放服务器环境，不要提交到 Git） =====
+define('PICUI_TOKEN', getenv('PICUI_TOKEN') ?: '');
+define('PICUI_API_URL', getenv('PICUI_API_URL') ?: 'https://picui.cn/api/v1');
+define('PICUI_ENABLED', filter_var(getenv('PICUI_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN));
+define('PICUI_PERMISSION', (int)(getenv('PICUI_PERMISSION') ?: 1));
+define('PICUI_TIMEOUT', (int)(getenv('PICUI_TIMEOUT') ?: 30));
+define('PICUI_FALLBACK_LOCAL', filter_var(getenv('PICUI_FALLBACK_LOCAL') ?: 'true', FILTER_VALIDATE_BOOLEAN));
+define('PICUI_ALLOWED_HOSTS', getenv('PICUI_ALLOWED_HOSTS') ?: 'picui.cn,www.picui.cn');
+
 // 数据库驱动: 'sqlite' 或 'mysql'
 define('DB_DRIVER', 'sqlite');
 
@@ -23,6 +37,8 @@ define('DB_PASS', '');
 
 define('SESSION_LIFETIME', 7200);
 define('SESSION_SECRET', 'change-to-a-random-64-char-string');
+// 访问统计匿名访客哈希密钥：生产环境请设置一个长期不变的随机值。
+define('ANALYTICS_HASH_KEY', getenv('ANALYTICS_HASH_KEY') ?: SESSION_SECRET);
 
 // ===== Makoquiz 答题游戏连携 =====
 // bind_token 的 HMAC 签名密钥（与 makoquiz 服务端的 VNFEST_LINK_SECRET 一致）
@@ -51,12 +67,18 @@ define('SMTP_PASS', '');     // SMTP 密码/授权码 (QQ邮箱需开启 SMTP �
 define('SMTP_SECURE', 'ssl'); // ssl 或 tls
 
 // OAuth 配置
-define('QQ_APPID', '');
+// QQ 互联审核使用的应用 ID（公开标识，需与 QQ 互联申请保持一致）
+define('QQ_APPID', '1903987938');
+// App Key 仅填写在服务器私有配置中，不要提交到仓库或前端
 define('QQ_APPSECRET', '');
 define('QQ_REDIRECT_URI', SITE_URL . '/api/qq_callback.php');
 define('DISCORD_CLIENT_ID', '');
 define('DISCORD_CLIENT_SECRET', '');
 define('DISCORD_REDIRECT_URI', SITE_URL . '/api/discord_callback.php');
+define('BANGUMI_CLIENT_ID', getenv('BANGUMI_CLIENT_ID') ?: '');
+define('BANGUMI_CLIENT_SECRET', getenv('BANGUMI_CLIENT_SECRET') ?: '');
+define('BANGUMI_REDIRECT_URI', SITE_URL . '/api/bangumi_callback.php');
+define('BANGUMI_TOKEN_ENCRYPTION_KEY', getenv('BANGUMI_TOKEN_ENCRYPTION_KEY') ?: '');
 
 define('LEGACY_AUTH_ENABLED', true);
 

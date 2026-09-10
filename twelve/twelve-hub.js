@@ -52,7 +52,7 @@
         STATE.projects = append ? STATE.projects.concat(projects) : projects;
         renderCards(projects, append);
         var loadMore = $('mhLoadMore');
-        if (loadMore) loadMore.style.display = (projects.length >= 20) ? '' : 'none';
+        if (loadMore) loadMore.style.display = (STATE.projects.length < STATE.total && projects.length > 0) ? '' : 'none';
         updateStats();
       }).catch(function () {
         list.innerHTML = '<div class="mh-empty">加载失败，请刷新重试</div>';

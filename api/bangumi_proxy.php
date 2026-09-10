@@ -97,6 +97,66 @@ function bgmImage(array $item): string {
     return '/api/image_proxy.php?url=' . urlencode($url);
 }
 
+/** 将 Bangumi infobox 中的字符串、数组或对象值统一展开为文本 */
+function bgmValueTexts($value): array {
+    if (is_string($value) || is_numeric($value)) {
+        $text = trim((string)$value);
+        return $text === '' ? [] : [$text];
+    }
+    if (!is_array($value)) return [];
+
+    $texts = [];
+    // v0 infobox values may be objects with one of these display fields.
+    foreach (['value', 'v', 'name_cn', 'name'] as $key) {
+        if (array_key_exists($key, $value)) {
+            $texts = array_merge($texts, bgmValueTexts($value[$key]));
+        }
+    }
+    if (!$texts) {
+        foreach ($value as $part) {
+            $texts = array_merge($texts, bgmValueTexts($part));
+        }
+    }
+    return array_values(array_unique(array_filter(array_map('trim', $texts))));
+}
+
+/** 从角色详情/搜索结果的 infobox 中提取 CV */
+function extractCharacterCv(array $item): string {
+    $infobox = $item['infobox'] ?? [];
+    if (!is_array($infobox)) return '';
+
+    $names = [];
+    foreach ($infobox as $entry) {
+        if (!is_array($entry)) continue;
+        $key = trim((string)($entry['key'] ?? ''));
+        if (!preg_match('/^(?:CV|声优|配音)$/iu', $key)) continue;
+        $names = array_merge($names, bgmValueTexts($entry['value'] ?? ''));
+    }
+    return implode('、', array_values(array_unique(array_filter($names))));
+}
+
+/** 查询角色关联的声优，兼容 Bangumi v0 persons 返回数组/分页对象 */
+function fetchCharacterVoiceActors(int $characterId): array {
+    if ($characterId <= 0) return [];
+    $data = bgmFetch(
+        'https://api.bgm.tv/v0/characters/' . $characterId . '/persons',
+        'char_persons_' . $characterId,
+        86400
+    );
+    $people = isset($data['data']) && is_array($data['data']) ? $data['data'] : $data;
+    if (!is_array($people)) return [];
+
+    $names = [];
+    foreach ($people as $person) {
+        if (!is_array($person)) continue;
+        $type = $person['type'] ?? null;
+        if ($type !== null && (int)$type !== 1) continue;
+        $name = trim((string)($person['name'] ?? $person['name_cn'] ?? ''));
+        if ($name !== '') $names[] = $name;
+    }
+    return array_values(array_unique($names));
+}
+
 /** 标准化角色数据 */
 function normalizeCharacter(array $item): array {
     $imgs = $item['images'] ?? [];
@@ -108,6 +168,7 @@ function normalizeCharacter(array $item): array {
         'image_url'     => bgmImage($item),
         'image_url_raw' => $rawUrl,
         'summary'       => cutText($item['summary'] ?? '', 240),
+        'cv'            => extractCharacterCv($item),
         'relation'      => $item['relation'] ?? '',
         'type'          => $item['type'] ?? '',
     ];
@@ -174,6 +235,7 @@ if ($action === 'search_character') {
     $rows = $data['data'] ?? [];
     $results = [];
     $detailCount = 0;
+    $voiceLookupCount = 0;
 
     foreach ($rows as $item) {
         if (!is_array($item)) continue;
@@ -192,6 +254,14 @@ if ($action === 'search_character') {
                 $imgs = $detail['images'];
                 $normalized['image_url_raw'] = $imgs['medium'] ?? $imgs['large'] ?? $imgs['small'] ?? $imgs['grid'] ?? $imgs['common'] ?? '';
             }
+        }
+
+        // Some search responses omit the infobox CV. Fill a bounded number
+        // of rows from /persons so one search does not fan out indefinitely.
+        if ($normalized['cv'] === '' && !empty($normalized['character_id']) && $voiceLookupCount < 8) {
+            $voiceActors = fetchCharacterVoiceActors((int)$normalized['character_id']);
+            $voiceLookupCount++;
+            if ($voiceActors) $normalized['cv'] = implode('、', $voiceActors);
         }
 
         $results[] = $normalized;
@@ -247,7 +317,32 @@ if ($action === 'get_character') {
         86400
     );
 
+    $cv = extractCharacterCv($data);
+    if ($cv === '') {
+        $cv = implode('、', fetchCharacterVoiceActors($id));
+    }
+    if ($cv !== '') $data['cv'] = $cv;
+
     echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+// ===== 获取角色声优 =====
+if ($action === 'character_persons') {
+    $id = (int)($_GET['id'] ?? $_GET['character_id'] ?? 0);
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => '无效角色 ID']);
+        exit();
+    }
+
+    $names = fetchCharacterVoiceActors($id);
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'cv' => implode('、', $names),
+            'names' => $names,
+        ],
+    ], JSON_UNESCAPED_UNICODE);
     exit();
 }
 

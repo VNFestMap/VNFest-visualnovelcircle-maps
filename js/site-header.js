@@ -112,7 +112,7 @@
 
   function clearSharedHeaderMetadata() {
     if (!root) return;
-    root.classList.remove('vn-topbar', 'vn-topbar--overlay', 'admin-topbar--manual', 'forum-topbar');
+    root.classList.remove('vn-topbar', 'vn-topbar--overlay', 'admin-topbar--manual');
     root.removeAttribute('data-page-header');
     root.removeAttribute('data-header-manual');
   }
@@ -132,26 +132,7 @@
   function restoreManualMobileHeader() {
     if (!root || !root.hasAttribute('data-header-manual')) return;
 
-    if (root.classList.contains('forum-topbar')) {
-      var forumBrand = root.querySelector('.vn-topbar-brand');
-      if (forumBrand) {
-        forumBrand.className = 'topbar-brand';
-        forumBrand.href = './forum-plaza.html';
-        forumBrand.setAttribute('aria-current', 'page');
-        forumBrand.setAttribute('aria-label', '返回论坛广场');
-        forumBrand.textContent = '论坛';
-      }
-      var forumLeading = root.querySelector('.forum-topbar-leading');
-      if (forumLeading) forumLeading.classList.remove('vn-topbar-leading', 'forum-topbar-leading');
-      var forumActions = root.querySelector('.forum-topbar-actions');
-      if (forumActions) {
-        forumActions.classList.remove('vn-topbar-actions', 'forum-topbar-actions');
-        forumActions.classList.add('topbar-right');
-        removeSharedActionClasses(forumActions);
-      }
-      clearSharedHeaderMetadata();
-      return;
-    }
+    if (root.classList.contains('column-header')) return;
 
     if (root.classList.contains('wiki-site-header')) {
       var wikiBrand = root.querySelector('.vn-topbar-brand');

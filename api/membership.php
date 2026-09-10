@@ -163,6 +163,8 @@ function ensureMembershipApplicationColumns(PDO $db): void {
     ensureColumnExists($db, 'club_memberships', 'external_club_role', "VARCHAR(255) DEFAULT ''");
     ensureColumnExists($db, 'club_memberships', 'apply_reason', "TEXT");
     ensureColumnExists($db, 'club_memberships', 'application_email_enabled', "TINYINT(1) NOT NULL DEFAULT 1");
+    ensureColumnExists($db, 'club_memberships', 'reviewed_at', "DATETIME NULL");
+    ensureColumnExists($db, 'club_memberships', 'reviewed_by', "INT NULL");
     ensureColumnExists($db, 'users', 'membership_application_email_enabled', "TINYINT(1) NOT NULL DEFAULT 1");
 }
 
@@ -258,7 +260,7 @@ switch ($action) {
                         "UPDATE club_memberships
                          SET role = ?, status = 'pending', qq_account = ?, contact_account = ?, apply_role = ?, is_student = ?,
                              country = ?, join_method = ?, external_club_name = ?, external_club_role = ?,
-                             apply_reason = ?, joined_at = CURRENT_TIMESTAMP, left_at = NULL
+                             apply_reason = ?, joined_at = CURRENT_TIMESTAMP, reviewed_at = NULL, reviewed_by = NULL, left_at = NULL
                          WHERE id = ?"
                     );
                     $stmt->execute([
@@ -600,9 +602,9 @@ switch ($action) {
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                "UPDATE club_memberships SET status = 'active', left_at = NULL WHERE id = ? AND status = 'pending'"
+                "UPDATE club_memberships SET status = 'active', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ?, left_at = NULL WHERE id = ? AND status = 'pending'"
             );
-            $stmt->execute([$membershipId]);
+            $stmt->execute([(int)$currentUser['id'], $membershipId]);
 
             if ($stmt->rowCount() === 0) {
                 $db->rollBack();
@@ -667,9 +669,9 @@ switch ($action) {
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                "UPDATE club_memberships SET status = 'rejected' WHERE id = ? AND status = 'pending'"
+                "UPDATE club_memberships SET status = 'rejected', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = ? WHERE id = ? AND status = 'pending'"
             );
-            $stmt->execute([$membershipId]);
+            $stmt->execute([(int)$currentUser['id'], $membershipId]);
 
             if ($stmt->rowCount() === 0) {
                 $db->rollBack();
@@ -1113,7 +1115,7 @@ switch ($action) {
                 $db->prepare(
                     "UPDATE club_memberships
                      SET role = ?, status = 'active', apply_role = ?, join_method = 'club_submit',
-                         qq_account = ?, contact_account = ?, left_at = NULL, joined_at = CURRENT_TIMESTAMP
+                         qq_account = ?, contact_account = ?, left_at = NULL, joined_at = CURRENT_TIMESTAMP, reviewed_at = NULL, reviewed_by = NULL
                      WHERE id = ?"
                 )->execute([$role, $role, $contact, $contact, $membershipId]);
                 displayClubClearSelection($db, $membershipId);
@@ -1234,4 +1236,3 @@ function ensureColumnExists(PDO $db, string $table, string $column, string $defi
         $db->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
     } catch (Exception $e) {}
 }
-

@@ -1,41 +1,41 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>同好会考核 - Galgame 同好会地图</title>
-  <script src="../js/theme-runtime.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="../css/site-header.css?v=20260829-recognition" />
-  <script defer src="../js/site-header.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="../css/galonly-poster-theme.css?v=20260829-recognition" />
-  <link rel="stylesheet" href="exam.css?v=20260829-recognition" />
+  <script src="../js/theme-runtime.js?v=20260830-exam-redesign"></script>
+  <link rel="stylesheet" href="../css/site-header.css?v=20260830-exam-redesign" />
+  <script defer src="../js/site-header.js?v=20260830-exam-redesign"></script>
+  <link rel="stylesheet" href="../css/galonly-poster-theme.css?v=20260830-exam-redesign" />
+  <link rel="stylesheet" href="exam.css?v=20260830-exam-redesign" />
+<script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
-  <main class="shell">
-    <div class="topbar">
-      <a class="brand" href="../index.html">Galgame 同好会地图</a>
-      <nav>
-        <a href="../index.html">地图</a>
-        <a href="../club_square.html">同好会广场</a>
-        <a href="index.html">同好会考核</a>
-        <a href="../verify.html">凭证验证</a>
-        <a href="../user.html?tab=achievements">我的成就</a>
-        <a href="../user.html">个人中心</a>
+  <div class="exam-topbar-wrap">
+    <header class="vn-topbar" data-page-header data-header-manual>
+      <div class="vn-topbar-leading">
+        <a class="vn-topbar-brand" href="../index.html" aria-label="返回地图">
+          <span class="vn-topbar-name">VNFest</span>
+          <span class="vn-topbar-divider" aria-hidden="true"></span>
+          <span class="vn-topbar-sub">同好会考核</span>
+        </a>
+      </div>
+      <nav class="vn-topbar-actions" aria-label="页面导航">
+        <a class="toplink" href="../club_square.html">活动</a>
+        <a class="toplink" href="../verify.html">凭证验证</a>
+        <span id="login-state"><a class="btn btn-primary btn-sm" href="../login.html">登录</a></span>
       </nav>
-    </div>
+    </header>
+  </div>
 
+  <main class="shell">
     <header class="hero">
-      <div>
-        <p class="kicker">同好会考核 · Club Assessments</p>
-        <h1 class="page-title">通过考核，获得来自真实同好会的认可</h1>
-        <p class="lead">同好会可以发布自己的考核与活动。完成条件后，你将获得由对应同好会签发的网络成就徽章，统一保存在你的个人成就中。</p>
-      </div>
-      <div class="hero-side" id="login-state">
-        <a class="btn btn-primary" href="../login.html">登录后可参与考核</a>
-      </div>
+      <h1 class="page-title">同好会考核</h1>
+      <p class="lead">各同好会在这里发布知识考核、活动签到和作品征集。完成考核即可获得对应同好会签发的徽章，统一保存在你的成就里。</p>
     </header>
 
-    <!-- 视图：考核广场 -->
+    <!-- 视图：考核列表 -->
     <section id="view-list" class="view">
       <div class="toolbar">
         <div class="filter-group" id="type-filter">
@@ -53,7 +53,7 @@
 
     <!-- 视图：考核详情与参与 -->
     <section id="view-detail" class="view" hidden>
-      <button class="btn btn-ghost" id="back-to-list">&larr; 返回考核广场</button>
+      <button class="btn btn-ghost" id="back-to-list">&larr; 返回考核列表</button>
       <div id="detail-body"></div>
     </section>
 
@@ -67,6 +67,7 @@
     </footer>
   </main>
   <div id="toast" class="toast" hidden></div>
-  <script src="exam.js?v=20260829-recognition"></script>
+  <script src="../js/vendor/qrcode.min.js?v=20260830-qr"></script>
+  <script src="exam.js?v=20260831-exam-scoring"></script>
 </body>
 </html>

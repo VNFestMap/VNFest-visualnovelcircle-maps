@@ -1,82 +1,134 @@
 <!doctype html>
 <html lang="zh-CN" data-theme="dark">
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <title>活动 — VNFest</title>
+  <meta name="description" content="VNFest 活动中心 — 同好会企划、赛事评选与互动玩法入口" />
   <script src="./js/language-runtime.js?v=20260813-language"></script>
   <script src="./js/language-catalog.js?v=20260813-language"></script>
   <script src="./js/language-static-ja.js?v=20260813-account-language"></script>
   <script defer src="./js/page-i18n.js?v=20260813-language"></script>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="referrer" content="no-referrer" />
-  <title>同好会广场 — VNFest</title>
   <link rel="stylesheet" href="css/site-header.css?v=20260827-site-header" />
   <script defer src="js/site-header.js?v=20260827-site-header"></script>
   <script src="./js/theme-runtime.js?v=20260702-theme"></script>
+  <script src="./js/page-background.js?v=20260812-centralized-preferences"></script>
   <script src="./js/vote-common.js"></script>
   <style>
     /* ============================================================
-       视觉令牌 —— 深邃宇宙 + 五色活动卡片
+       视觉令牌 —— Material Design 3 色彩系统
+       表面分区 + 色调容器 + 标准投影，无渐变
        ============================================================ */
     :root {
-      --font-display: 'Noto Serif SC', 'STZhongsong', 'SimSun', serif;
-      --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Microsoft YaHei', system-ui, sans-serif;
-      --font-mono:    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+      --font-body: -apple-system, BlinkMacSystemFont, 'Roboto', 'SF Pro Text', 'Microsoft YaHei', system-ui, sans-serif;
 
-      /* 五色活动主题 */
-      --moe-color:      #c07ab8;
-      --twelve-color:   #6898d0;
-      --radar-color:    #4ea89e;
-      --sim-color:      #d48c6a;
-      --quiz-color:     #8b6fc0;
-      --exam-color:     #d9a441;
+      /* 共享顶栏主色（site-header.css 的 --vn-primary 链） */
+      --vn-primary: #8e4978;
+      --vn-primary-contrast: #ffffff;
     }
 
     /* ---- 暗色主题（默认） ---- */
     [data-theme="dark"] {
-      --bg:             #0a0c18;
-      --bg-gradient:    linear-gradient(160deg, #0a0c18 0%, #11162a 40%, #0f1522 100%);
-      --surface:        rgba(18, 20, 36, 0.88);
-      --surface-raised: rgba(24, 26, 46, 0.92);
-      --fg:             #dddae4;
-      --fg-secondary:   #8c88a4;
-      --border:         rgba(255, 255, 255, 0.08);
-      --border-hover:   rgba(255, 255, 255, 0.14);
-      --shadow-sm:      0 2px 12px rgba(0, 0, 0, 0.25);
-      --shadow-md:      0 8px 32px rgba(0, 0, 0, 0.40);
-      --glass-bg:       rgba(255, 255, 255, 0.03);
-      --glass-border:   rgba(255, 255, 255, 0.06);
-      --topbar-bg:      rgba(8, 10, 22, 0.78);
-      --status-running-bg: rgba(90, 200, 130, 0.12);
-      --status-running-fg: #78c898;
-      --tag-moe-bg:     rgba(192, 122, 184, 0.15);
-      --tag-twelve-bg:  rgba(104, 152, 208, 0.15);
-      --tag-quiz-bg:    rgba(139, 111, 192, 0.15);
+      /* 表面分区 */
+      --bg:            #131118;
+      --surface-1:     #1d1b22;   /* 卡片 */
+      --surface-2:     #26232c;   /* 悬停 / 芯片 */
+      --surface-3:     #302c37;   /* 高一级容器 */
+
+      /* 前景 */
+      --on-surface:    #e6e0e9;
+      --on-surface-2:  #c6c1cc;
+      --on-surface-var:#9a949f;
+
+      /* 描边 */
+      --outline:       #8f8999;
+      --outline-var:   #3f3c46;
+
+      /* 主色（粉） */
+      --primary:       #efb4dc;
+      --on-primary:    #46113d;
+      --primary-ctn:   #5f3355;
+
+      /* 实时绿 */
+      --live:          #86d9a4;
+      --live-ctn:      #234432;
+
+      /* 错误 */
+      --error:         #f2b8b5;
+
+      /* 投影（MD3 elevation） */
+      --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+      --shadow-2: 0 1px 2px 0 rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+
+      /* 活动强调色（图标容器用） */
+      --ac-moe:    #efb4dc;
+      --ac-twelve: #a8c7fa;
+      --ac-radar:  #78d5c6;
+      --ac-sim:    #f4b78f;
+      --ac-quiz:   #cfb9f4;
+      --ac-exam:   #f0cc77;
+      --ac-spy:    #f1be99;
+      --ac-resume: #c9b5f1;
+
+      /* 共享顶栏（site-header.css 变量链） */
+      --vn-primary: #efb4dc;
+      --vn-primary-contrast: #46113d;
+      --vn-surface: #1d1b22;
+      --vn-text-strong: #e6e0e9;
+      --vn-text: #e6e0e9;
+      --vn-text-muted: #9a949f;
+      --vn-border: #3f3c46;
+      --vn-border-strong: #8f8999;
     }
 
     /* ---- 亮色主题 ---- */
     [data-theme="light"] {
-      --bg:             #f6f5fa;
-      --bg-gradient:    linear-gradient(160deg, #f6f5fa 0%, #faf8ff 40%, #f3f6fb 100%);
-      --surface:        #fbfafc;
-      --surface-raised: #fcfbfe;
-      --fg:             #2a2638;
-      --fg-secondary:   #7874a0;
-      --border:         rgba(140, 130, 180, 0.14);
-      --border-hover:   rgba(140, 130, 180, 0.24);
-      --shadow-sm:      0 2px 10px rgba(100, 80, 140, 0.06);
-      --shadow-md:      0 8px 28px rgba(100, 80, 140, 0.10);
-      --glass-bg:       rgba(255, 255, 255, 0.6);
-      --glass-border:   rgba(160, 140, 200, 0.12);
-      --topbar-bg:      rgba(251, 250, 252, 0.78);
-      --status-running-bg: rgba(60, 170, 100, 0.08);
-      --status-running-fg: #408860;
-      --tag-moe-bg:     rgba(192, 122, 184, 0.1);
-      --tag-twelve-bg:  rgba(104, 152, 208, 0.1);
-      --tag-quiz-bg:    rgba(139, 111, 192, 0.08);
+      --bg:            #f5f2f7;
+      --surface-1:     #ffffff;
+      --surface-2:     #f1ecf4;
+      --surface-3:     #e5dfe9;
+
+      --on-surface:    #1c1b1f;
+      --on-surface-2:  #46464f;
+      --on-surface-var:#6d6772;
+
+      --outline:       #7a747f;
+      --outline-var:   #d9d3de;
+
+      --primary:       #8e4978;
+      --on-primary:    #ffffff;
+      --primary-ctn:   #ffd7f0;
+
+      --live:          #1e7d4b;
+      --live-ctn:      #d3f3df;
+
+      --error:         #b3261e;
+
+      --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.10), 0 1px 3px 1px rgba(0, 0, 0, 0.06);
+      --shadow-2: 0 1px 2px 0 rgba(0, 0, 0, 0.10), 0 2px 6px 2px rgba(0, 0, 0, 0.08);
+
+      --ac-moe:    #a84088;
+      --ac-twelve: #35619e;
+      --ac-radar:  #197263;
+      --ac-sim:    #9c5426;
+      --ac-quiz:   #6a48b5;
+      --ac-exam:   #8a6110;
+      --ac-spy:    #8e4978;
+      --ac-resume: #6a48b5;
+
+      --vn-primary: #8e4978;
+      --vn-primary-contrast: #ffffff;
+      --vn-surface: #ffffff;
+      --vn-text-strong: #1c1b1f;
+      --vn-text: #1c1b1f;
+      --vn-text-muted: #6d6772;
+      --vn-border: #d9d3de;
+      --vn-border-strong: #b6afc0;
     }
 
     /* ============================================================
-       全局重置
+       全局
        ============================================================ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -85,434 +137,512 @@
 
     body {
       min-height: 100vh;
-      background: var(--bg-gradient);
-      color: var(--fg);
+      background: var(--bg);
+      color: var(--on-surface);
       font-family: var(--font-body);
       font-size: 15px;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      transition: background 0.4s ease, color 0.3s ease;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     a { color: inherit; text-decoration: none; }
     button { font: inherit; cursor: pointer; }
 
-    /* ---- 键盘焦点环 ---- */
     :focus-visible {
-      outline: 2px solid var(--moe-color);
+      outline: 2px solid var(--primary);
       outline-offset: 2px;
-      border-radius: 3px;
+      border-radius: 4px;
     }
-    .gateway-card:focus-visible {
-      outline: 2px solid var(--moe-color);
-      outline-offset: -2px;
+
+    /* ---- 跳转到主内容 ---- */
+    .skip-link {
+      position: fixed; top: -48px; left: 16px; z-index: 300;
+      padding: 8px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--outline-var);
+      border-radius: 8px;
+      font-size: 13px;
+      transition: top 0.2s ease;
     }
-    .card-twelve:focus-visible  { outline-color: var(--twelve-color); }
-    .card-radar:focus-visible   { outline-color: var(--radar-color); }
-    .card-sim:focus-visible     { outline-color: var(--sim-color); }
-    .card-quiz:focus-visible    { outline-color: var(--quiz-color); }
+    .skip-link:focus-visible { top: 12px; }
+
+    /* ============================================================
+       顶栏 —— 全宽共享骨架（桌面端由 site-header 换装，
+       ≤680px 时 site-header 不运行，使用下方移动端样式）
+       ============================================================ */
+    .topbar-brand { display: none; }
+
+    /* ---- 移动端顶栏 ---- */
+    @media (max-width: 680px) {
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--outline-var);
+      }
+      .topbar-brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        min-width: 0;
+      }
+      .topbar-brand strong {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--on-surface);
+      }
+      .topbar-brand .topbar-sub {
+        font-size: 12.5px;
+        color: var(--on-surface-var);
+        white-space: nowrap;
+      }
+      .topbar-nav { display: flex; align-items: center; gap: 6px; }
+      .topbar-nav a, .topbar-nav button {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        border: 1px solid var(--outline-var);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--on-surface-2);
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .topbar-nav a.primary {
+        color: var(--on-primary);
+        background: var(--vn-primary);
+        border-color: transparent;
+        font-weight: 600;
+      }
+      .theme-toggle {
+        width: 30px; height: 28px;
+        padding: 0;
+        display: grid; place-items: center;
+      }
+      .theme-toggle svg { width: 14px; height: 14px; }
+    }
+
+    /* 主题切换图标显隐（双端通用） */
+    [data-theme="light"] .icon-moon { display: none; }
+    [data-theme="dark"]  .icon-sun  { display: none; }
 
     /* ============================================================
        主容器
        ============================================================ */
     .shell {
-      max-width: 1320px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 0 28px 48px;
+      padding: 0 24px 56px;
     }
 
     /* ============================================================
-       顶栏
+       页头
        ============================================================ */
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 12px 24px;
-      margin: 0 -28px;
-      background: var(--topbar-bg);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
-      transition: background 0.3s ease, border-color 0.3s ease;
+    .page-head {
+      padding: 48px 4px 36px;
     }
-
-    .topbar-brand {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: var(--fg);
-    }
-
-    .topbar-nav {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .topbar-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
-      color: var(--fg-secondary);
-      font-size: 13px;
-      font-weight: 500;
+    .page-head h1 {
+      font-size: 30px;
+      font-weight: 600;
       letter-spacing: 0.02em;
-      transition: all 0.18s ease;
-    }
-    .topbar-btn:hover {
-      border-color: var(--border-hover);
-      color: var(--fg);
-      background: var(--surface-raised);
-    }
-    .topbar-btn.primary {
-      background: rgba(192, 122, 184, 0.12);
-      color: var(--moe-color);
-      border-color: rgba(192, 122, 184, 0.2);
-    }
-    .topbar-btn.primary:hover {
-      background: rgba(192, 122, 184, 0.18);
-    }
-
-    /* 主题切换 */
-    .theme-toggle {
-      width: 36px; height: 36px;
-      display: grid; place-items: center;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
-      color: var(--fg-secondary);
-      transition: all 0.18s ease;
-    }
-    .theme-toggle:hover { border-color: var(--border-hover); color: var(--fg); }
-    .theme-toggle svg { width: 16px; height: 16px; }
-    [data-theme="light"] .icon-moon { display: none; }
-    [data-theme="dark"]  .icon-sun  { display: none; }
-
-    /* ============================================================
-       Hero
-       ============================================================ */
-    .hero {
-      text-align: center;
-      padding: 64px 20px 40px;
-    }
-    .hero h1 {
-      font-family: var(--font-display);
-      font-size: clamp(28px, 5vw, 44px);
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      color: var(--fg);
-      margin-bottom: 8px;
-    }
-    .hero-sub {
-      font-size: 15px;
-      color: var(--fg-secondary);
-    }
-
-    /* ============================================================
-       入口卡片网格
-       ============================================================ */
-    .gateway {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px;
-      padding: 8px 0 28px;
-    }
-
-    .gateway-card {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-    }
-    .gateway-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--border-hover);
-    }
-
-    /* 图标区 */
-    .gateway-icon {
-      height: 110px;
-      display: grid;
-      place-items: center;
-    }
-    .gateway-icon svg {
-      width: 48px; height: 48px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .card-moe  .gateway-icon { background: linear-gradient(135deg, rgba(192,122,184,0.18), rgba(140,80,160,0.06)); color: var(--moe-color); }
-    .card-twelve .gateway-icon { background: linear-gradient(135deg, rgba(104,152,208,0.16), rgba(60,110,170,0.06)); color: var(--twelve-color); }
-    .card-radar .gateway-icon { background: linear-gradient(135deg, rgba(78,168,158,0.16), rgba(40,120,110,0.06)); color: var(--radar-color); }
-    .card-sim   .gateway-icon { background: linear-gradient(135deg, rgba(212,140,106,0.16), rgba(160,100,70,0.06)); color: var(--sim-color); }
-    .card-quiz .gateway-icon { background: linear-gradient(135deg, rgba(139,111,192,0.16), rgba(100,70,170,0.06)); color: var(--quiz-color); }
-    .card-exam .gateway-icon { background: linear-gradient(135deg, rgba(217,164,65,0.16), rgba(170,120,30,0.06)); color: var(--exam-color); }
-
-    /* 内容区 */
-    .gateway-body {
-      padding: 18px 20px 12px;
-      flex: 1;
-    }
-    .gateway-body h2 {
-      font-family: var(--font-display);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      line-height: 1.25;
+      color: var(--on-surface);
       margin-bottom: 6px;
     }
-    .card-moe  .gateway-body h2 { color: var(--moe-color); }
-    .card-twelve .gateway-body h2 { color: var(--twelve-color); }
-    .card-radar .gateway-body h2 { color: var(--radar-color); }
-    .card-sim   .gateway-body h2 { color: var(--sim-color); }
-    .card-quiz .gateway-body h2 { color: var(--quiz-color); }
-    .card-exam .gateway-body h2 { color: var(--exam-color); }
-
-    .gateway-desc {
-      font-size: 13px;
-      color: var(--fg-secondary);
-      line-height: 1.7;
+    .page-sub {
+      font-size: 14.5px;
+      color: var(--on-surface-var);
     }
-    .gateway-stats {
-      margin-top: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-    .card-moe  .gateway-stats { color: color-mix(in srgb, var(--moe-color) 75%, var(--fg-secondary)); }
-    .card-twelve .gateway-stats { color: color-mix(in srgb, var(--twelve-color) 75%, var(--fg-secondary)); }
-    .card-radar .gateway-stats { color: color-mix(in srgb, var(--radar-color) 75%, var(--fg-secondary)); }
-    .card-sim   .gateway-stats { color: color-mix(in srgb, var(--sim-color) 75%, var(--fg-secondary)); }
-    .card-quiz .gateway-stats { color: color-mix(in srgb, var(--quiz-color) 75%, var(--fg-secondary)); }
-    .card-exam .gateway-stats { color: color-mix(in srgb, var(--exam-color) 75%, var(--fg-secondary)); }
 
-    /* 进入按钮 */
-    .gateway-enter {
+    /* 状态芯片（MD3 assist chip） */
+    .hero-status {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin: 0 20px 18px;
-      padding: 8px 0;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      transition: background 0.18s ease;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+      min-height: 32px;
     }
-    .gateway-enter::after { content: "→"; margin-left: 2px; }
-
-    .card-moe  .gateway-enter { background: rgba(192,122,184,0.1); color: var(--moe-color); border: 1px solid rgba(192,122,184,0.18); }
-    .card-twelve .gateway-enter { background: rgba(104,152,208,0.1); color: var(--twelve-color); border: 1px solid rgba(104,152,208,0.18); }
-    .card-radar .gateway-enter { background: rgba(78,168,158,0.1); color: var(--radar-color); border: 1px solid rgba(78,168,158,0.2); }
-    .card-sim   .gateway-enter { background: rgba(212,140,106,0.1); color: var(--sim-color); border: 1px solid rgba(212,140,106,0.2); }
-    .card-quiz .gateway-enter { background: rgba(139,111,192,0.1); color: var(--quiz-color); border: 1px solid rgba(139,111,192,0.2); }
-    .card-exam .gateway-enter { background: rgba(217,164,65,0.1); color: var(--exam-color); border: 1px solid rgba(217,164,65,0.2); }
-
-    .card-moe  .gateway-enter:hover { background: rgba(192,122,184,0.16); }
-    .card-twelve .gateway-enter:hover { background: rgba(104,152,208,0.16); }
-    .card-radar .gateway-enter:hover { background: rgba(78,168,158,0.16); }
-    .card-sim   .gateway-enter:hover { background: rgba(212,140,106,0.16); }
-    .card-quiz .gateway-enter:hover { background: rgba(139,111,192,0.16); }
-    .card-exam .gateway-enter:hover { background: rgba(217,164,65,0.16); }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid var(--outline-var);
+      border-radius: 8px;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--on-surface-2);
+    }
+    .status-chip .chip-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--on-surface-var);
+      flex-shrink: 0;
+    }
+    .status-chip.is-live {
+      border-color: transparent;
+      background: var(--live-ctn);
+      color: var(--live);
+      font-weight: 600;
+    }
+    .status-chip.is-live .chip-dot {
+      background: var(--live);
+      animation: dot-pulse 2s ease-out infinite;
+    }
+    .status-chip.is-error { color: var(--error); }
+    @keyframes dot-pulse {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.35; }
+      100% { opacity: 1; }
+    }
 
     /* ============================================================
-       进行中活动
+       区块标题
        ============================================================ */
-    .ongoing {
-      padding: 0 0 40px;
-    }
-    .ongoing-head {
+    .section-head {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
-    .ongoing-bar {
-      width: 3px; height: 18px;
-      border-radius: 2px;
-      background: var(--moe-color);
-      opacity: 0.5;
-    }
-    .ongoing-head h3 {
-      font-family: var(--font-display);
-      font-size: 16px;
+    .section-head h2 {
+      font-size: 17px;
       font-weight: 600;
-      letter-spacing: 0.04em;
-      color: var(--fg);
+      color: var(--on-surface);
     }
-    .ongoing-list {
+    .section-head .count-badge {
+      min-width: 22px; height: 22px;
+      padding: 0 8px;
+      display: inline-grid; place-items: center;
+      border-radius: 999px;
+      background: var(--live-ctn);
+      color: var(--live);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .section-head .count-badge[hidden] { display: none; }
+
+    /* ============================================================
+       正在进行 —— 列表卡片
+       ============================================================ */
+    .live-section { padding-bottom: 40px; }
+
+    .live-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .live-empty {
+      grid-column: 1 / -1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
-    }
-    .ongoing-empty {
-      padding: 32px 16px;
+      align-items: center;
+      gap: 6px;
+      padding: 40px 16px;
       text-align: center;
-      color: var(--fg-secondary);
-      font-size: 14px;
-      border: 1px dashed var(--border);
-      border-radius: 10px;
+      color: var(--on-surface-var);
+      border: 1px solid var(--outline-var);
+      border-radius: 12px;
+      background: var(--surface-1);
     }
-    .ongoing-retry {
-      display: inline-block;
+    .live-empty svg { width: 28px; height: 28px; opacity: 0.5; margin-bottom: 4px; }
+    .live-empty p { font-size: 14px; color: var(--on-surface); font-weight: 500; }
+    .live-empty span { font-size: 12.5px; }
+    .live-empty.is-error p { color: var(--error); }
+    .live-retry {
       margin-top: 10px;
-      padding: 5px 16px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--fg-secondary);
-      font-size: 12px;
-      cursor: pointer;
-      transition: border-color 0.15s ease;
+      height: 34px;
+      padding: 0 20px;
+      border: none;
+      border-radius: 999px;
+      background: var(--surface-3);
+      color: var(--on-surface);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s ease;
     }
-    .ongoing-retry:hover { border-color: var(--border-hover); color: var(--fg); }
+    .live-retry:hover { background: var(--outline-var); }
+
+    .live-item {
+      --ac: var(--ac-moe);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      min-height: 68px;
+      background: var(--surface-1);
+      border: 1px solid var(--outline-var);
+      border-radius: 12px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .live-item:hover { background: var(--surface-2); border-color: var(--outline); }
+    .live-item.moe    { --ac: var(--ac-moe); }
+    .live-item.twelve { --ac: var(--ac-twelve); }
+
+    .live-tag {
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      color: var(--ac);
+      background: color-mix(in srgb, var(--ac) 14%, var(--surface-1));
+    }
+    .live-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .live-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--on-surface);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .live-meta {
+      font-size: 12px;
+      color: var(--on-surface-var);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .live-badge {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--live-ctn);
+      color: var(--live);
+    }
+    .live-badge::before {
+      content: "";
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--live);
+      animation: dot-pulse 2s ease-out infinite;
+    }
+    .live-arrow { flex-shrink: 0; color: var(--on-surface-var); }
 
     /* 骨架加载 */
     .skeleton-row {
-      height: 52px;
-      border-radius: 10px;
-      background: var(--surface);
+      height: 68px;
+      border-radius: 12px;
+      border: 1px solid var(--outline-var);
+      background: var(--surface-1);
       animation: sk-pulse 1.6s ease-in-out infinite;
     }
     @keyframes sk-pulse {
-      0%, 100% { opacity: 0.4; }
-      50% { opacity: 0.7; }
-    }
-
-    /* 状态文本加载 */
-    .stat-loading {
-      display: inline-block;
-      width: 80px; height: 14px;
-      border-radius: 4px;
-      background: var(--surface);
-      animation: sk-pulse 1.6s ease-in-out infinite;
-      vertical-align: middle;
-    }
-    .ongoing-item {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 18px;
-      background: var(--surface);
-      border: 1px solid transparent;
-      border-radius: 10px;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-    .ongoing-item:hover {
-      background: var(--surface-raised);
-      border-color: var(--border);
-    }
-    .ongoing-tag {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 5px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .ongoing-item.moe  .ongoing-tag { background: var(--tag-moe-bg); color: var(--moe-color); }
-    .ongoing-item.twelve .ongoing-tag { background: var(--tag-twelve-bg); color: var(--twelve-color); }
-    .ongoing-item.quiz .ongoing-tag { background: var(--tag-quiz-bg); color: var(--quiz-color); }
-    .ongoing-info {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; gap: 3px;
-    }
-    .ongoing-title {
-      font-size: 14px; font-weight: 600;
-      color: var(--fg);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .ongoing-meta {
-      font-size: 12px; color: var(--fg-secondary);
-    }
-    .ongoing-status {
-      font-size: 11px; padding: 2px 8px; border-radius: 5px;
-      background: var(--status-running-bg); color: var(--status-running-fg);
-      white-space: nowrap; flex-shrink: 0;
-      letter-spacing: 0.03em;
-    }
-    .ongoing-arrow {
-      flex-shrink: 0; color: var(--fg-secondary); opacity: 0.5;
+      0%, 100% { opacity: 0.45; }
+      50%      { opacity: 0.85; }
     }
 
     /* ============================================================
-       Toast
+       活动一览 —— 卡片网格
        ============================================================ */
-    .toast {
-      position: fixed;
-      bottom: 28px; left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      z-index: 200;
-      padding: 12px 28px;
-      font-size: 14px; color: #fff;
-      background: rgba(20, 18, 40, 0.94);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      letter-spacing: 0.03em;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      pointer-events: none;
+    .bento-section { padding-bottom: 8px; }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
     }
-    .toast.show { transform: translateX(-50%) translateY(0); }
+    .bento-card {
+      --ac: var(--ac-moe);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      grid-column: span 3;
+      padding: 20px;
+      background: var(--surface-1);
+      border: 1px solid var(--outline-var);
+      border-radius: 12px;
+      transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .bento-card:hover {
+      background: var(--surface-2);
+      border-color: var(--outline);
+      box-shadow: var(--shadow-1);
+    }
+
+    .card-moe    { --ac: var(--ac-moe);    grid-column: span 6; }
+    .card-twelve { --ac: var(--ac-twelve); grid-column: span 6; }
+    .card-spy    { --ac: var(--ac-spy);    grid-column: span 12; }
+    .card-exam   { --ac: var(--ac-exam); }
+    .card-quiz   { --ac: var(--ac-quiz); }
+    .card-radar  { --ac: var(--ac-radar); }
+    .card-sim    { --ac: var(--ac-sim); }
+    .card-resume { --ac: var(--ac-resume); grid-column: span 12; }
+
+    .bento-card:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+    /* 图标容器（MD3 tonal icon container） */
+    .bento-chip {
+      width: 48px; height: 48px;
+      display: grid; place-items: center;
+      border-radius: 12px;
+      color: var(--ac);
+      background: color-mix(in srgb, var(--ac) 14%, var(--surface-1));
+      margin-bottom: 14px;
+    }
+    .bento-chip svg { width: 24px; height: 24px; }
+
+    .bento-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: var(--on-surface);
+      margin-bottom: 5px;
+    }
+    .card-moe .bento-title, .card-twelve .bento-title, .card-spy .bento-title { font-size: 20px; }
+
+    /* 谁是卧底是本页唯一「先选房再开局」的实时玩法，说明最长，独占一行并用强调色标状态 */
+    .card-spy .bento-meta { color: var(--ac); font-weight: 600; }
+    .card-spy:hover .bento-chip { background: color-mix(in srgb, var(--ac) 20%, var(--surface-2)); }
+
+    .bento-desc {
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: var(--on-surface-var);
+      margin-bottom: 14px;
+    }
+    .bento-meta {
+      margin-top: auto;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--on-surface-var);
+    }
+    .bento-meta.is-error { color: var(--error); }
+
+    /* Tonal 按钮 */
+    .bento-go {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      align-self: flex-start;
+      height: 36px;
+      padding: 0 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ac);
+      background: color-mix(in srgb, var(--ac) 14%, var(--surface-1));
+      transition: background 0.15s ease;
+    }
+    .bento-card:hover .bento-go { background: color-mix(in srgb, var(--ac) 22%, var(--surface-1)); }
+    .bento-go svg { width: 14px; height: 14px; }
+
+    /* ============================================================
+       页脚
+       ============================================================ */
+    .site-foot {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 22px 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--outline-var);
+      font-size: 12.5px;
+      color: var(--on-surface-var);
+    }
+    .site-foot .foot-brand { font-weight: 600; }
+    .site-foot nav { display: flex; gap: 18px; }
+    .site-foot nav a { transition: color 0.15s ease; }
+    .site-foot nav a:hover { color: var(--on-surface); }
+
+    /* ============================================================
+       统一壁纸背景适配（js/page-background.js 注入
+       html.has-vnfest-wallpaper 时生效；移动端壁纸自动禁用，
+       页面回退到上方纯色令牌）
+       ============================================================ */
+    html.has-vnfest-wallpaper { --vn-header-bg: rgba(16, 14, 21, 0.58); }
+    html[data-theme="light"].has-vnfest-wallpaper { --vn-header-bg: rgba(252, 250, 253, 0.62); }
+
+    html.has-vnfest-wallpaper .bento-card,
+    html.has-vnfest-wallpaper .live-item,
+    html.has-vnfest-wallpaper .live-empty {
+      background: rgba(24, 22, 30, 0.66);
+      border-color: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    }
+    html.has-vnfest-wallpaper .bento-card:hover,
+    html.has-vnfest-wallpaper .live-item:hover {
+      background: rgba(36, 33, 44, 0.74);
+    }
+    html[data-theme="light"].has-vnfest-wallpaper .bento-card,
+    html[data-theme="light"].has-vnfest-wallpaper .live-item,
+    html[data-theme="light"].has-vnfest-wallpaper .live-empty {
+      background: rgba(255, 255, 255, 0.68);
+      border-color: rgba(255, 255, 255, 0.55);
+    }
+    html[data-theme="light"].has-vnfest-wallpaper .bento-card:hover,
+    html[data-theme="light"].has-vnfest-wallpaper .live-item:hover {
+      background: rgba(255, 255, 255, 0.8);
+    }
+    html.has-vnfest-wallpaper .status-chip {
+      background: rgba(24, 22, 30, 0.55);
+      border-color: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(14px) saturate(1.15);
+      -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    }
+    html[data-theme="light"].has-vnfest-wallpaper .status-chip {
+      background: rgba(255, 255, 255, 0.6);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+    html.has-vnfest-wallpaper .skeleton-row {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.has-vnfest-wallpaper .site-foot {
+      border-top-color: rgba(255, 255, 255, 0.14);
+    }
+    html[data-theme="light"].has-vnfest-wallpaper .site-foot {
+      border-top-color: rgba(60, 40, 60, 0.14);
+    }
 
     /* ============================================================
        响应式
        ============================================================ */
-    @media (max-width: 1200px) {
-      .gateway { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 1080px) {
+      .card-moe, .card-twelve, .bento-card { grid-column: span 6; }
     }
     @media (max-width: 860px) {
-      .shell { padding: 0 16px 32px; }
-      .topbar { margin: 0 -16px; padding: 10px 16px; gap: 10px; }
-      .topbar-brand { font-size: 15px; }
-      .topbar-nav { gap: 6px; }
-      .topbar-btn { padding: 5px 10px; font-size: 12px; }
+      .shell { padding: 0 16px 40px; }
+      .page-head { padding: 32px 2px 28px; }
+      .page-head h1 { font-size: 25px; }
+      .page-sub { font-size: 13.5px; }
 
-      .gateway { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-      .hero { padding: 40px 12px 28px; }
-      .hero h1 { font-size: 26px; }
-      .hero-sub { font-size: 13px; }
-
-      .gateway-icon { height: 88px; }
-      .gateway-icon svg { width: 38px; height: 38px; }
-      .gateway-body { padding: 14px 14px 10px; }
-      .gateway-body h2 { font-size: 16px; }
-      .gateway-enter { margin: 0 14px 14px; font-size: 12px; }
-
-      .ongoing-item { padding: 12px 14px; gap: 10px; }
+      .live-list { grid-template-columns: 1fr; gap: 10px; }
+      .bento { gap: 10px; }
+      .bento-card { padding: 16px; }
     }
-    @media (max-width: 560px) {
-      .gateway { grid-template-columns: 1fr; gap: 14px; }
-      .topbar-nav { flex-wrap: wrap; }
-      .ongoing-item {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        grid-template-rows: auto auto;
-        gap: 4px 10px;
-        align-items: center;
-      }
-      .ongoing-item .ongoing-tag   { grid-column: 1; grid-row: 1; }
-      .ongoing-item .ongoing-info  { grid-column: 2; grid-row: 1; }
-      .ongoing-item .ongoing-status { grid-column: 3; grid-row: 1; }
-      .ongoing-item .ongoing-arrow { grid-column: 3; grid-row: 2; justify-self: end; }
+    @media (max-width: 640px) {
+      .bento-card, .card-moe, .card-twelve { grid-column: span 12; }
+      .card-moe .bento-title, .card-twelve .bento-title, .card-spy .bento-title { font-size: 18px; }
+
+      .live-item { flex-wrap: wrap; row-gap: 4px; padding: 12px 14px; }
+      .live-info { flex-basis: 100%; order: 3; }
+      .live-badge { margin-left: auto; }
+    }
+
+    /* 谁是卧底在 641–1080px 之间仍独占一行：
+       七张卡若全按 span 6 排，最后一行会留下半行空洞。 */
+    @media (min-width: 641px) {
+      .card-spy { grid-column: span 12; }
     }
 
     /* ============================================================
@@ -526,190 +656,222 @@
       }
       html { scroll-behavior: auto; }
     }
-
-    /* ============================================================
-       微妙的装饰 —— 背景纹理
-       ============================================================ */
-    body::before {
-      content: "";
-      position: fixed; inset: 0; z-index: -1;
-      pointer-events: none;
-      background:
-        radial-gradient(ellipse at 20% 5%, rgba(192,122,184,0.06), transparent 50%),
-        radial-gradient(ellipse at 80% 10%, rgba(104,152,208,0.05), transparent 50%),
-        radial-gradient(ellipse at 60% 80%, rgba(78,168,158,0.04), transparent 50%);
-    }
-    [data-theme="dark"] body::before {
-      background:
-        radial-gradient(ellipse at 20% 5%, rgba(192,122,184,0.08), transparent 50%),
-        radial-gradient(ellipse at 80% 10%, rgba(104,152,208,0.06), transparent 50%),
-        radial-gradient(ellipse at 60% 80%, rgba(78,168,158,0.05), transparent 50%);
-    }
   </style>
+<script defer src="js/analytics.js?v=20260905-analytics"></script>
 </head>
-<body>
-  <main class="shell">
-    <!-- ===== 顶栏 ===== -->
-    <header class="topbar">
-      <span class="topbar-brand">同好会广场</span>
-      <nav class="topbar-nav">
-        <a class="topbar-btn" href="./index.html?guest=1">返回地图</a>
-        <a class="topbar-btn" href="./user.html">用户中心</a>
-        <a class="topbar-btn primary" href="./admin/club_project_manager.html">负责人管理</a>
-        <button class="theme-toggle" id="themeToggle" title="切换明亮/暗色模式" aria-label="切换明亮/暗色模式">
-          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-      </nav>
-    </header>
+<body data-page-name="活动">
+  <a class="skip-link" href="#main">跳到主要内容</a>
 
-    <!-- ===== Hero 标题区 ===== -->
-    <section class="hero">
-      <h1>同好会广场</h1>
-      <p class="hero-sub">同好会企划、组织画像、经营模拟与推理博弈活动入口</p>
-    </section>
+  <!-- ===== 顶栏（桌面端由 site-header 统一换装为全宽共享骨架） ===== -->
+  <header class="topbar">
+    <span class="topbar-brand"><strong>VNFest</strong><span class="topbar-sub">活动</span></span>
+    <nav class="topbar-nav">
+      <a href="./index.html?guest=1">返回地图</a>
+      <a href="./user.html">用户中心</a>
+      <a class="primary" href="./admin/club_project_manager.html">负责人管理</a>
+      <button class="theme-toggle" id="themeToggle" title="切换明亮/暗色模式" aria-label="切换明亮/暗色模式">
+        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </nav>
+  </header>
 
-    <!-- ===== 活动入口卡片 ===== -->
-    <section class="gateway">
-      <!-- 萌战 -->
-      <a class="gateway-card card-moe" href="./moe/index.html" aria-label="萌战 — 角色人气投票活动">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <path d="M24 4L29.6 17.2L44 19.6L33.2 29.6L35.6 44L24 36.8L12.4 44L14.8 29.6L4 19.6L18.4 17.2L24 4Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.3"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>萌 战</h2>
-          <p class="gateway-desc">同好会角色人气投票活动 — 提名并投票选出年度最受欢迎的角色</p>
-          <div class="gateway-stats" id="moeStats">加载中…</div>
-        </div>
-        <span class="gateway-enter">进入活动</span>
-      </a>
+  <main class="shell" id="main">
+    <!-- ===== 页头 ===== -->
+    <section class="page-head">
+      <h1>活动</h1>
+      <p class="page-sub">同好会企划 · 赛事评选 · 互动玩法，全部活动从这里开始</p>
 
-      <!-- 同好会考核 -->
-      <a class="gateway-card card-exam" href="./exam/index.html" aria-label="同好会考核 — 完成同好会发布的考核获得成就徽章">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <path d="M15 8h18v9a9 9 0 0 1-18 0V8Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <path d="M15 11h-4a2 2 0 0 0-2 2c0 4.5 3.5 7.5 7 8" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.55"/>
-            <path d="M33 11h4a2 2 0 0 1 2 2c0 4.5-3.5 7.5-7 8" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.55"/>
-            <path d="M24 26v6" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M16 40h16l-2.5-8h-11L16 40Z" stroke="currentColor" stroke-width="1.4" fill="none"/>
-            <path d="M21 15l2.2 2.4 4.3-4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>同好会考核</h2>
-          <p class="gateway-desc">完成同好会发布的知识考核与活动，获得由同好会官方签发的成就徽章</p>
-          <div class="gateway-stats">知识问答 · 活动签到 · 成就徽章</div>
-        </div>
-        <span class="gateway-enter">进入考核</span>
-      </a>
-
-      <!-- 十二器 -->
-      <a class="gateway-card card-twelve" href="./twelve/index.html" aria-label="十二器 — Galgame 作品评选活动">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <rect x="16" y="16" width="16" height="16" rx="2" stroke="currentColor" stroke-width="0.8" fill="none" opacity="0.4"/>
-            <line x1="24" y1="4" x2="24" y2="14" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-            <line x1="24" y1="34" x2="24" y2="44" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-            <line x1="4" y1="24" x2="14" y2="24" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-            <line x1="34" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="1" opacity="0.5"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>十二器</h2>
-          <p class="gateway-desc">年度 Galgame 作品评选活动 — 提名并投票选出年度优秀视觉小说作品</p>
-          <div class="gateway-stats" id="twelveStats">加载中…</div>
-        </div>
-        <span class="gateway-enter">进入活动</span>
-      </a>
-
-      <!-- 答题互动（MakoQuiz） -->
-      <a class="gateway-card card-quiz" href="https://makoquiz.vnfest.top/" aria-label="答题互动 — 在线答题互动平台">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <rect x="9" y="5" width="30" height="38" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-            <line x1="15" y1="11.5" x2="33" y2="11.5" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
-            <path d="M20 21a4 4 0 1 1 5.6 3.7c-1.1.4-1.6 1.2-1.6 2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-            <circle cx="24" cy="31.5" r="1.7" fill="currentColor" opacity="0.9"/>
-            <path d="M27.5 36.5l3 3 5-5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>答题互动</h2>
-          <p class="gateway-desc">在线答题互动平台 — 接入 MakoQuiz，参与知识竞答与趣味挑战</p>
-          <div class="gateway-stats">知识竞答 · 趣味挑战 · 实时排行</div>
-        </div>
-        <span class="gateway-enter">开始答题</span>
-      </a>
-
-      <!-- 运行画像 -->
-      <a class="gateway-card card-radar" href="./club-operation-portrait/index.html" aria-label="运行画像 — 同好会六维雷达检测">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="1" opacity="0.28"/>
-            <path d="M24 7V41M7 24H41M12 12L36 36M36 12L12 36" stroke="currentColor" stroke-width="0.8" opacity="0.28"/>
-            <path d="M24 9L36 18L32 33L24 39L13 31L11 18Z" stroke="currentColor" stroke-width="1.6" fill="none"/>
-            <circle cx="24" cy="9" r="2" fill="currentColor" opacity="0.75"/>
-            <circle cx="36" cy="18" r="2" fill="currentColor" opacity="0.75"/>
-            <circle cx="32" cy="33" r="2" fill="currentColor" opacity="0.75"/>
-            <circle cx="24" cy="39" r="2" fill="currentColor" opacity="0.75"/>
-            <circle cx="13" cy="31" r="2" fill="currentColor" opacity="0.75"/>
-            <circle cx="11" cy="18" r="2" fill="currentColor" opacity="0.75"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>运行画像</h2>
-          <p class="gateway-desc">通过问卷与 AI 追问生成同好会六维雷达图，观察组织结构与传承风险</p>
-          <div class="gateway-stats">雷达图检测 · AI 顾问追问</div>
-        </div>
-        <span class="gateway-enter">进入检测</span>
-      </a>
-
-      <!-- 同好会模拟器 -->
-      <a class="gateway-card card-sim" href="./Game/galgame_club_sim/index.html" aria-label="同好会模拟器 — 校园经营策略模拟">
-        <div class="gateway-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <path d="M10 15H38C41.3 15 44 17.7 44 21V32C44 35.3 41.3 38 38 38H34L29 33H19L14 38H10C6.7 38 4 35.3 4 32V21C4 17.7 6.7 15 10 15Z" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M14 22V30M10 26H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="34" cy="23" r="2" fill="currentColor" opacity="0.8"/>
-            <circle cx="29" cy="28" r="2" fill="currentColor" opacity="0.55"/>
-            <path d="M17 15L20 10H28L31 15" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
-          </svg>
-        </div>
-        <div class="gateway-body">
-          <h2>同好会模拟器</h2>
-          <p class="gateway-desc">经营 Galgame 同好会，在一个学年中招募成员、筹措经费并推进社团企划</p>
-          <div class="gateway-stats">校园经营 · 策略模拟</div>
-        </div>
-        <span class="gateway-enter">开始模拟</span>
-      </a>
-    </section>
-
-    <!-- ===== 进行中活动 ===== -->
-    <section class="ongoing">
-      <div class="ongoing-head">
-        <span class="ongoing-bar"></span>
-        <h3>正在进行中的活动</h3>
+      <div class="hero-status" aria-live="polite">
+        <span class="status-chip" id="heroLive"><span class="chip-dot" aria-hidden="true"></span><span id="heroLiveText">加载中…</span></span>
+        <span class="status-chip" id="heroTotal">—</span>
       </div>
-      <div class="ongoing-list" id="ongoingList">
-        <div class="ongoing-empty">加载中…</div>
+    </section>
+
+    <!-- ===== 正在进行 ===== -->
+    <section class="live-section" aria-label="正在进行的活动">
+      <div class="section-head">
+        <h2>正在进行</h2>
+        <span class="count-badge" id="liveCount" hidden>0</span>
+      </div>
+      <div class="live-list" id="ongoingList">
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
+    </section>
+
+    <!-- ===== 活动一览 ===== -->
+    <section class="bento-section" aria-label="活动一览">
+      <div class="section-head">
+        <h2>活动一览</h2>
+      </div>
+
+      <div class="bento">
+        <!-- 萌战 -->
+        <a class="bento-card card-moe" href="./moe/index.html" aria-label="萌战 — 角色人气投票活动">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M24 4L29.6 17.2L44 19.6L33.2 29.6L35.6 44L24 36.8L12.4 44L14.8 29.6L4 19.6L18.4 17.2L24 4Z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/>
+              <circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1" fill="none" opacity="0.35"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">萌战</h2>
+          <p class="bento-desc">同好会角色人气投票活动 — 提名并投票选出年度最受欢迎的角色</p>
+          <div class="bento-meta" id="moeStats">加载中…</div>
+          <span class="bento-go">进入活动<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- 十二器 -->
+        <a class="bento-card card-twelve" href="./twelve/index.html" aria-label="十二器 — Galgame 作品评选活动">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2" fill="none"/>
+              <rect x="16" y="16" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1" fill="none" opacity="0.4"/>
+              <line x1="24" y1="4" x2="24" y2="13" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+              <line x1="24" y1="35" x2="24" y2="44" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+              <line x1="4" y1="24" x2="13" y2="24" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+              <line x1="35" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">十二器</h2>
+          <p class="bento-desc">年度 Galgame 作品评选活动 — 提名并投票选出年度优秀视觉小说作品</p>
+          <div class="bento-meta" id="twelveStats">加载中…</div>
+          <span class="bento-go">进入活动<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- 谁是卧底 -->
+        <a class="bento-card card-spy" href="./Game/spy/index.html" aria-label="谁是卧底 — 4-12 人实时语言推理对战，需主持人开局">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M8 22a8 8 0 0 1 8-8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M40 22a8 8 0 0 0-8-8h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <rect x="7" y="21" width="15" height="12" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+              <rect x="26" y="25" width="15" height="12" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+              <circle cx="12.5" cy="27" r="1.4" fill="currentColor"/>
+              <circle cx="19" cy="27" r="1.4" fill="currentColor"/>
+              <path d="M31.5 31h6" stroke="currentColor" stroke-width="1.4" opacity="0.5" stroke-linecap="round"/>
+              <path d="M24 6l1.8 4.2L30 12l-4.2 1.8L24 18l-1.8-4.2L18 12l4.2-1.8z" stroke="currentColor" stroke-width="1" fill="none" opacity="0.45"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">谁是卧底</h2>
+          <p class="bento-desc">4-12 人语言推理对战 — 主持人给出两个相近的词，每人用一句话描述自己拿到的词，白天讨论投票、夜晚申请刀人，找出潜伏者与白板。白板猜出两个词可以单独翻盘。</p>
+          <div class="bento-meta">实时对战 · 4-12 人 · 需主持人开局 · 开放观战</div>
+        </a>
+
+        <!-- 同好会考核 -->
+        <a class="bento-card card-exam" href="./exam/index.html" aria-label="同好会考核 — 完成同好会发布的考核获得成就徽章">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M15 8h18v9a9 9 0 0 1-18 0V8Z" stroke="currentColor" stroke-width="2" fill="none"/>
+              <path d="M15 11h-4a2 2 0 0 0-2 2c0 4.5 3.5 7.5 7 8" stroke="currentColor" stroke-width="1.4" fill="none" opacity="0.55"/>
+              <path d="M33 11h4a2 2 0 0 1 2 2c0 4.5-3.5 7.5-7 8" stroke="currentColor" stroke-width="1.4" fill="none" opacity="0.55"/>
+              <path d="M24 26v6" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 40h16l-2.5-8h-11L16 40Z" stroke="currentColor" stroke-width="1.6" fill="none"/>
+              <path d="M21 15l2.2 2.4 4.3-4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">同好会考核</h2>
+          <p class="bento-desc">完成同好会发布的知识考核与活动，获得由同好会官方签发的成就徽章</p>
+          <div class="bento-meta">知识问答 · 活动签到 · 成就徽章</div>
+          <span class="bento-go">进入考核<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- 答题互动（MakoQuiz） -->
+        <a class="bento-card card-quiz" href="https://makoquiz.vnfest.top/" aria-label="答题互动 — 在线答题互动平台">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <rect x="9" y="5" width="30" height="38" rx="4" stroke="currentColor" stroke-width="2" fill="none"/>
+              <line x1="15" y1="11.5" x2="33" y2="11.5" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+              <path d="M20 21a4 4 0 1 1 5.6 3.7c-1.1.4-1.6 1.2-1.6 2.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="31.5" r="1.8" fill="currentColor" opacity="0.9"/>
+              <path d="M27.5 36.5l3 3 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">答题互动</h2>
+          <p class="bento-desc">在线答题互动平台 — 接入 MakoQuiz，参与知识竞答与趣味挑战</p>
+          <div class="bento-meta">知识竞答 · 趣味挑战 · 实时排行</div>
+          <span class="bento-go">开始答题<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- 运行画像 -->
+        <a class="bento-card card-radar" href="./club-operation-portrait/index.html" aria-label="运行画像 — 同好会六维雷达检测">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <circle cx="24" cy="24" r="17" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
+              <path d="M24 7V41M7 24H41M12 12L36 36M36 12L12 36" stroke="currentColor" stroke-width="0.9" opacity="0.3"/>
+              <path d="M24 9L36 18L32 33L24 39L13 31L11 18Z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+              <circle cx="24" cy="9" r="2.2" fill="currentColor" opacity="0.75"/>
+              <circle cx="36" cy="18" r="2.2" fill="currentColor" opacity="0.75"/>
+              <circle cx="32" cy="33" r="2.2" fill="currentColor" opacity="0.75"/>
+              <circle cx="24" cy="39" r="2.2" fill="currentColor" opacity="0.75"/>
+              <circle cx="13" cy="31" r="2.2" fill="currentColor" opacity="0.75"/>
+              <circle cx="11" cy="18" r="2.2" fill="currentColor" opacity="0.75"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">运行画像</h2>
+          <p class="bento-desc">通过问卷与 AI 追问生成同好会六维雷达图，观察组织结构与传承风险</p>
+          <div class="bento-meta">雷达图检测 · AI 顾问追问</div>
+          <span class="bento-go">进入检测<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- 同好会模拟器 -->
+        <a class="bento-card card-sim" href="./Game/galgame_club_sim/index.html" aria-label="同好会模拟器 — 校园经营策略模拟">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <path d="M10 15H38C41.3 15 44 17.7 44 21V32C44 35.3 41.3 38 38 38H34L29 33H19L14 38H10C6.7 38 4 35.3 4 32V21C4 17.7 6.7 15 10 15Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M14 22V30M10 26H18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="34" cy="23" r="2" fill="currentColor" opacity="0.8"/>
+              <circle cx="29" cy="28" r="2" fill="currentColor" opacity="0.55"/>
+              <path d="M17 15L20 10H28L31 15" stroke="currentColor" stroke-width="1.4" opacity="0.55"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">同好会模拟器</h2>
+          <p class="bento-desc">经营 Galgame 同好会，在一个学年中招募成员、筹措经费并推进社团企划</p>
+          <div class="bento-meta">校园经营 · 策略模拟</div>
+          <span class="bento-go">开始模拟<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
+
+        <!-- Galgame 履历自助工具 -->
+        <a class="bento-card card-resume" href="./tools/GalgameTool/index.html" aria-label="自助工具 — 制作 Galgame 履历书并整理喜欢的作品与角色">
+          <span class="bento-chip">
+            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <rect x="10" y="6" width="28" height="36" rx="4" stroke="currentColor" stroke-width="2"/>
+              <path d="M16 15h16M16 22h10M16 29h16M16 36h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="m31 20 3 3-6 6-4 1 1-4 6-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <h2 class="bento-title">自助工具</h2>
+          <p class="bento-desc">制作属于你的 Galgame 履历书，整理喜欢的作品、女主角与 CV，并保存为图片</p>
+          <div class="bento-meta">履历书生成 · 角色 CV · 图片导出</div>
+          <span class="bento-go">开始制作<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        </a>
       </div>
     </section>
   </main>
 
-  <div class="toast" id="toast"></div>
+  <!-- ===== 页脚 ===== -->
+  <footer class="site-foot">
+    <span class="foot-brand">VNFest · 同好会活动平台</span>
+    <nav>
+      <a href="./feedback.html">反馈</a>
+      <a href="./column/index.html">专栏</a>
+    </nav>
+  </footer>
 
   <script>
   (function () {
     'use strict';
 
-    /* ===== 工具函数 ===== */
+    /* ===== 工具 ===== */
     var $ = function (id) { return document.getElementById(id); };
     var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+
+    function t(zh, ja) {
+      var lang = window.VNFLanguage && typeof window.VNFLanguage.getLanguage === 'function'
+        ? window.VNFLanguage.getLanguage()
+        : 'zh';
+      return lang === 'ja' ? ja : zh;
+    }
 
     function apiFetch(url, options) {
       return fetch(url, Object.assign({ credentials: 'same-origin', cache: 'no-store' }, options || {})).then(function (r) {
@@ -719,7 +881,6 @@
           } catch (e) {
             console.error('[apiFetch] JSON parse failed for: ' + url);
             console.error('[apiFetch] HTTP status: ' + r.status);
-            console.error('[apiFetch] Response preview (first 500 chars): ' + text.substring(0, 500));
             throw new Error('JSON parse failed (HTTP ' + r.status + '): ' + text.substring(0, 120));
           }
         });
@@ -732,98 +893,130 @@
     /* ===== 主题切换 ===== */
     initVoteThemeToggle('themeToggle');
 
-    /* ===== Toast ===== */
-    function showToast(msg) {
-      var t = $('toast');
-      if (!t) return;
-      t.textContent = msg;
-      t.classList.add('show');
-      clearTimeout(t._timer);
-      t._timer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+    /* ===== 数据加载 ===== */
+    var totals = { moe: null, twelve: null };
+
+    function fetchType(type) {
+      return apiFetch('./api/vote_projects.php?action=list&project_type=' + type).then(function (res) {
+        if (!res.success || !res.data) throw new Error('bad payload');
+        return res.data;
+      });
     }
 
-    /* ===== 加载数据 ===== */
-    var runningProjects = [];
-    var loadFailed = false;
+    function runningOf(items) {
+      return (items || []).filter(function (i) { return i.status === 'running'; }).length;
+    }
 
     function showSkeleton() {
       var list = $('ongoingList');
       if (!list) return;
-      list.innerHTML = Array(3).fill('<div class="skeleton-row"></div>').join('');
+      list.innerHTML = '<div class="skeleton-row"></div><div class="skeleton-row"></div>';
     }
 
-    function loadAll() {
-      showSkeleton();
-      loadFailed = false;
-      Promise.all([
-        ensureClubNamesLoaded(),
-        apiFetch('./api/vote_projects.php?action=list&project_type=moe&status=running').catch(function () { return { success: false, data: [] }; }),
-        apiFetch('./api/vote_projects.php?action=list&project_type=twelve&status=running').catch(function () { return { success: false, data: [] }; })
-      ]).then(function (results) {
-        var allRunning = [];
-        for (var i = 1; i < results.length; i++) {
-          var r = results[i];
-          if (!r.success || !r.data) { loadFailed = true; continue; }
-          r.data.forEach(function (p) {
-            if (p.status === 'running') allRunning.push(p);
-          });
-        }
-        runningProjects = allRunning;
-        updateStats();
-        renderOngoing();
-      }).catch(function () {
-        loadFailed = true;
-        renderOngoing();
-      });
+    function itemStats(type) {
+      var el = $(type === 'moe' ? 'moeStats' : 'twelveStats');
+      if (!el) return;
+      var items = totals[type];
+      if (items == null) {
+        el.textContent = t('加载失败', '読込失敗');
+        el.classList.add('is-error');
+        return;
+      }
+      el.classList.remove('is-error');
+      var total = items.length;
+      if (!total) { el.textContent = t('暂无企划', '企画はまだありません'); return; }
+      var running = runningOf(items);
+      var parts = [];
+      if (running) parts.push(running + t(' 场进行中', ' 件開催中'));
+      parts.push(t('共 ' + total + ' 场企划', '全 ' + total + ' 件'));
+      el.textContent = parts.join(t(' · ', '・'));
     }
 
-    function updateStats() {
-      ['moe', 'twelve'].forEach(function (type) {
-        var el = $(type === 'moe' ? 'moeStats' : 'twelveStats');
-        if (el) el.innerHTML = '<span class="stat-loading"></span>';
-        apiFetch('./api/vote_projects.php?action=list&project_type=' + type).then(function (data) {
-          if (!data.success) { if (el) el.textContent = '加载失败'; return; }
-          var items = data.data || [];
-          var running = items.filter(function (i) { return i.status === 'running'; }).length;
-          var total = items.length;
-          if (!el) return;
-          var parts = [];
-          if (running > 0) parts.push(running + ' 场进行中');
-          if (total > 0) parts.push('共 ' + total + ' 场企划');
-          el.textContent = parts.join(' · ') || '暂无企划';
-        }).catch(function () {
-          if (el) el.textContent = '加载失败';
-        });
-      });
+    function updateHeroChips() {
+      var liveEl = $('heroLive'), liveText = $('heroLiveText'), totalEl = $('heroTotal');
+      if (!liveEl || !liveText || !totalEl) return;
+      liveEl.classList.remove('is-live', 'is-error');
+      if (totals.moe == null && totals.twelve == null) {
+        liveText.textContent = t('数据加载失败', 'データの読込に失敗しました');
+        liveEl.classList.add('is-error');
+        totalEl.textContent = '—';
+        return;
+      }
+      var live = runningOf(totals.moe) + runningOf(totals.twelve);
+      var total = (totals.moe || []).length + (totals.twelve || []).length;
+      if (live) {
+        liveText.textContent = live + t(' 场活动进行中', ' 件のイベントが開催中');
+        liveEl.classList.add('is-live');
+      } else {
+        liveText.textContent = t('暂无进行中的活动', '開催中のイベントはありません');
+      }
+      totalEl.textContent = total
+        ? t('共 ' + total + ' 场企划', '全 ' + total + ' 件')
+        : t('暂无企划', '企画はまだありません');
     }
 
     function renderOngoing() {
       var list = $('ongoingList');
       if (!list) return;
-      if (loadFailed) {
-        list.innerHTML = '<div class="ongoing-empty">数据加载失败<button class="ongoing-retry" onclick="location.reload()">重新加载</button></div>';
+
+      if (totals.moe == null && totals.twelve == null) {
+        list.innerHTML = '<div class="live-empty is-error">' +
+          '<p>' + t('数据加载失败', 'データの読込に失敗しました') + '</p>' +
+          '<button class="live-retry" onclick="location.reload()">' + t('重新加载', '再読込') + '</button>' +
+        '</div>';
         return;
       }
-      if (!runningProjects.length) {
-        list.innerHTML = '<div class="ongoing-empty">暂无进行中的活动</div>';
+
+      var all = [];
+      (totals.moe || []).forEach(function (p) { if (p.status === 'running') all.push({ p: p, type: 'moe' }); });
+      (totals.twelve || []).forEach(function (p) { if (p.status === 'running') all.push({ p: p, type: 'twelve' }); });
+
+      var countEl = $('liveCount');
+      if (countEl) {
+        countEl.hidden = !all.length;
+        countEl.textContent = all.length;
+      }
+      if (!all.length) {
+        list.innerHTML = '<div class="live-empty">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
+            '<path d="M20 12.5A8.5 8.5 0 1 1 11.5 4a6.8 6.8 0 0 0 8.5 8.5Z"/>' +
+          '</svg>' +
+          '<p>' + t('暂无进行中的活动', '現在開催中のイベントはありません') + '</p>' +
+          '<span>' + t('下方活动板块随时开放，挑一个开始吧', '下のイベント枠はいつでも参加できます。ひとつ選んで始めましょう') + '</span>' +
+        '</div>';
         return;
       }
-      list.innerHTML = runningProjects.map(function (p) {
-        var type = p.project_type;
-        var label = type === 'moe' ? '萌战' : '十二器';
+
+      list.innerHTML = all.map(function (entry) {
+        var p = entry.p, type = entry.type;
+        var label = type === 'moe' ? t('萌战', '萌戦') : t('十二器', '十二器');
         var href = type === 'moe' ? './moe/index.html' : './twelve/index.html';
-        var title = esc(p.title || '未命名企划');
+        var title = esc(p.title || t('未命名企划', '無題の企画'));
         var club = p.club_id ? esc(resolveClubName(p.club_id, p.country)) : '';
-        return '<a class="ongoing-item ' + type + '" href="' + href + '" aria-label="' + esc(title) + ' — ' + label + '">' +
-          '<span class="ongoing-tag">' + label + '</span>' +
-          '<span class="ongoing-info">' +
-            '<span class="ongoing-title">' + title + '</span>' +
-            '<span class="ongoing-meta">' + club + '</span>' +
+        return '<a class="live-item ' + type + '" href="' + href + '" aria-label="' + title + ' — ' + label + '">' +
+          '<span class="live-tag">' + label + '</span>' +
+          '<span class="live-info">' +
+            '<span class="live-title">' + title + '</span>' +
+            (club ? '<span class="live-meta">' + club + '</span>' : '') +
           '</span>' +
-          '<span class="ongoing-status">进行中</span>' +
-          '<svg class="ongoing-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>' +
+          '<span class="live-badge">' + t('进行中', '開催中') + '</span>' +
+          '<svg class="live-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>' +
         '</a>';
       }).join('');
+    }
+
+    function loadAll() {
+      showSkeleton();
+      Promise.all([
+        ensureClubNamesLoaded().catch(function () { return null; }),
+        fetchType('moe').then(function (items) { totals.moe = items; }, function () { totals.moe = null; }),
+        fetchType('twelve').then(function (items) { totals.twelve = items; }, function () { totals.twelve = null; })
+      ]).then(function () {
+        itemStats('moe');
+        itemStats('twelve');
+        updateHeroChips();
+        renderOngoing();
+      });
     }
 
     loadAll();

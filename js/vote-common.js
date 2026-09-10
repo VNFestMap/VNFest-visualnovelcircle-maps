@@ -37,7 +37,7 @@ function sourceLabelVote(type) {
   return ({ bangumi_subject: 'Bangumi 作品', bangumi_character: 'Bangumi 角色', vndb_vn: 'VNDB', vndb_character: 'VNDB', manual: '手动' })[type] || type || '来源';
 }
 function statusLabelVote(status) {
-  return ({ draft: '草稿', published: '已发布', running: '进行中', ended: '已结束', archived: '已归档', suspended: '已暂停' })[status] || status || '未知';
+  return ({ draft: '草稿', published: '已发布', running: '进行中', ended: '已结束', archived: '已归档', suspended: '已暂停', reviewing: '待裁定', locked: '已锁定' })[status] || status || '未知';
 }
 function tokenBadgeVote(type) {
   return '<span class="token ' + (type === 'moe' ? 'moe' : '') + '">' + (type === 'moe' ? '萌' : '12') + '</span>';

@@ -7,7 +7,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8').replace(/\
 
 const endpoint = read('api/badge_image.php');
 assert.ok(endpoint.includes("action=upload") || endpoint.includes("'upload'"), 'badge image endpoint should expose an upload action');
-assert.ok(endpoint.includes('2 * 1024 * 1024'), 'badge image upload should cap files at 2MB');
+assert.ok(!endpoint.includes('2 * 1024 * 1024'), 'badge image upload must not impose a 2MB file-size cap');
 assert.ok(endpoint.includes('exif_imagetype') && endpoint.includes('getimagesize'), 'badge image upload should sniff real image types with a getimagesize fallback');
 assert.ok(endpoint.includes('IMAGETYPE_JPEG') && endpoint.includes('IMAGETYPE_PNG') && endpoint.includes('IMAGETYPE_GIF') && endpoint.includes('IMAGETYPE_WEBP'), 'badge image upload should only accept JPEG/PNG/GIF/WebP');
 assert.ok(endpoint.includes("recogHasRole($user, $clubId, $country, 'badge_manager')") && endpoint.includes('canManageClub'), 'badge image upload should reuse badge manager authorization');
@@ -23,5 +23,7 @@ assert.ok(programs.includes("case 'caps_reference'"), 'recognition programs API 
 
 const recogTab = read('admin/club_manager_recognition.js');
 assert.ok(recogTab.includes('badge_image.php?action=upload'), 'recognition tab should upload badge images through badge_image.php');
+assert.ok(recogTab.includes('recogOpenCropModal'), 'badge image upload must go through the client-side crop modal');
+assert.ok(!recogTab.includes("file.size > 2 * 1024 * 1024"), 'recognition tab must not reject images by a 2MB client-side cap');
 
 console.log('badge image upload contract tests passed');

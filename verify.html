@@ -1,40 +1,44 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>凭证验证 - Galgame 同好会地图</title>
-  <script src="js/theme-runtime.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="css/site-header.css?v=20260829-recognition" />
-  <script defer src="js/site-header.js?v=20260829-recognition"></script>
-  <link rel="stylesheet" href="css/galonly-poster-theme.css?v=20260829-recognition" />
-  <link rel="stylesheet" href="exam/exam.css?v=20260829-recognition" />
+  <script src="js/theme-runtime.js?v=20260830-verify-redesign"></script>
+  <link rel="stylesheet" href="css/site-header.css?v=20260830-verify-redesign" />
+  <script defer src="js/site-header.js?v=20260830-verify-redesign"></script>
+  <link rel="stylesheet" href="exam/exam.css?v=20260830-verify-redesign" />
+  <link rel="stylesheet" href="css/galonly-poster-theme.css?v=20260830-verify-redesign" />
+<script defer src="js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
-  <main class="shell">
-    <div class="topbar">
-      <a class="brand" href="index.html">Galgame 同好会地图</a>
-      <nav>
-        <a href="index.html">地图</a>
-        <a href="exam/index.html">同好会考核</a>
-        <a href="user.html?tab=achievements">我的成就</a>
-        <a href="verify.html">凭证验证</a>
-      </nav>
-    </div>
-
-    <header class="hero">
-      <div>
-        <p class="kicker">Credential Verification</p>
-        <h1 class="page-title">凭证验证</h1>
-        <p class="lead">输入凭证编号，核验徽章的签发同好会、签发时间与当前状态。验证页只展示必要信息，不暴露证据原文。</p>
+  <div class="verify-topbar-wrap">
+    <header class="vn-topbar" data-page-header data-header-manual>
+      <div class="vn-topbar-leading">
+        <a class="vn-topbar-brand" href="index.html" aria-label="返回地图">
+          <span class="vn-topbar-name">VNFest</span>
+          <span class="vn-topbar-divider" aria-hidden="true"></span>
+          <span class="vn-topbar-sub">凭证验证</span>
+        </a>
       </div>
+      <nav class="vn-topbar-actions" aria-label="页面导航">
+        <a class="toplink" href="exam/index.html">同好会考核</a>
+        <a class="toplink" href="user.html?tab=achievements">我的成就</a>
+      </nav>
+    </header>
+  </div>
+
+  <main class="shell">
+    <header class="hero">
+      <h1 class="page-title">凭证验证</h1>
+      <p class="lead">输入凭证编号，查看这枚徽章由哪个同好会签发、什么时候签发、现在是否仍然有效。页面只展示必要信息，不公开持有人与证据原文。</p>
     </header>
 
     <section class="view">
       <div class="panel">
         <div class="row">
-          <input id="verify-uid" placeholder="输入凭证编号，如 VNF-CRED-20260829-XXXXXXXX"
-                 style="flex:1;min-width:240px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:Consolas,monospace">
+          <input id="verify-uid" class="inline-input" placeholder="输入凭证编号，如 VNF-CRED-20260829-XXXXXXXX"
+                 style="flex:1;min-width:240px;font-family:var(--font-mono)">
           <button class="btn btn-primary" id="verify-btn">验证</button>
         </div>
         <div id="verify-result" style="margin-top:18px"></div>
@@ -42,9 +46,9 @@
     </section>
 
     <footer class="foot">
-      凭证状态：有效 / 已过期 / 历史凭证（当前已撤销）/ 已被替代。撤销记录永久保留审计。
+      凭证状态包括：有效、已过期、已撤销、已被替代。撤销记录永久保留。
     </footer>
   </main>
-  <script src="js/verify.js?v=20260829-recognition"></script>
+  <script src="js/verify.js?v=20260830-verify-redesign"></script>
 </body>
 </html>

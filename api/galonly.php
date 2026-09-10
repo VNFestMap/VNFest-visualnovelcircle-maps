@@ -36,6 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/image_host.php';
+require_once __DIR__ . '/../includes/galonly_application_numbers.php';
+require_once __DIR__ . '/../includes/galonly_merchandise.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -60,6 +63,71 @@ function galonlyPosterThumbnailPath(?string $relativePath): ?string {
     $stem = pathinfo($matches[2], PATHINFO_FILENAME);
     $thumbnail = 'uploads/galonly/' . $matches[1] . '/thumbs/' . $stem . '.webp';
     return is_file(__DIR__ . '/../' . $thumbnail) ? $thumbnail : null;
+}
+
+function galonlyPromotePublicImagePath(string $path, string $context): string
+{
+    $path = trim(str_replace('\\', '/', $path));
+    if ($path === '' || imageHostIsTrustedUrl($path)) {
+        return $path;
+    }
+    $localPath = parse_url($path, PHP_URL_PATH) ?: $path;
+    $localPath = ltrim(str_replace('\\', '/', (string)$localPath), '/');
+    if (!str_starts_with($localPath, 'uploads/galonly/') || str_contains($localPath, '..')) {
+        return $path;
+    }
+    $absolute = dirname(__DIR__) . '/' . $localPath;
+    $base = realpath(dirname(__DIR__) . '/uploads/galonly');
+    $real = realpath($absolute);
+    if (!$base || !$real || strncmp($real, $base, strlen($base)) !== 0 || !is_file($real)) {
+        return $path;
+    }
+    $detected = imageHostDetectImage($real);
+    if (!$detected) {
+        return $path;
+    }
+    $remote = imageHostRemoteUpload($real, basename($real), $detected['mime'], $context);
+    return ($remote['ok'] ?? false) ? $remote['url'] : $path;
+}
+
+function galonlyPromotePublicImages(PDO $db, array $app): void
+{
+    if (!imageHostEnabled()) {
+        return;
+    }
+    $changed = false;
+    $imagePaths = decodeImagePaths($app);
+    $promotedPaths = array_map(function ($path) use (&$changed, $app) {
+        $next = galonlyPromotePublicImagePath((string)$path, 'galonly:' . (int)$app['id'] . ':image');
+        $changed = $changed || $next !== $path;
+        return $next;
+    }, $imagePaths);
+
+    $displayImage = trim((string)($app['display_image'] ?? ''));
+    $promotedDisplay = galonlyPromotePublicImagePath($displayImage, 'galonly:' . (int)$app['id'] . ':display');
+    $changed = $changed || $promotedDisplay !== $displayImage;
+
+    $items = galonlyDecodeJsonList($app['merchandise_items'] ?? []);
+    foreach ($items as &$item) {
+        if (!is_array($item) || !is_array($item['images'] ?? null)) continue;
+        foreach ($item['images'] as $index => $path) {
+            $next = galonlyPromotePublicImagePath((string)$path, 'galonly:' . (int)$app['id'] . ':merchandise');
+            $changed = $changed || $next !== $path;
+            $item['images'][$index] = $next;
+        }
+    }
+    unset($item);
+
+    if (!$changed) {
+        return;
+    }
+    $db->prepare('UPDATE galonly_applications SET image_path = ?, display_image = ?, merchandise_items = ? WHERE id = ?')
+        ->execute([
+            json_encode($promotedPaths, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $promotedDisplay !== '' ? $promotedDisplay : null,
+            json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            (int)$app['id'],
+        ]);
 }
 
 /**
@@ -329,7 +397,7 @@ function galonlyBoothTypeLabel(?string $type): string {
 
 function galonlyActiveStatuses(): array {
     // 存在有效申请（不可重复提交）的状态集合
-    return ['pending', 'approved', 'phase2_pending', 'phase2_revision', 'confirmed', 'shared'];
+    return ['pending', 'approved', 'phase2_pending', 'phase2_revision', 'phase2_additional_pending', 'confirmed', 'shared'];
 }
 
 function galonlyEnsureBoothSchema(PDO $db): void {
@@ -360,6 +428,8 @@ function galonlyEnsureBoothSchema(PDO $db): void {
     foreach ($columns as $column => $definition) {
         galonlyEnsureColumn($db, 'galonly_applications', $column, $definition);
     }
+    galonlyEnsureApplicationNumberSchema($db);
+    galonlyEnsureMerchandiseSchema($db);
 
     // galonly_votes 审核意见与阶段
     galonlyEnsureColumn($db, 'galonly_votes', 'comment', 'TEXT NULL');
@@ -368,7 +438,8 @@ function galonlyEnsureBoothSchema(PDO $db): void {
     // 否则同一陪审无法在两个阶段分别发表意见）；MySQL 幂等重建，失败不阻断
     if (galonlyIsMysql()) {
         galonlyTryExec($db, "ALTER TABLE galonly_votes DROP INDEX application_id");
-        galonlyTryExec($db, "ALTER TABLE galonly_votes ADD UNIQUE KEY uk_galonly_votes_app_phase (application_id, auditer_id, phase)");
+        galonlyTryExec($db, "ALTER TABLE galonly_votes DROP INDEX uk_galonly_votes_app_phase");
+        galonlyTryExec($db, "ALTER TABLE galonly_votes ADD UNIQUE KEY uk_galonly_votes_app_phase_version (application_id, auditer_id, phase, merchandise_version)");
     }
 
     // 总审 / 陪审名单（event_id = 0 表示全局）
@@ -398,6 +469,24 @@ function galonlyEnsureBoothSchema(PDO $db): void {
         ");
         galonlyTryExec($db, "CREATE INDEX IF NOT EXISTS idx_galonly_reviewers_role ON galonly_reviewers(role)");
     }
+}
+
+function galonlyCurrentMerchandiseRevision(PDO $db, int $applicationId, int $version): ?array
+{
+    $stmt = $db->prepare('SELECT * FROM galonly_merchandise_revisions WHERE application_id = ? AND material_version = ? LIMIT 1');
+    $stmt->execute([$applicationId, $version]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return null;
+    $row['merchandise_items'] = galonlyMerchandiseDecodeList($row['merchandise_items'] ?? []);
+    $row['merchandise_attachments'] = galonlyMerchandiseDecodeList($row['merchandise_attachments'] ?? []);
+    return $row;
+}
+
+function galonlyEnsureCurrentMerchandiseVersion(PDO $db, array $app, $requested): ?array
+{
+    $current = max(0, (int)($app['merchandise_version'] ?? 0));
+    if ($requested !== null && $requested !== '' && (int)$requested !== $current) return null;
+    return ['version' => $current, 'revision' => galonlyCurrentMerchandiseRevision($db, (int)$app['id'], $current)];
 }
 
 function galonlyReviewerRole(PDO $db, int $eventId, array $user): ?string {
@@ -1122,14 +1211,15 @@ switch ($action) {
         }
 
         $now = date('Y-m-d H:i:s');
-        $db->beginTransaction();
+        galonlyBeginApplicationWrite($db);
         try {
+            $eventNumber = galonlyNextApplicationNumber($db, $eventId);
             $stmt = $db->prepare(
-                "INSERT INTO galonly_applications (event_id, user_id, is_joint, joint_name, wants_upgrade, contact, qq_number, phone_number, exhibition_experience, notes, image_path, display_image, booth_name, booth_type, expected_members, layout_notes, needs_power, attachment_paths, status, phase, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1, ?, ?)"
+                "INSERT INTO galonly_applications (event_id, event_number, user_id, is_joint, joint_name, wants_upgrade, contact, qq_number, phone_number, exhibition_experience, notes, image_path, display_image, booth_name, booth_type, expected_members, layout_notes, needs_power, attachment_paths, status, phase, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 1, ?, ?)"
             );
             $stmt->execute([
-                $eventId, $user['id'], $isJoint, $jointName, $wantsUpgrade, $contact,
+                $eventId, $eventNumber, $user['id'], $isJoint, $jointName, $wantsUpgrade, $contact,
                 $qqNumber, $phoneNumber, $exhibitionExperience,
                 $notes,
                 json_encode($imagePaths, JSON_UNESCAPED_UNICODE), $displayImage ?: null, $boothName,
@@ -1150,9 +1240,13 @@ switch ($action) {
             $db->commit();
             logAction('galonly.submit', 'galonly_application', $appId);
 
-            echo json_encode(['success' => true, 'application_id' => $appId], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'success' => true,
+                'application_id' => $appId,
+                'event_number' => $eventNumber,
+            ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
-            $db->rollBack();
+            galonlyRollbackApplicationWrite($db);
             echo json_encode(['success' => false, 'message' => '提交失败：' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
         exit();
@@ -1190,6 +1284,8 @@ switch ($action) {
             $application['attachment_paths'] = galonlyDecodeJsonList($application['attachment_paths'] ?? []);
             $application['merchandise_items'] = galonlyDecodeJsonList($application['merchandise_items'] ?? []);
             $application['merchandise_attachments'] = galonlyDecodeJsonList($application['merchandise_attachments'] ?? []);
+            $application['merchandise_version'] = max(0, (int)($application['merchandise_version'] ?? 0));
+            $application['merchandise_update_pending'] = galonlyMerchandiseIsUpdatePending($application);
             $application['phase'] = (int)($application['phase'] ?? 1);
             $application['exhibition_experience'] = galonlyDecodeExhibitionExperience($application['exhibition_experience'] ?? '');
             $application['booth_type_label'] = galonlyBoothTypeLabel((string)($application['booth_type'] ?? ''));
@@ -1204,10 +1300,10 @@ switch ($action) {
                      FROM galonly_votes v
                      LEFT JOIN users u ON v.auditer_id = u.id
                      LEFT JOIN galonly_reviewers r ON r.user_id = v.auditer_id AND (r.event_id = 0 OR r.event_id = ?)
-                     WHERE v.application_id = ?
+                     WHERE v.application_id = ? AND (v.phase <> 2 OR v.merchandise_version = ? OR v.merchandise_version = 0)
                      ORDER BY v.phase ASC, v.id ASC"
                 );
-                $stmt->execute([(int)$application['event_id'], $application['id']]);
+                $stmt->execute([(int)$application['event_id'], $application['id'], (int)$application['merchandise_version']]);
                 $application['votes'] = $stmt->fetchAll();
                 foreach ($application['votes'] as &$vote) {
                     $vote['reviewer_role'] = $vote['reviewer_role'] ?? null;
@@ -1638,8 +1734,8 @@ switch ($action) {
             $app['clubs'] = $stmt->fetchAll();
 
             // 查询投票统计（按阶段拆分）
-            $stmt = $db->prepare("SELECT vote, phase, COUNT(*) as cnt FROM galonly_votes WHERE application_id = ? GROUP BY vote, phase");
-            $stmt->execute([$app['id']]);
+            $stmt = $db->prepare("SELECT vote, phase, COUNT(*) as cnt FROM galonly_votes WHERE application_id = ? AND (phase <> 2 OR merchandise_version = ? OR merchandise_version = 0) GROUP BY vote, phase");
+            $stmt->execute([$app['id'], max(0, (int)($app['merchandise_version'] ?? 0))]);
             $voteRows = $stmt->fetchAll();
             $voteCounts = ['approve' => 0, 'reject' => 0];
             $voteCountsByPhase = [
@@ -1657,8 +1753,8 @@ switch ($action) {
             $app['vote_counts_by_phase'] = $voteCountsByPhase;
 
             // 查询当前用户的投票（按阶段；北京两阶段各自独立）
-            $stmt = $db->prepare("SELECT vote, phase FROM galonly_votes WHERE application_id = ? AND auditer_id = ?");
-            $stmt->execute([$app['id'], $user['id']]);
+            $stmt = $db->prepare("SELECT vote, phase FROM galonly_votes WHERE application_id = ? AND auditer_id = ? AND (phase <> 2 OR merchandise_version = ? OR merchandise_version = 0)");
+            $stmt->execute([$app['id'], $user['id'], max(0, (int)($app['merchandise_version'] ?? 0))]);
             $myVotes = [1 => null, 2 => null];
             $myVote = null;
             foreach ($stmt->fetchAll() as $mv) {
@@ -1672,14 +1768,14 @@ switch ($action) {
             // 完整意见列表（投票人 + 角色 + 意见）
             $stmt = $db->prepare(
                 "SELECT v.vote, v.comment, v.phase, v.created_at, v.auditer_id, u.nickname, u.username,
-                        r.role AS reviewer_role
+                        r.role AS reviewer_role, v.merchandise_version
                  FROM galonly_votes v
                  LEFT JOIN users u ON v.auditer_id = u.id
                  LEFT JOIN galonly_reviewers r ON r.user_id = v.auditer_id AND (r.event_id = 0 OR r.event_id = ?)
-                 WHERE v.application_id = ?
+                 WHERE v.application_id = ? AND (v.phase <> 2 OR v.merchandise_version = ? OR v.merchandise_version = 0)
                  ORDER BY v.phase ASC, v.id ASC"
             );
-            $stmt->execute([(int)$app['event_id'], $app['id']]);
+            $stmt->execute([(int)$app['event_id'], $app['id'], max(0, (int)($app['merchandise_version'] ?? 0))]);
             $app['votes'] = $stmt->fetchAll();
             foreach ($app['votes'] as &$vote) {
                 $vote['reviewer_role'] = $vote['reviewer_role'] ?? null;
@@ -1698,6 +1794,8 @@ switch ($action) {
             $app['attachment_paths'] = galonlyDecodeJsonList($app['attachment_paths'] ?? []);
             $app['merchandise_items'] = galonlyDecodeJsonList($app['merchandise_items'] ?? []);
             $app['merchandise_attachments'] = galonlyDecodeJsonList($app['merchandise_attachments'] ?? []);
+            $app['merchandise_version'] = max(0, (int)($app['merchandise_version'] ?? 0));
+            $app['merchandise_update_pending'] = galonlyMerchandiseIsUpdatePending($app);
             $app['phase'] = (int)($app['phase'] ?? 1);
             $app['exhibition_experience'] = galonlyDecodeExhibitionExperience($app['exhibition_experience'] ?? '');
             $app['booth_type_label'] = galonlyBoothTypeLabel((string)($app['booth_type'] ?? ''));
@@ -1720,6 +1818,7 @@ switch ($action) {
         $vote = $input['vote'] ?? '';
         $comment = trim((string)($input['comment'] ?? ''));
         $phase = (int)($input['phase'] ?? 1);
+        $requestedVersion = array_key_exists('merchandise_version', $input) ? $input['merchandise_version'] : null;
 
         if (!$applicationId) {
             echo json_encode(['success' => false, 'message' => '缺少 application_id'], JSON_UNESCAPED_UNICODE);
@@ -1752,6 +1851,12 @@ switch ($action) {
 
         $isBeijing = strtolower((string)($appInfo['event_code'] ?? '')) === 'beijing';
         $appStatus = (string)($appInfo['status'] ?? 'pending');
+        $merchandiseVersion = max(0, (int)($appInfo['merchandise_version'] ?? 0));
+        if ($phase === 2 && $requestedVersion !== null && $requestedVersion !== '' && (int)$requestedVersion !== $merchandiseVersion) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => '材料已更新，请刷新后重新审核', 'current_version' => $merchandiseVersion], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
 
         // 上海等活动：恢复原简单投票制（无阶段，达到阈值自动判定）
         if (!$isBeijing) {
@@ -1818,14 +1923,14 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '该申请不在阶段一待审状态，无法提交阶段一意见'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-        if ($phase === 2 && !in_array($appStatus, ['phase2_pending', 'phase2_revision'], true)) {
+        if ($phase === 2 && !in_array($appStatus, ['phase2_pending', 'phase2_revision', 'phase2_additional_pending'], true)) {
             echo json_encode(['success' => false, 'message' => '该申请不在阶段二审核状态，无法提交阶段二意见'], JSON_UNESCAPED_UNICODE);
             exit();
         }
 
         // 检查是否已对该阶段投票
-        $stmt = $db->prepare("SELECT id FROM galonly_votes WHERE application_id = ? AND auditer_id = ? AND phase = ?");
-        $stmt->execute([$applicationId, $user['id'], $phase]);
+        $stmt = $db->prepare("SELECT id FROM galonly_votes WHERE application_id = ? AND auditer_id = ? AND phase = ? AND (phase <> 2 OR merchandise_version = ? OR merchandise_version = 0)");
+        $stmt->execute([$applicationId, $user['id'], $phase, $merchandiseVersion]);
         if ($stmt->fetch()) {
             echo json_encode(['success' => false, 'message' => '您已对该申请的本阶段投过票'], JSON_UNESCAPED_UNICODE);
             exit();
@@ -1833,12 +1938,12 @@ switch ($action) {
 
         try {
             // 插入意见（陪审与总审均可提交；总审的最终决定走 resolve / resolve_product）
-            $stmt = $db->prepare("INSERT INTO galonly_votes (application_id, auditer_id, vote, comment, phase) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$applicationId, $user['id'], $vote, $comment !== '' ? $comment : null, $phase]);
+            $stmt = $db->prepare("INSERT INTO galonly_votes (application_id, auditer_id, vote, comment, phase, merchandise_version) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$applicationId, $user['id'], $vote, $comment !== '' ? $comment : null, $phase, $phase === 2 ? $merchandiseVersion : 0]);
 
             // 统计该阶段意见
-            $stmt = $db->prepare("SELECT vote, COUNT(*) as cnt FROM galonly_votes WHERE application_id = ? AND phase = ? GROUP BY vote");
-            $stmt->execute([$applicationId, $phase]);
+            $stmt = $db->prepare("SELECT vote, COUNT(*) as cnt FROM galonly_votes WHERE application_id = ? AND phase = ? AND (phase <> 2 OR merchandise_version = ? OR merchandise_version = 0) GROUP BY vote");
+            $stmt->execute([$applicationId, $phase, $merchandiseVersion]);
             $voteRows = $stmt->fetchAll();
             $voteCounts = ['approve' => 0, 'reject' => 0];
             foreach ($voteRows as $row) {
@@ -1868,6 +1973,7 @@ switch ($action) {
         $applicationId = (int)($input['application_id'] ?? 0);
         // 2026-08 陪审分阶段审核：撤回时可按阶段精确撤回；未传 phase 时兼容旧调用
         $phase = isset($input['phase']) ? (int)$input['phase'] : 0;
+        $requestedVersion = array_key_exists('merchandise_version', $input) ? $input['merchandise_version'] : null;
 
         if (!$applicationId) {
             echo json_encode(['success' => false, 'message' => '缺少 application_id'], JSON_UNESCAPED_UNICODE);
@@ -1878,8 +1984,11 @@ switch ($action) {
 
         // 检查是否存在我的投票/意见（可按阶段）
         if ($phase === 1 || $phase === 2) {
-            $stmt = $db->prepare("SELECT v.id, v.vote, v.phase, a.event_id FROM galonly_votes v JOIN galonly_applications a ON v.application_id = a.id WHERE v.application_id = ? AND v.auditer_id = ? AND v.phase = ?");
-            $stmt->execute([$applicationId, $user['id'], $phase]);
+            $versionSql = $phase === 2 && $requestedVersion !== null && $requestedVersion !== '' ? ' AND v.merchandise_version = ?' : '';
+            $stmt = $db->prepare("SELECT v.id, v.vote, v.phase, a.event_id FROM galonly_votes v JOIN galonly_applications a ON v.application_id = a.id WHERE v.application_id = ? AND v.auditer_id = ? AND v.phase = ?$versionSql");
+            $params = [$applicationId, $user['id'], $phase];
+            if ($versionSql !== '') $params[] = (int)$requestedVersion;
+            $stmt->execute($params);
         } else {
             $stmt = $db->prepare("SELECT v.id, v.vote, v.phase, a.event_id FROM galonly_votes v JOIN galonly_applications a ON v.application_id = a.id WHERE v.application_id = ? AND v.auditer_id = ?");
             $stmt->execute([$applicationId, $user['id']]);
@@ -1942,6 +2051,7 @@ switch ($action) {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) $input = [];
         $eventId = (int)($input['event_id'] ?? 0);
         $applicationId = (int)($input['application_id'] ?? 0);
 
@@ -2037,6 +2147,7 @@ switch ($action) {
         if ($decision === 'approve') {
             $db->prepare("UPDATE galonly_applications SET status = 'approved', phase = 1, phase1_feedback = ?, rejected_at = NULL, updated_at = ? WHERE id = ?")
                 ->execute([$feedback !== '' ? $feedback : null, $now, $applicationId]);
+            galonlyPromotePublicImages($db, $app);
         } else {
             $db->prepare("UPDATE galonly_applications SET status = 'rejected', phase = 1, phase1_feedback = ?, rejected_at = ?, updated_at = ? WHERE id = ?")
                 ->execute([$feedback !== '' ? $feedback : null, $now, $now, $applicationId]);
@@ -2058,6 +2169,7 @@ switch ($action) {
         $user = requireLogin();
         $input = json_decode(file_get_contents('php://input'), true);
         $applicationId = (int)($input['application_id'] ?? 0);
+        $requestedVersion = array_key_exists('merchandise_version', $input) ? $input['merchandise_version'] : null;
         if (!$applicationId) {
             echo json_encode(['success' => false, 'message' => '缺少 application_id'], JSON_UNESCAPED_UNICODE);
             exit();
@@ -2113,8 +2225,10 @@ switch ($action) {
         $status = (string)($app['status'] ?? '');
         $isInitial = $status === 'approved' && (int)($app['phase'] ?? 1) === 1;
         $isRevision = $status === 'phase2_revision';
-        if (!$isInitial && !$isRevision) {
-            echo json_encode(['success' => false, 'message' => '当前状态无法提交制品表单（仅阶段一通过或打回修改时可用）'], JSON_UNESCAPED_UNICODE);
+        $isPending = in_array($status, ['phase2_pending', 'phase2_additional_pending'], true);
+        $isApprovedUpdate = in_array($status, ['confirmed', 'shared'], true);
+        if (!$isInitial && !$isRevision && !$isPending && !$isApprovedUpdate) {
+            echo json_encode(['success' => false, 'message' => '当前状态无法提交制品表单'], JSON_UNESCAPED_UNICODE);
             exit();
         }
         if ($isRevision && !galonlyWithinDeadline($app['revision_at'] ?? null)) {
@@ -2122,21 +2236,64 @@ switch ($action) {
             exit();
         }
 
+        $currentVersion = max(0, (int)($app['merchandise_version'] ?? 0));
+        if ($requestedVersion !== null && $requestedVersion !== '' && (int)$requestedVersion !== $currentVersion) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => '材料已更新，请刷新页面后重新编辑', 'current_version' => $currentVersion], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $deadlineMode = galonlyMerchandiseDeadlineMode();
+        if ($deadlineMode === 'closed' && !$isInitial && !$isRevision) {
+            echo json_encode(['success' => false, 'message' => '制品更新期限已结束，普通摊主不能继续提交更新'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $priorItems = galonlyMerchandiseDecodeList($app['merchandise_items'] ?? []);
+        $priorAttachments = galonlyMerchandiseDecodeList($app['merchandise_attachments'] ?? []);
+        if ($deadlineMode === 'append' && !$isInitial) {
+            $oldDisplay = trim((string)($app['display_image'] ?? ''));
+            if (!galonlyMerchandiseContainsPriorItems($priorItems, $normalized)
+                || count(array_diff($priorAttachments, $attachments)) > 0
+                || ($oldDisplay !== '' && $displayImage !== $oldDisplay)) {
+                echo json_encode(['success' => false, 'message' => '当前阶段只允许追加制品，不能修改或删除已提交材料'], JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
+
         $now = date('Y-m-d H:i:s');
+        $nextVersion = max(1, $currentVersion + 1);
+        $nextStatus = 'phase2_pending';
+        $approvedStatus = $app['phase2_approved_status'] ?? null;
+        if ($isApprovedUpdate) {
+            $nextStatus = 'phase2_additional_pending';
+            $approvedStatus = $status;
+        } elseif ($status === 'phase2_additional_pending') {
+            $nextStatus = 'phase2_additional_pending';
+        }
         $db->beginTransaction();
         try {
-            $db->prepare("UPDATE galonly_applications SET merchandise_items = ?, merchandise_attachments = ?, display_image = ?, status = 'phase2_pending', phase = 2, revision_at = NULL, phase2_feedback = NULL, updated_at = ? WHERE id = ?")
+            $db->prepare("UPDATE galonly_applications SET merchandise_items = ?, merchandise_attachments = ?, display_image = ?, merchandise_version = ?, merchandise_updated_at = ?, status = ?, phase2_approved_status = ?, phase = 2, revision_at = NULL, phase2_feedback = NULL, updated_at = ? WHERE id = ?")
                 ->execute([
                     json_encode($normalized, JSON_UNESCAPED_UNICODE),
                     json_encode($attachments, JSON_UNESCAPED_UNICODE),
                     $displayImage !== '' ? $displayImage : null,
+                    $nextVersion,
+                    $now,
+                    $nextStatus,
+                    $approvedStatus,
                     $now,
                     $applicationId,
                 ]);
-            // 打回重提交时清空阶段二旧意见
-            if ($isRevision) {
-                $db->prepare("DELETE FROM galonly_votes WHERE application_id = ? AND phase = 2")->execute([$applicationId]);
-            }
+            galonlyMerchandiseRecordRevision($db, [
+                'application_id' => $applicationId,
+                'material_version' => $nextVersion,
+                'submitted_by' => (int)$user['id'],
+                'submitted_at' => $now,
+                'source_status' => $status,
+                'review_status' => 'pending',
+                'merchandise_items' => $normalized,
+                'merchandise_attachments' => $attachments,
+                'display_image' => $displayImage,
+            ]);
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
@@ -2144,8 +2301,8 @@ switch ($action) {
             exit();
         }
         logAction('galonly.submit_merchandise', 'galonly_application', $applicationId);
-        galonlyNotifyBoothApplicant($app, 'phase2_pending');
-        echo json_encode(['success' => true, 'message' => '制品表单已提交，进入制品审核'], JSON_UNESCAPED_UNICODE);
+        galonlyNotifyBoothApplicant($app, $nextStatus);
+        echo json_encode(['success' => true, 'status' => $nextStatus, 'merchandise_version' => $nextVersion, 'message' => $nextStatus === 'phase2_additional_pending' ? '追加材料已提交，原有已通过资格保留并进入追加检查' : '制品表单已提交，进入制品审核'], JSON_UNESCAPED_UNICODE);
         exit();
 
     case 'get_merchandise':
@@ -2160,10 +2317,10 @@ switch ($action) {
         $eventId = (int)($_GET['event_id'] ?? 0);
 
         if ($applicationId) {
-            $stmt = $db->prepare("SELECT id, event_id, status, phase, merchandise_items, merchandise_attachments, display_image, revision_at, phase2_feedback FROM galonly_applications WHERE id = ? AND user_id = ?");
+            $stmt = $db->prepare("SELECT id, event_id, status, phase, merchandise_items, merchandise_attachments, display_image, revision_at, phase2_feedback, merchandise_version, merchandise_updated_at, phase2_approved_status FROM galonly_applications WHERE id = ? AND user_id = ?");
             $stmt->execute([$applicationId, $user['id']]);
         } elseif ($eventId) {
-            $stmt = $db->prepare("SELECT id, event_id, status, phase, merchandise_items, merchandise_attachments, display_image, revision_at, phase2_feedback FROM galonly_applications WHERE event_id = ? AND user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1");
+            $stmt = $db->prepare("SELECT id, event_id, status, phase, merchandise_items, merchandise_attachments, display_image, revision_at, phase2_feedback, merchandise_version, merchandise_updated_at, phase2_approved_status FROM galonly_applications WHERE event_id = ? AND user_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1");
             $stmt->execute([$eventId, $user['id']]);
         } else {
             echo json_encode(['success' => false, 'message' => '缺少查询参数'], JSON_UNESCAPED_UNICODE);
@@ -2176,10 +2333,45 @@ switch ($action) {
         }
         $app['merchandise_items'] = galonlyDecodeJsonList($app['merchandise_items'] ?? []);
         $app['merchandise_attachments'] = galonlyDecodeJsonList($app['merchandise_attachments'] ?? []);
+        $app['merchandise_version'] = max(0, (int)($app['merchandise_version'] ?? 0));
+        $app['merchandise_update_pending'] = galonlyMerchandiseIsUpdatePending($app);
+        $app['deadline_mode'] = galonlyMerchandiseDeadlineMode();
+        $app['editable'] = in_array((string)$app['status'], ['phase2_pending', 'phase2_revision', 'phase2_additional_pending', 'confirmed', 'shared'], true);
         $app['within_deadline'] = $app['status'] === 'phase2_revision'
             ? galonlyWithinDeadline($app['revision_at'] ?? null)
             : true;
         echo json_encode(['success' => true, 'application' => $app], JSON_UNESCAPED_UNICODE);
+        exit();
+
+    case 'get_merchandise_history':
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            echo json_encode(['success' => false, 'message' => '仅支持 GET 请求'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $user = requireLogin();
+        $db = getDB();
+        $applicationId = (int)($_GET['application_id'] ?? $_GET['app_id'] ?? 0);
+        $stmt = $db->prepare('SELECT a.id, a.user_id, a.event_id FROM galonly_applications a WHERE a.id = ?');
+        $stmt->execute([$applicationId]);
+        $owner = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$owner) {
+            echo json_encode(['success' => false, 'message' => '申请不存在'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if ((int)$owner['user_id'] !== (int)$user['id'] && !galonlyCanReview($db, (int)$owner['event_id'], $user)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => '权限不足'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        $history = $db->prepare('SELECT id, application_id, material_version, submitted_by, submitted_at, source_status, review_status, reviewed_at, reviewed_by, review_feedback, merchandise_items, merchandise_attachments, display_image FROM galonly_merchandise_revisions WHERE application_id = ? ORDER BY material_version DESC');
+        $history->execute([$applicationId]);
+        $rows = $history->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $row['merchandise_items'] = galonlyMerchandiseDecodeList($row['merchandise_items'] ?? []);
+            $row['merchandise_attachments'] = galonlyMerchandiseDecodeList($row['merchandise_attachments'] ?? []);
+        }
+        unset($row);
+        echo json_encode(['success' => true, 'history' => $rows], JSON_UNESCAPED_UNICODE);
         exit();
 
     case 'resolve_product':
@@ -2193,13 +2385,14 @@ switch ($action) {
         $applicationId = (int)($input['application_id'] ?? 0);
         $decision = $input['decision'] ?? '';
         $feedback = trim((string)($input['feedback'] ?? ''));
+        $requestedVersion = array_key_exists('merchandise_version', $input) ? $input['merchandise_version'] : null;
 
         if (!$applicationId) {
             echo json_encode(['success' => false, 'message' => '缺少 application_id'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-        if (!in_array($decision, ['approved', 'revision', 'rejected', 'shared'], true)) {
-            echo json_encode(['success' => false, 'message' => 'decision 必须为 approved / revision / rejected / shared'], JSON_UNESCAPED_UNICODE);
+        if (!in_array($decision, ['approved', 'revision', 'rejected', 'shared', 'keep_approved', 'withdraw_approval'], true)) {
+            echo json_encode(['success' => false, 'message' => 'decision 必须为 approved / revision / rejected / shared / keep_approved / withdraw_approval'], JSON_UNESCAPED_UNICODE);
             exit();
         }
 
@@ -2220,16 +2413,31 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '仅总审/专人可做出最终决定'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-        if (!in_array((string)$app['status'], ['phase2_pending', 'phase2_revision'], true)) {
+        $currentVersion = max(0, (int)($app['merchandise_version'] ?? 0));
+        if ($requestedVersion !== null && $requestedVersion !== '' && (int)$requestedVersion !== $currentVersion) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => '材料已更新，请刷新后重新审核', 'current_version' => $currentVersion], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if (!in_array((string)$app['status'], ['phase2_pending', 'phase2_revision', 'phase2_additional_pending'], true)) {
             echo json_encode(['success' => false, 'message' => '该申请不在阶段二审核状态'], JSON_UNESCAPED_UNICODE);
             exit();
         }
 
         $now = date('Y-m-d H:i:s');
+        if ($app['status'] === 'phase2_additional_pending' && !in_array($decision, ['keep_approved', 'withdraw_approval'], true)) {
+            echo json_encode(['success' => false, 'message' => '追加检查只能确认保留已通过或撤回已通过'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
+        if ($app['status'] !== 'phase2_additional_pending' && in_array($decision, ['keep_approved', 'withdraw_approval'], true)) {
+            echo json_encode(['success' => false, 'message' => '该申请不在追加检查状态'], JSON_UNESCAPED_UNICODE);
+            exit();
+        }
         switch ($decision) {
             case 'approved':
                 $db->prepare("UPDATE galonly_applications SET status = 'confirmed', phase = 2, phase2_feedback = ?, revision_at = NULL, updated_at = ? WHERE id = ?")
                     ->execute([$feedback !== '' ? $feedback : null, $now, $applicationId]);
+                galonlyPromotePublicImages($db, $app);
                 break;
             case 'revision':
                 $db->prepare("UPDATE galonly_applications SET status = 'phase2_revision', phase = 2, phase2_feedback = ?, revision_at = ?, updated_at = ? WHERE id = ?")
@@ -2242,8 +2450,23 @@ switch ($action) {
             case 'shared':
                 $db->prepare("UPDATE galonly_applications SET status = 'shared', phase = 2, phase2_feedback = ?, updated_at = ? WHERE id = ?")
                     ->execute([$feedback !== '' ? $feedback : null, $now, $applicationId]);
+                galonlyPromotePublicImages($db, $app);
+                break;
+            case 'keep_approved':
+                $restoreStatus = in_array((string)($app['phase2_approved_status'] ?? ''), ['confirmed', 'shared'], true)
+                    ? (string)$app['phase2_approved_status'] : 'confirmed';
+                $db->prepare("UPDATE galonly_applications SET status = ?, phase = 2, phase2_approved_status = NULL, phase2_feedback = ?, revision_at = NULL, updated_at = ? WHERE id = ?")
+                    ->execute([$restoreStatus, $feedback !== '' ? $feedback : null, $now, $applicationId]);
+                break;
+            case 'withdraw_approval':
+                $db->prepare("UPDATE galonly_applications SET status = 'phase2_pending', phase = 2, phase2_approved_status = NULL, phase2_feedback = ?, revision_at = NULL, updated_at = ? WHERE id = ?")
+                    ->execute([$feedback !== '' ? $feedback : null, $now, $applicationId]);
                 break;
         }
+        $revisionReviewStatus = $decision === 'keep_approved'
+            ? (string)($app['phase2_approved_status'] ?? 'confirmed')
+            : ($decision === 'withdraw_approval' ? 'phase2_pending' : $decision);
+        galonlyMerchandiseUpdateRevisionReview($db, $applicationId, $currentVersion, $revisionReviewStatus, (int)$user['id'], $feedback);
         logAction('galonly.resolve_product', 'galonly_application', $applicationId, ['decision' => $decision]);
         galonlyNotifyBoothApplicant($app, $decision, $app, $feedback);
         echo json_encode(['success' => true, 'message' => '阶段二审核结果已确定并反馈给摊主'], JSON_UNESCAPED_UNICODE);
@@ -2351,6 +2574,7 @@ switch ($action) {
             exit();
         }
         $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) $input = [];
         $eventId = (int)($input['event_id'] ?? 0);
         $chiefIds = array_values(array_unique(array_map('intval', is_array($input['chief_ids'] ?? null) ? $input['chief_ids'] : [])));
         $juryIds = array_values(array_unique(array_map('intval', is_array($input['jury_ids'] ?? null) ? $input['jury_ids'] : [])));
@@ -2774,6 +2998,7 @@ switch ($action) {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) $input = [];
         $name = trim($input['name'] ?? '');
         $location = trim($input['location'] ?? '');
         $date = trim($input['date'] ?? '');
@@ -2812,6 +3037,9 @@ switch ($action) {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = [];
+        }
         $eventId = (int)($input['event_id'] ?? 0);
 
         if (!$eventId) {
@@ -2820,16 +3048,20 @@ switch ($action) {
         }
 
         $db = getDB();
-        $stmt = $db->prepare("SELECT id FROM galonly_events WHERE id = ?");
+        $stmt = $db->prepare("SELECT * FROM galonly_events WHERE id = ?");
         $stmt->execute([$eventId]);
-        if (!$stmt->fetch()) {
+        $eventBefore = $stmt->fetch();
+        if (!$eventBefore) {
             echo json_encode(['success' => false, 'message' => '活动不存在'], JSON_UNESCAPED_UNICODE);
             exit();
         }
 
-        // 删除关联数据（投票、申请同好会、申请）
+        // 删除关联数据（审核成员、Staff 申请、公开投票、投票、申请同好会、申请）
         $db->beginTransaction();
         try {
+            $db->prepare("DELETE FROM galonly_reviewers WHERE event_id = ?")->execute([$eventId]);
+            $db->prepare("DELETE FROM galonly_staff_applications WHERE event_id = ?")->execute([$eventId]);
+            $db->prepare("DELETE FROM galonly_public_votes WHERE event_id = ?")->execute([$eventId]);
             $appIds = $db->prepare("SELECT id FROM galonly_applications WHERE event_id = ?");
             $appIds->execute([$eventId]);
             $ids = $appIds->fetchAll(PDO::FETCH_COLUMN);
@@ -2866,6 +3098,9 @@ switch ($action) {
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = [];
+        }
         $eventId = (int)($input['event_id'] ?? 0);
 
         if (!$eventId) {
@@ -2874,9 +3109,10 @@ switch ($action) {
         }
 
         $db = getDB();
-        $stmt = $db->prepare("SELECT id FROM galonly_events WHERE id = ?");
+        $stmt = $db->prepare("SELECT * FROM galonly_events WHERE id = ?");
         $stmt->execute([$eventId]);
-        if (!$stmt->fetch()) {
+        $eventBefore = $stmt->fetch();
+        if (!$eventBefore) {
             echo json_encode(['success' => false, 'message' => '活动不存在'], JSON_UNESCAPED_UNICODE);
             exit();
         }
@@ -2925,7 +3161,7 @@ switch ($action) {
             'list_events', 'list_participants', 'check_eligibility', 'submit', 'get_application',
             'update_application', 'delete_application', 'upload_image', 'upload_file',
             'list_applications', 'vote', 'withdraw_vote', 'cast_public_vote',
-            'resolve', 'undo_resolve', 'submit_merchandise', 'get_merchandise', 'resolve_product',
+            'resolve', 'undo_resolve', 'submit_merchandise', 'get_merchandise', 'get_merchandise_history', 'resolve_product',
             'list_reviewers', 'save_reviewers',
             'submit_staff', 'get_staff_application', 'update_staff', 'delete_staff_application',
             'list_staff_applications', 'vote_staff', 'withdraw_staff_vote',

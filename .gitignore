@@ -23,6 +23,7 @@ vendor/
 !tools/pdf-reader/vendor/
 composer.lock
 composer.phar
+!composer.lock
 
 # Logs and local server output
 *.log
@@ -41,6 +42,14 @@ _local/
 *.cache
 .phpunit.result.cache
 data/cache/
+
+# Local QA artifacts and migration rollback material
+artifacts/
+data/column-migration-backups/
+data/quiz_images/*
+!data/quiz_images/.gitkeep
+data/image-host/*
+!data/image-host/.gitkeep
 
 # Backups
 *.bak
@@ -102,6 +111,9 @@ uploads/**
 !uploads/
 !uploads/galonly/
 !uploads/galonly/.htaccess
+!uploads/column/
+!uploads/column/.htaccess
+!uploads/column/.gitignore
 wiki/uploads/*
 !wiki/uploads/.gitkeep
 
@@ -116,6 +128,10 @@ wiki/uploads/*
 
 # Local reference materials
 参考/
+
+# Font binaries with redistribution status not yet confirmed
+tools/GalgameTool/fonts/*.ttf
+tools/GalgameTool/fonts/*.otf
 
 # Local wallpaper drop folder.
 # Put local wallpapers here; only the folder placeholder is versioned.

@@ -521,6 +521,7 @@
           '<span class="' + (p.status === 'running' ? 'project-header-status' : '') + '">' + statusLabel(p.status) + '</span>' +
         '</div></div>' +
         '<div class="project-header-actions">' +
+          '<button class="stage-btn" data-action="share">分享</button>' +
           '<button class="stage-btn primary" data-action="publish">发布</button>' +
           '<button class="stage-btn" data-action="archive">归档</button>' +
           '<button class="stage-btn danger" data-action="delete">删除</button>' +
@@ -562,6 +563,10 @@
           '</select>' + (unsupportedEligibility ? '<div class="modal-field-hint">当前历史配置为未开放模式，保存后会改为可用模式。</div>' : '') + '</div>' +
         '</div>' +
         '<div class="form-field"><label class="field-label" for="projectResultVisibility">默认结果公开</label><select class="form-select" id="projectResultVisibility">' + resultVisibilityOptions(p.result_visibility || 'live_rank_only') + '</select><div class="modal-field-hint">用于活动级默认值；已生成阶段仍以各阶段配置为准。</div></div>' +
+        '<div class="form-field"><span class="field-label">分享参与</span>' +
+          '<label class="guest-vote-toggle"><input type="checkbox" id="projectGuestVote"' + (Number(p.guest_vote) === 1 ? ' checked' : '') + '>' +
+          '<span>允许通过分享链接免登录投票</span></label>' +
+          '<div class="modal-field-hint">开启后，持有分享链接的访客无需注册登录即可参与各阶段投票；同一设备计一票。使用管理页「分享」按钮生成链接与二维码。</div></div>' +
         '<div class="form-field"><label class="field-label" for="projectDescription">说明</label><textarea class="form-textarea" id="projectDescription">' + esc(p.description || '') + '</textarea></div>' +
         '<div class="project-settings-actions"><button class="stage-btn primary" id="projectSettingsSave" type="button">保存活动设置</button></div>' +
       '</div></div>';
@@ -736,8 +741,13 @@
     }
     var restoreFlowBtn = setButtonBusy(btn, '处理中...');
     post('../api/vote_stages.php?action=' + encodeURIComponent(action), { pool_id: Number(poolId) }).then(function (data) {
-      toast(data.success ? '流程已更新' : (data.message || '操作失败'));
+      var flowMsg = data.success ? '流程已更新' : (data.message || '操作失败');
+      if (data.success && data.status === 'reviewing') flowMsg = '已结算：存在同分，请完成平票裁定';
+      else if (data.success && data.status === 'settled') flowMsg = '已结算完成';
+      toast(flowMsg);
       if (state.selected) selectProject(state.selected.id);
+    }).catch(function () {
+      toast('操作失败，请重试');
     }).finally(function () {
       restoreFlowBtn();
     });
@@ -746,6 +756,8 @@
   function renderStageRow(s, isMoe) {
     var typeLabelText = STAGE_TYPE_LABELS[s.stage_type] || s.stage_type;
     var typeClass = s.stage_type;
+    var isNominationStage = s.stage_type === 'nomination';
+    var canUseLegacySettlement = s.stage_type !== 'nomination';
     if (isMoe && s.stage_type === 'qualifier') { typeClass = 'qualifier'; typeLabelText = '海选池'; }
     var summary = buildStageSummary(s);
     var flowPool = getFlowPoolForStage(s);
@@ -758,7 +770,9 @@
       (flowPool ? flowActions : (
         primaryAction +
         (s.status === 'open' ? '<button class="stage-btn" data-stage-action="lock" data-stage-id="' + Number(s.id) + '">锁定</button>' : '') +
-        '<button class="stage-btn success" data-stage-action="settle" data-stage-id="' + Number(s.id) + '">结算</button>'
+        (isNominationStage ? '<button class="stage-btn primary" data-rebuild-flow>生成海选池并打开海选</button>' : '') +
+        (canUseLegacySettlement && s.status !== 'reviewing' ? '<button class="stage-btn success" data-stage-action="settle" data-stage-id="' + Number(s.id) + '">结算</button>' : '') +
+        (canUseLegacySettlement && s.status === 'reviewing' ? '<button class="stage-btn primary" data-stage-action="resolve_tie" data-stage-id="' + Number(s.id) + '">裁定平票</button>' : '')
       ));
     return '<div class="stage-row" data-stage-id="' + Number(s.id) + '">' +
       '<span class="stage-tag ' + typeClass + '">' + typeLabelText + '</span>' +
@@ -766,7 +780,7 @@
         '<span class="stage-title" title="' + esc(s.title) + '">' + esc(s.title) + '</span>' +
         '<span class="stage-summary" title="' + esc(summary) + '">' + esc(summary) + '</span>' +
       '</span>' +
-      '<span class="stage-status ' + (s.status === 'open' ? 'open' : 'pending') + '">' + (s.status === 'open' ? '开放中' : (s.status === 'locked' ? '已锁定' : '待开放')) + '</span>' +
+      '<span class="stage-status ' + (s.status === 'open' ? 'open' : (s.status === 'reviewing' ? 'reviewing' : 'pending')) + '">' + (s.status === 'open' ? '开放中' : (s.status === 'locked' ? '已锁定' : (s.status === 'reviewing' ? '待裁定' : '待开放'))) + '</span>' +
       '<span class="stage-actions">' +
         rowActions +
       '</span>' +
@@ -804,6 +818,135 @@
     return parts.join(' · ');
   }
 
+  /* ===== Share Modal ===== */
+  function shareLinkFor(p, token) {
+    var base = p.project_type === 'moe' ? '../moe/contest.html' : '../twelve/contest.html';
+    return new URL(base + '?id=' + encodeURIComponent(p.id) + '&share=' + encodeURIComponent(token), window.location.href).href;
+  }
+
+  function openShareModal(btn) {
+    var p = state.selected;
+    if (!p) return;
+    var restore = btn ? setButtonBusy(btn, '生成中...') : function () {};
+    post('../api/vote_projects.php?action=share&id=' + encodeURIComponent(p.id), {}).then(function (data) {
+      if (!data || !data.success || !data.share_token) {
+        toast((data && data.message) || '获取分享链接失败');
+        return;
+      }
+      renderShareModal(p, String(data.share_token), Number(data.guest_vote) === 1, String(data.status || ''));
+    }).catch(function (err) {
+      toast((err && err.message) || '获取分享链接失败');
+    }).finally(restore);
+  }
+
+  function renderShareModal(p, token, guestVote, status) {
+    var link = shareLinkFor(p, token);
+    var isMoe = p.project_type === 'moe';
+    var tag = $('shareModalTag');
+    tag.textContent = isMoe ? '萌战' : '十二器';
+    tag.className = 'stage-tag ' + (isMoe ? 'nomination' : 'reviewing');
+    $('shareModalTitle').textContent = '分享 · ' + (p.title || '企划');
+    var guestNote = guestVote
+      ? (status === 'running'
+        ? '免登录投票已开启：访客打开此链接即可直接参与投票，无需登录。'
+        : '免登录投票已开启；活动发布并处于进行中后，分享链接即可免登录参与。')
+      : '免登录投票未开启：访客打开链接需要登录并满足参与资格。可在「活动设置 → 分享参与」中开启。';
+    $('shareModalBody').innerHTML =
+      '<div class="share-qr-wrap"><div id="shareQrHost" class="share-qr" role="img" aria-label="分享链接二维码"></div></div>' +
+      '<div class="share-field"><span class="field-label">分享链接</span>' +
+        '<div class="share-link-row"><input class="form-input" id="shareLinkInput" readonly value="' + esc(link) + '" aria-label="分享链接">' +
+        '<button class="stage-btn primary" id="shareCopyBtn" type="button">复制</button></div></div>' +
+      '<div class="share-note">' +
+        '<p class="' + (guestVote ? 'share-note-ok' : 'share-note-warn') + '">' + esc(guestNote) + '</p>' +
+        '<p class="modal-field-hint">二维码与链接指向活动详情页，访客按阶段参与投票；免登录模式下同一设备每个阶段计一票。</p>' +
+      '</div>';
+    var qrHost = $('shareQrHost');
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(link);
+      qr.make();
+      qrHost.innerHTML = qr.createSvgTag(4, 2);
+    } catch (e) {
+      qrHost.innerHTML = '<div class="modal-field-hint">二维码生成失败，请直接复制链接。</div>';
+    }
+    $('shareModal').style.display = 'flex';
+    $('shareCopyBtn').addEventListener('click', function () {
+      copyShareText($('shareLinkInput').value).then(function (ok) {
+        toast(ok ? '链接已复制' : '复制失败，请手动选择链接复制');
+      });
+    });
+  }
+
+  function copyShareText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () { return legacyCopyShareText(text); });
+    }
+    return Promise.resolve(legacyCopyShareText(text));
+  }
+
+  function legacyCopyShareText(text) {
+    var input = $('shareLinkInput');
+    if (!input) return false;
+    input.removeAttribute('readonly');
+    input.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    input.setAttribute('readonly', 'readonly');
+    if (window.getSelection) window.getSelection().removeAllRanges();
+    return ok;
+  }
+
+  function closeShareModal() {
+    $('shareModal').style.display = 'none';
+  }
+
+  // ===== Legacy 平票裁定弹窗（非 flow 阶段 reviewing → resolve_tie） =====
+  function openLegacyTieModal(stageId) {
+    var stage = (state.stages || []).find(function (s) { return Number(s.id) === Number(stageId); });
+    if (!stage) { toast('阶段数据未加载，请刷新后重试'); return; }
+    var tie = parseConfig(stage.config_json || '{}').tie_break;
+    if (!tie || !Array.isArray(tie.candidate_entry_ids) || !tie.candidate_entry_ids.length) {
+      toast('未找到平票候选信息，请尝试重新结算');
+      return;
+    }
+    var slots = Math.max(1, Number(tie.slots || 1));
+    var nameOf = function (id) {
+      var e = (state.entries || []).find(function (en) { return Number(en.id) === Number(id); });
+      return e ? (e.title_cn || e.title || ('#' + id)) : ('#' + id);
+    };
+    $('legacyTieTitle').textContent = '同分裁定 · ' + (stage.title || '');
+    var rows = tie.candidate_entry_ids.map(function (id) {
+      return '<label class="legacy-tie-choice"><input type="checkbox" value="' + Number(id) + '" data-legacy-tie-candidate> <span>' + esc(nameOf(id)) + '</span></label>';
+    }).join('');
+    $('legacyTieBody').innerHTML =
+      '<p class="modal-field-hint">晋级名额剩 ' + slots + ' 个，请从同分候选中选择；确认后阶段完成结算。</p>' +
+      '<div class="legacy-tie-list">' + rows + '</div>';
+    $('legacyTieModal').style.display = 'flex';
+    $('legacyTieSubmit').onclick = function () {
+      var picked = Array.prototype.slice.call($('legacyTieBody').querySelectorAll('input[data-legacy-tie-candidate]:checked')).map(function (i) { return Number(i.value); });
+      if (picked.length !== slots) { toast('请选择 ' + slots + ' 个晋级'); return; }
+      var restoreTie = setButtonBusy($('legacyTieSubmit'), '提交中...');
+      post('../api/vote_stages.php?action=resolve_tie&id=' + encodeURIComponent(stageId), { entry_ids: picked }).then(function (data) {
+        if (data && data.success) {
+          closeLegacyTieModal();
+          toast('裁定完成，阶段已结算');
+          if (state.selected) selectProject(state.selected.id);
+        } else {
+          toast((data && data.message) || '裁定失败');
+        }
+      }).catch(function () { toast('裁定失败'); }).finally(restoreTie);
+    };
+  }
+  function closeLegacyTieModal() { $('legacyTieModal').style.display = 'none'; }
+  $('legacyTieClose').addEventListener('click', closeLegacyTieModal);
+  $('legacyTieCancel').addEventListener('click', closeLegacyTieModal);
+  $('legacyTieModal').addEventListener('click', function (e) { if (e.target === this) closeLegacyTieModal(); });
+  $('shareModalClose').addEventListener('click', closeShareModal);
+  $('shareModalCloseBtn').addEventListener('click', closeShareModal);
+  $('shareModal').addEventListener('click', function (e) {
+    if (e.target === this) closeShareModal();
+  });
+
   /* ===== Detail Event Binding ===== */
   function bindDetailEvents() {
     var settingsSave = $('projectSettingsSave');
@@ -816,6 +959,7 @@
           visibility: $('projectVisibility').value,
           eligibility_mode: $('projectEligibility').value,
           result_visibility: $('projectResultVisibility').value,
+          guest_vote: $('projectGuestVote') && $('projectGuestVote').checked ? 1 : 0,
           description: $('projectDescription').value.trim(),
           config: state.selected.config || {}
         };
@@ -834,7 +978,14 @@
       btn.addEventListener('click', function () {
         var action = this.dataset.action;
         if (!state.selected) return;
+        if (action === 'share') { openShareModal(this); return; }
         if (action === 'delete' && !confirm('确定删除该企划及全部数据？此操作不可撤销。')) return;
+        if (action === 'publish') {
+          var stageTotal = (state.stages || []).length;
+          if (!stageTotal) { toast('请先配置赛程阶段再发布'); return; }
+          var stageOpen = (state.stages || []).filter(function (s) { return s.status === 'open'; }).length;
+          if (!confirm('确认发布该企划？共 ' + stageTotal + ' 个阶段（开放中 ' + stageOpen + '）。发布后用户即可访问。')) return;
+        }
         var restore = setButtonBusy(this, action === 'delete' ? '删除中...' : '处理中...');
         post('../api/vote_projects.php?action=' + action + '&id=' + state.selected.id, {}).then(function (data) {
           toast(data.success ? '操作完成' : (data.message || '操作失败'));
@@ -854,13 +1005,17 @@
       btn.addEventListener('click', function () {
         var action = this.dataset.stageAction;
         var id = this.dataset.stageId;
+        if (action === 'resolve_tie') { openLegacyTieModal(id); return; }
         var restore = setButtonBusy(this, action === 'settle' ? '结算中...' : '处理中...');
         post('../api/vote_stages.php?action=' + action + '&id=' + encodeURIComponent(id), {}).then(function (data) {
           var msg = data.success ? '阶段已更新' : (data.message || '操作失败');
           if (data.success && action === 'open' && data.seeded_count != null) msg += ' · 候选 ' + Number(data.seeded_count);
           if (data.success && action === 'settle' && data.advanced_count != null) msg += ' · 晋级 ' + Number(data.advanced_count);
+          if (data.success && (data.status === 'reviewing' || (data.config && data.config.tie_break))) msg = '已结算：存在同分，请对该阶段完成裁定';
           toast(msg);
           if (state.selected) selectProject(state.selected.id);
+        }).catch(function () {
+          toast('操作失败，请重试');
         }).finally(function () {
           restore();
         });
@@ -1110,6 +1265,12 @@
     }
     if (e.key === 'Escape' && $('tieModal').style.display === 'flex') {
       closeTieModal();
+    }
+    if (e.key === 'Escape' && $('shareModal').style.display === 'flex') {
+      closeShareModal();
+    }
+    if (e.key === 'Escape' && $('legacyTieModal').style.display === 'flex') {
+      closeLegacyTieModal();
     }
   });
 
@@ -1433,6 +1594,9 @@
 
   function renderStageActions(stage) {
     if (!stage) return '';
+    if (stage.stage_type === 'nomination') {
+      return '<span class="stage-actions"><button class="stage-btn primary" data-rebuild-flow>生成海选池并打开海选</button></span>';
+    }
     var flowPool = getFlowPoolForStage(stage);
     if (flowPool) {
       var buttons = [];
@@ -1760,12 +1924,18 @@
       btn.addEventListener('click', function () {
         var action = this.dataset.workbenchStageAction;
         var id = this.dataset.stageId;
+        var restoreWb = setButtonBusy(this, '处理中...');
         post('../api/vote_stages.php?action=' + action + '&id=' + encodeURIComponent(id), {}).then(function (data) {
           var msg = data.success ? '阶段已更新' : (data.message || '操作失败');
           if (data.success && action === 'open' && data.seeded_count != null) msg += ' · 候选 ' + Number(data.seeded_count);
           if (data.success && action === 'settle' && data.advanced_count != null) msg += ' · 晋级 ' + Number(data.advanced_count);
+          if (data.success && data.status === 'reviewing') msg = '已结算：存在同分，请完成裁定';
           toast(msg);
           if (state.selected) selectProject(state.selected.id);
+        }).catch(function () {
+          toast('操作失败，请重试');
+        }).finally(function () {
+          restoreWb();
         });
       });
     });

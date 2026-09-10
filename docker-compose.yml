@@ -13,6 +13,13 @@ services:
       - "127.0.0.1:8080:80"    # 仅本地监听，由宝塔 Nginx 反代
     environment:
       - TZ=Asia/Shanghai
+      - PICUI_TOKEN=${PICUI_TOKEN:-}
+      - PICUI_API_URL=${PICUI_API_URL:-https://picui.cn/api/v1}
+      - PICUI_ENABLED=${PICUI_ENABLED:-false}
+      - PICUI_PERMISSION=${PICUI_PERMISSION:-1}
+      - PICUI_TIMEOUT=${PICUI_TIMEOUT:-30}
+      - PICUI_FALLBACK_LOCAL=${PICUI_FALLBACK_LOCAL:-true}
+      - PICUI_ALLOWED_HOSTS=${PICUI_ALLOWED_HOSTS:-picui.cn,www.picui.cn}
     volumes:
       # 配置文件（每个服务器不同，不打包进镜像）
       - ./config.php:/var/www/html/config.php:ro

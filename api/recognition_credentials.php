@@ -256,8 +256,8 @@ switch ($action) {
             recogRespond(['success' => false, 'message' => '权限不足'], 403);
         }
         $credentials = recogFetchCredentials('c.issuer_club_id = ? AND c.issuer_country = ?', [$clubId, $country]);
-        // 管理视图补充持有人用户名
-        $userIds = array_unique(array_map(fn($c) => (int)$c['holder_user_id'], $credentials));
+        // 管理视图补充持有人用户名（array_unique 保留原键，需 array_values 重排供 PDO 占位绑定）
+        $userIds = array_values(array_unique(array_map(fn($c) => (int)$c['holder_user_id'], $credentials)));
         $names = [];
         if ($userIds) {
             $placeholders = implode(',', array_fill(0, count($userIds), '?'));

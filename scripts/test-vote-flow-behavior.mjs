@@ -8,7 +8,7 @@ require_once getcwd() . '/includes/vote_projects.php';
 
 $db = getDB();
 $db->exec("CREATE TABLE vote_projects (id INTEGER PRIMARY KEY, project_type TEXT, club_id INTEGER, country TEXT, title TEXT, year_label TEXT, status TEXT, eligibility_mode TEXT DEFAULT 'public', visibility TEXT DEFAULT 'public', ended_at TEXT, updated_at TEXT)");
-$db->exec("CREATE TABLE vote_stages (id INTEGER PRIMARY KEY, project_id INTEGER, stage_type TEXT, title TEXT, status TEXT, sort_order INTEGER, vote_mode TEXT, group_count INTEGER, max_select INTEGER, advance_count INTEGER, score_min INTEGER DEFAULT 1, score_max INTEGER DEFAULT 10, config_json TEXT DEFAULT '{}', updated_at TEXT)");
+$db->exec("CREATE TABLE vote_stages (id INTEGER PRIMARY KEY, project_id INTEGER, stage_type TEXT, title TEXT, status TEXT, sort_order INTEGER, starts_at TEXT, vote_mode TEXT, group_count INTEGER, max_select INTEGER, advance_count INTEGER, score_min INTEGER DEFAULT 1, score_max INTEGER DEFAULT 10, config_json TEXT DEFAULT '{}', updated_at TEXT)");
 $db->exec("CREATE TABLE vote_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER, source_type TEXT, source_id TEXT, title TEXT, title_cn TEXT, subtitle TEXT, image_url TEXT, summary TEXT, external_url TEXT, identity_key TEXT, entry_status TEXT, reviewed_at TEXT, created_by INTEGER)");
 $db->exec("CREATE TABLE vote_flow_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER, version_no INTEGER, status TEXT, created_by INTEGER, snapshot_json TEXT, archived_at TEXT)");
 $db->exec("CREATE TABLE vote_flow_pools (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER, project_id INTEGER, stage_id INTEGER, stage_type TEXT, title TEXT, status TEXT, vote_mode TEXT, group_count INTEGER, max_select INTEGER, advance_count INTEGER, config_json TEXT, opened_at TEXT, settled_at TEXT)");
@@ -69,6 +69,7 @@ $finalRanks = $db->query("SELECT rank_no FROM vote_flow_results WHERE pool_id = 
 $db->exec("INSERT INTO vote_projects (id, project_type, club_id, country, title, year_label, status) VALUES (5, 'moe', 1, 'china', 'moe qualifier low', '2026', 'running')");
 $db->exec("INSERT INTO vote_stages (id, project_id, stage_type, title, status, sort_order, vote_mode, group_count, max_select, advance_count, config_json) VALUES (41, 5, 'nomination', '提名', 'open', 1, 'nomination', 1, 1, 0, '{}')");
 $db->exec("INSERT INTO vote_stages (id, project_id, stage_type, title, status, sort_order, vote_mode, group_count, max_select, advance_count, config_json) VALUES (42, 5, 'qualifier', '海选', 'pending', 2, 'multi_select', 2, 8, 32, '{}')");
+$db->prepare("UPDATE vote_stages SET starts_at = ? WHERE id = ?")->execute(['2099-01-01 00:00:00', 42]);
 for ($i = 1; $i <= 5; $i++) {
     $db->prepare("INSERT INTO vote_entries (project_id, source_type, source_id, title, identity_key, entry_status) VALUES (5, 'manual', ?, ?, ?, 'approved')")
         ->execute([$i, 'moe候选'.$i, 'moe_low:'.$i]);
@@ -118,6 +119,7 @@ $out = [
     'forced_stage_entries' => count(voteFlowPoolEntries($db, (int)$forced['pool']['id'])),
     'forced_pool_status' => $db->query("SELECT status FROM vote_flow_pools WHERE id = ".(int)$forced['pool']['id'])->fetchColumn(),
     'qualifier_status' => $db->query("SELECT status FROM vote_stages WHERE id = 12")->fetchColumn(),
+    'qualifier_start_at' => $db->query("SELECT starts_at FROM vote_stages WHERE id = 12")->fetchColumn(),
     'settled_advanced_count' => (int)$settled['advanced_count'],
     'group_advance_rows' => array_map('intval', $groupAdvanceRows),
     'moe_final_seeded' => (int)$finalPoolResult['seeded_count'],
@@ -126,6 +128,7 @@ $out = [
     'moe_low_first_seeded' => (int)$moeLowFirst['seeded_count'],
     'moe_low_second_seeded' => (int)$moeLowSecond['seeded_count'],
     'moe_low_qualifier_status' => (string)$moeLowQualifierStatus,
+    'moe_low_qualifier_start_at' => $db->query("SELECT starts_at FROM vote_stages WHERE id = 42")->fetchColumn(),
     'moe_low_nomination_status' => (string)$moeLowNominationStatus,
     'score_order' => $scoreOrder,
     'score_avgs' => $scoreAvgs,
@@ -154,6 +157,7 @@ assert.equal(data.forced_removed_entry_count, 0, 'removed nomination should not 
 assert.equal(data.forced_stage_entries, 5, 'flow pool reader should return rebuilt qualifier entries');
 assert.equal(data.forced_pool_status, 'settled', 'rebuilt qualifier pool should settle after vote counting');
 assert.equal(data.qualifier_status, 'settled', 'qualifier stage should settle after vote counting');
+assert.ok(data.qualifier_start_at, 'automatically opened qualifier stage should record its actual start time');
 assert.equal(data.settled_advanced_count, 4, 'two-group qualifier should advance the configured total');
 assert.deepEqual(data.group_advance_rows, { G1: 2, G2: 2 }, 'two-group qualifier should advance an equal count per group');
 assert.equal(data.moe_final_seeded, 4, 'moe final pool should include champion and third-place candidates');
@@ -162,6 +166,7 @@ assert.deepEqual(data.moe_final_ranks, [1, 2, 3, 4], 'moe final should settle ch
 assert.equal(data.moe_low_first_seeded, 5, 'moe qualifier with default 32 advance count should seed all 5 nominations');
 assert.equal(data.moe_low_second_seeded, 6, 'moe qualifier should re-seed with the new nomination when no votes exist');
 assert.equal(data.moe_low_qualifier_status, 'open', 'moe qualifier stage should be open after rebuild');
+assert.equal(data.moe_low_qualifier_start_at, '2099-01-01 00:00:00', 'a manually scheduled stage start should not be overwritten when the stage opens');
 assert.equal(data.moe_low_nomination_status, 'locked', 'moe nomination stage should be locked after rebuild');
 assert.deepEqual(data.score_avgs, [10, 9, 8], 'score stages should rank by average score before vote count');
 assert.equal(data.score_advanced_count, 2, 'score stages should advance the configured top count');

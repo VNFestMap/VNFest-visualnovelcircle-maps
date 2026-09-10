@@ -60,6 +60,12 @@ async function createRuntime({ href = 'https://example.test/index.html', languag
 }
 
 {
+  const { runtime, documentElement } = await createRuntime({ languages: ['zh-CN', 'ja-JP', 'en-US'] });
+  assert.equal(runtime.getLanguage(), 'zh', 'secondary Japanese browser preferences must not override the primary Chinese preference');
+  assert.equal(documentElement.lang, 'zh-CN');
+}
+
+{
   const { runtime, documentElement } = await createRuntime({ languages: ['ja-JP', 'en-US'] });
   assert.equal(runtime.getLanguage(), 'ja');
   assert.equal(documentElement.lang, 'ja');

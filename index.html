@@ -103,13 +103,13 @@
     
     <!-- 预加载关键资源 -->
     <link rel="preload" href="https://cdn.jsdmirror.com/npm/d3@7.9.0/dist/d3.min.js" as="script" fetchpriority="high" />
-    <link rel="preload" href="./css/styles.css?v=20260827-mobile-nolist-v1" as="style" />
+    <link rel="preload" href="./css/styles.css?v=20260830-intro-polish-v3" as="style" />
     <link rel="preload" href="./css/theme-tokens.css?v=20260702-theme" as="style" />
     
     <!-- 字体 -->
     
     <!-- 样式表 -->
-    <link rel="stylesheet" href="./css/styles.css?v=20260827-mobile-nolist-v1" />
+    <link rel="stylesheet" href="./css/styles.css?v=20260830-intro-polish-v3" />
     <link rel="stylesheet" href="./css/theme-tokens.css?v=20260702-theme" />
     <link rel="stylesheet" href="./css/auth-shared.css?v=20260803-auth" />
     <style>
@@ -242,7 +242,6 @@
         background: var(--md-surface, #fff) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
-        border-top: 3px solid var(--md-primary, #9b59b6) !important;
     }
     .notif-center-header {
         padding: 14px 20px;
@@ -552,8 +551,6 @@
         font-size: 10px;
     }
     .notif-center-list-pane .notif-item:not(.read) {
-        border-left: 3px solid var(--md-primary, #9b59b6);
-        padding-left: 11px;
     }
     .notif-center-list-pane .notif-item:not(.read) .notif-title {
         color: var(--md-on-surface);
@@ -598,7 +595,6 @@
             height: 85vh !important;
             max-height: calc(100vh - 32px) !important;
             border-radius: 16px !important;
-            border-top: 3px solid var(--md-primary, #9b59b6) !important;
         }
         /* 紧凑 header */
         .notif-center-header {
@@ -684,7 +680,398 @@
             font-size: 11px;
         }
     }
+
+    /* ===== 主站通知中心视觉收敛 =====
+       用状态、注释和语义图标建立层级，避免用一条彩色边线强行框住内容。 */
+    .notif-center-modal {
+        width: min(980px, calc(100vw - 40px)) !important;
+        height: min(760px, calc(100vh - 72px)) !important;
+        max-width: calc(100vw - 40px) !important;
+        max-height: calc(100vh - 40px) !important;
+        border: 1px solid var(--md-outline-variant) !important;
+        border-top: 1px solid var(--md-outline-variant) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 22px 70px var(--md-shadow), 0 4px 18px rgba(0, 0, 0, .08) !important;
+        overflow: hidden;
+    }
+    .notif-center-header {
+        min-height: 56px;
+        padding: 12px 18px !important;
+        border-bottom: 1px solid var(--md-outline-variant);
+    }
+    .notif-center-header h2 {
+        gap: 9px;
+        font-size: 16px !important;
+        line-height: 1.25;
+        color: var(--md-on-surface) !important;
+    }
+    .notif-center-header h2 .vn-icon {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--md-primary);
+        background: var(--md-primary-container);
+        border-radius: 9px;
+    }
+    .notif-center-header h2 .vn-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    .notif-center-toolbar {
+        padding: 7px 14px !important;
+        background: var(--md-surface-container);
+        border-bottom: 1px solid var(--md-outline-variant);
+    }
+    .notif-center-toolbar .notif-center-tabs {
+        gap: 2px;
+    }
+    .notif-center-toolbar .notif-center-tab {
+        padding: 5px 10px;
+        border-radius: 7px;
+        font-size: 12px;
+    }
+    .notif-center-toolbar .notif-center-tab.active {
+        background: var(--md-primary, #e74c3c);
+        color: #fff;
+    }
+    .notif-center-toolbar .notif-center-tab.active .notif-center-tab-count {
+        font-size: 10px;
+        padding: 0 5px;
+        background: rgba(255, 255, 255, .22);
+    }
+    .notif-center-toolbar .notif-center-batch {
+        gap: 5px;
+    }
+    .notif-center-toolbar .batch-action-btn {
+        padding: 5px 9px;
+        border-radius: 7px;
+        font-size: 11px;
+        color: var(--md-on-surface-variant);
+    }
+    .notif-center-list-pane {
+        width: 344px;
+        min-width: 300px;
+        border-right: 1px solid var(--md-outline-variant);
+        background: var(--md-surface-container);
+    }
+    .notif-center-list-pane .notif-center-list {
+        background: var(--md-surface-container);
+    }
+    .notif-center-list-pane .notif-item {
+        min-height: 82px;
+        padding: 11px 14px !important;
+        gap: 9px;
+        border-bottom: 1px solid var(--md-outline-variant);
+        border-left: 0 !important;
+        background: transparent;
+    }
+    .notif-center-list-pane .notif-item:hover {
+        background: var(--md-overlay-hover, rgba(0, 0, 0, .04));
+    }
+    .notif-center-list-pane .notif-item.active {
+        background: color-mix(in srgb, var(--md-primary) 8%, var(--md-surface));
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-primary) 20%, transparent);
+    }
+    .notif-center-list-pane .notif-item:not(.read) .notif-title {
+        font-weight: 700;
+    }
+    .notif-center-list-pane .notif-item .notif-dot {
+        width: 6px;
+        height: 6px;
+        min-width: 6px;
+        margin-top: 15px;
+        background: var(--md-primary, #e74c3c);
+    }
+    .notif-center-list-pane .notif-item.read .notif-dot {
+        background: transparent;
+    }
+    .notif-item .notif-icon {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+    }
+    .notif-item .notif-icon svg,
+    .notif-detail-view .nd-icon svg {
+        width: 17px;
+        height: 17px;
+    }
+    .notif-item .notif-content {
+        min-width: 0;
+    }
+    .notif-title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+    }
+    .notif-title-row .notif-title {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        line-height: 1.35;
+        margin-bottom: 0;
+    }
+    .notif-title-row .notif-time {
+        font-size: 10px;
+        opacity: .64;
+        margin-left: auto;
+    }
+    .notif-center-list-pane .notif-message,
+    .notif-panel .notif-message {
+        margin-top: 3px;
+        font-size: 11px;
+        line-height: 1.45;
+        -webkit-line-clamp: 2;
+    }
+    .notif-item-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        margin-top: 6px;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .notif-type-label {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        padding: 2px 6px;
+        border: 1px solid currentColor;
+        border-radius: 5px;
+        font-size: 10px;
+        line-height: 1.15;
+        font-weight: 600;
+    }
+    .notif-source-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--md-on-surface-variant);
+        font-size: 10px;
+    }
+    .notif-type-label.notif-tone-announcement,
+    .notif-type-label.notif-tone-system {
+        color: var(--md-primary);
+        background: var(--md-primary-container);
+    }
+    .notif-type-label.notif-tone-approved {
+        color: var(--vn-success, #2d8f63);
+        background: color-mix(in srgb, var(--vn-success, #2d8f63) 12%, transparent);
+    }
+    .notif-type-label.notif-tone-rejected {
+        color: var(--vn-danger, #c73545);
+        background: color-mix(in srgb, var(--vn-danger, #c73545) 10%, transparent);
+    }
+    .notif-type-label.notif-tone-audit {
+        color: var(--vn-warning, #b87d1e);
+        background: color-mix(in srgb, var(--vn-warning, #b87d1e) 12%, transparent);
+    }
+    .notif-type-label.notif-tone-role {
+        color: var(--md-primary);
+        background: color-mix(in srgb, var(--md-primary) 10%, transparent);
+    }
+    .notif-icon.announcement,
+    .notif-icon.system {
+        color: var(--md-primary);
+        background: var(--md-primary-container);
+    }
+    .notif-icon.approved {
+        color: var(--vn-success, #2d8f63);
+        background: color-mix(in srgb, var(--vn-success, #2d8f63) 12%, transparent);
+    }
+    .notif-icon.rejected {
+        color: var(--vn-danger, #c73545);
+        background: color-mix(in srgb, var(--vn-danger, #c73545) 10%, transparent);
+    }
+    .notif-icon.audit {
+        color: var(--vn-warning, #b87d1e);
+        background: color-mix(in srgb, var(--vn-warning, #b87d1e) 12%, transparent);
+    }
+    .notif-icon.role {
+        color: var(--md-primary);
+        background: color-mix(in srgb, var(--md-primary) 10%, transparent);
+    }
+    .notif-center-detail {
+        padding: 28px 32px;
+        background: var(--md-surface);
+    }
+    .notif-center-detail-empty {
+        gap: 10px;
+        color: var(--md-on-surface-variant);
+        font-size: 13px;
+    }
+    .notif-detail-view .nd-header {
+        gap: 14px;
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+    }
+    .notif-detail-view .nd-icon {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 12px;
+        box-shadow: none;
+    }
+    .nd-heading {
+        min-width: 0;
+        flex: 1;
+    }
+    .nd-kicker,
+    .notif-detail-kicker {
+        margin-bottom: 4px;
+        color: var(--md-on-surface-variant);
+        font-size: 11px;
+        line-height: 1.25;
+        font-weight: 600;
+        letter-spacing: .02em;
+    }
+    .notif-detail-view .nd-title {
+        font-size: 18px;
+        line-height: 1.35;
+        text-wrap: pretty;
+    }
+    .notif-detail-view .nd-meta {
+        align-items: center;
+        gap: 8px;
+        margin-top: 7px;
+        font-size: 11px;
+    }
+    .notif-detail-view .nd-meta > span:first-child {
+        padding: 0;
+        background: transparent;
+        color: var(--md-on-surface-variant);
+        font-weight: 400;
+    }
+    .notif-detail-view .nd-meta time {
+        color: var(--md-on-surface-variant);
+    }
+    .nd-status {
+        display: inline-flex;
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-weight: 600;
+    }
+    .nd-status.is-read {
+        color: var(--md-on-surface-variant);
+        background: var(--md-surface-container);
+    }
+    .nd-status.is-unread {
+        color: var(--md-primary);
+        background: var(--md-primary-container);
+    }
+    .notif-detail-view .nd-body {
+        max-width: 720px;
+        font-size: 14px;
+        line-height: 1.8;
+    }
+    .notif-detail-view .nd-body p {
+        margin: 0 0 14px;
+    }
+    .notif-detail-view .nd-body p:last-child {
+        margin-bottom: 0;
+    }
+    .notif-detail-view .nd-footer {
+        margin-top: auto;
+        padding-top: 18px;
+        gap: 8px;
+    }
+    .notif-detail-view .nd-footer button,
+    .notif-detail-view .nd-footer a {
+        min-height: 34px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        font-size: 12px;
+        line-height: 1.2;
+        text-decoration: none;
+    }
+    .notif-detail-view .nd-btn-ghost {
+        border: 1px solid var(--md-outline-variant);
+        background: transparent;
+    }
+    .notif-detail-view .nd-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        background: var(--md-primary);
+        color: #fff;
+    }
+    .notif-center-footer {
+        padding: 7px 14px;
+    }
+
+    .notif-panel .notif-item {
+        padding: 11px 14px;
+        gap: 9px;
+    }
+    .notif-panel .notif-item .notif-icon {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 9px;
+    }
+    .notif-panel .notif-title-row .notif-title {
+        font-size: 12px;
+    }
+    .notif-panel .notif-item-meta {
+        margin-top: 4px;
+    }
+    .notif-panel .notif-source-label {
+        display: none;
+    }
+
+    @media (max-width: 640px) {
+        .notif-center-overlay {
+            padding: 10px;
+        }
+        .notif-center-modal {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: calc(100vh - 20px) !important;
+            max-height: calc(100vh - 20px) !important;
+            border-radius: 14px !important;
+            border-top: 1px solid var(--md-outline-variant) !important;
+        }
+        .notif-center-header {
+            min-height: 50px;
+            padding: 10px 12px !important;
+        }
+        .notif-center-toolbar {
+            padding: 6px 10px !important;
+        }
+        .notif-center-list-pane {
+            width: 100%;
+            min-width: 0;
+        }
+        .notif-center-list-pane .notif-item {
+            min-height: 76px;
+            padding: 10px 12px !important;
+        }
+        .notif-center-detail {
+            padding: 18px 16px;
+        }
+        .notif-detail-view .nd-title {
+            font-size: 16px;
+        }
+        .notif-detail-view .nd-body {
+            font-size: 14px;
+        }
+        .notif-detail-view .nd-footer {
+            flex-wrap: wrap;
+        }
+        .notif-detail-view .nd-footer button,
+        .notif-detail-view .nd-footer a {
+            min-height: 44px;
+        }
+    }
     </style>
+<script defer src="js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
     <div class="vn-svg-sprite" aria-hidden="true">
@@ -756,7 +1143,7 @@
         <button id="topLoginBtn" class="top-login-btn">登录 / 注册</button>
         <a id="topAccountBtn" class="top-account-btn" href="./user.html" style="display:none;">账号</a>
         <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">管理</a>
-        <a class="top-admin-btn" href="./club_square.html">广场</a>
+        <a class="top-admin-btn" href="./club_square.html">活动</a>
         <div class="display-switch-container">
           <div class="mode-switch" id="modeSwitch" role="tablist" aria-label="视图模式">
             <button class="mode-tab active" data-mode="map" role="tab" aria-selected="true" title="地图模式">
@@ -777,7 +1164,7 @@
         <button class="user-nav-btn" data-action="overseas">海外同好会</button>
         <button class="user-nav-btn" data-action="calendar">活动日历</button>
         <button class="user-nav-btn" data-action="project-hub">企划枢纽</button>
-        <button class="user-nav-btn" data-action="forum">论坛（beta）</button>
+        <button class="user-nav-btn" data-action="forum">专栏</button>
       </div>
     </div>
 
@@ -795,24 +1182,25 @@
         <p class="card-body">数据来自各高校同好会及公开信息，欢迎提交新的同好会资料。</p>
         <div class="intro-links">
           <div class="submit-buttons">
-            <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">开源仓库</a>
-            <button class="submit-btn" id="submitClubBtnDrawer" type="button">提交同好会信息</button>
+            <button class="submit-btn" id="submitClubBtnDrawer" type="button"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-pen"></use></svg></span> 提交同好会信息</button>
             <button class="submit-btn" id="submitEventBtnDrawer" type="button">企划枢纽</button>
             <button class="submit-btn" id="submitPublicationBtnDrawer" type="button" style="display:none;">企划枢纽</button>
             <button class="submit-btn" id="submitGalonlyBtnDrawer" type="button">GalOnly 高校专属通道</button>
+            <div class="link-btn-grid">
+              <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-box"></use></svg></span> 开源仓库</a>
+              <a class="submit-btn" href="./wiki/index.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-book"></use></svg></span> VNFest WIKI</a>
+              <a class="submit-btn link-btn-full" href="./feedback.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-megaphone"></use></svg></span> Bug 反馈与功能建议</a>
+            </div>
           </div>
-          <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-            基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
-          </p>
-          <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-            <a href="./wiki/index.html">VNFest WIKI</a> · <a href="./feedback.html">Bug 反馈与功能建议</a>
-          </p>
-          <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-            <span style="opacity:0.7;">友情链接：</span><a href="https://www.cngal.org/" target="_blank" rel="noopener noreferrer">CnGal</a>
-          </p>
-          <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
+          <div class="intro-footnotes">
+            <p class="card-body gpl-text">
+              基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
+            </p>
+            <p class="card-body gpl-text">
+              <span style="opacity:0.7;">友情链接：</span><a href="https://www.cngal.org/" target="_blank" rel="noopener noreferrer">CnGal</a>
+            </p>
             <button class="qq-group-link" onclick="document.getElementById('qqGroupOverlay').style.display='flex';requestAnimationFrame(function(){document.getElementById('qqGroupOverlay').classList.add('visible')});document.getElementById('qqGroupOverlay').setAttribute('aria-hidden','false');">反馈交流群 185057101</button>
-          </p>
+          </div>
         </div>
       </div>
     </div>
@@ -829,9 +1217,6 @@
             <!-- 链接区 -->
             <div class="intro-links">
                 <div class="submit-buttons">
-                    <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer">
-                        <span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-box"></use></svg></span> 开源仓库
-                    </a>
                     <button id="submitClubBtn" class="submit-btn" type="button">
                         <span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-pen"></use></svg></span> 提交同好会信息
                     </button>
@@ -844,19 +1229,21 @@
                     <button id="submitGalonlyBtn" class="submit-btn" type="button">
                         GalOnly 高校专属通道
                     </button>
+                    <div class="link-btn-grid">
+                        <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-box"></use></svg></span> 开源仓库</a>
+                        <a class="submit-btn" href="./wiki/index.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-book"></use></svg></span> VNFest WIKI</a>
+                        <a class="submit-btn link-btn-full" href="./feedback.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-megaphone"></use></svg></span> Bug 反馈与功能建议</a>
+                    </div>
                 </div>
-                <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-                    基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
-                </p>
-                <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-                    <a href="./wiki/index.html">VNFest WIKI</a> · <a href="./feedback.html">Bug 反馈与功能建议</a>
-                </p>
-                <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
-                    <span style="opacity:0.7;">友情链接：</span><a href="https://www.cngal.org/" target="_blank" rel="noopener noreferrer">CnGal</a>
-                </p>
-                <p class="card-body gpl-text" style="margin-top: 6px; font-size: 10px; text-align: left;">
+                <div class="intro-footnotes">
+                    <p class="card-body gpl-text">
+                        基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a>
+                    </p>
+                    <p class="card-body gpl-text">
+                        <span style="opacity:0.7;">友情链接：</span><a href="https://www.cngal.org/" target="_blank" rel="noopener noreferrer">CnGal</a>
+                    </p>
                     <button id="qqGroupBtn" class="qq-group-link" type="button">反馈交流群 185057101</button>
-                </p>
+                </div>
             </div>
         </section>
 
@@ -927,7 +1314,7 @@
                   <button id="listLoginBtn" class="top-login-btn">登录 / 注册</button>
                   <a id="listAccountBtn" class="top-account-btn" href="./user.html" style="display:none;">账号</a>
                   <a id="listAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">管理</a>
-                  <a class="top-admin-btn" href="./club_square.html">广场</a>
+                  <a class="top-admin-btn" href="./club_square.html">活动</a>
                 </div>
                 <button id="listMenuBtn" class="list-menu-btn" type="button" aria-label="菜单"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-menu"></use></svg></span></button>
                 <div class="display-switch-container">
@@ -943,7 +1330,7 @@
                 <button class="user-nav-btn" data-action="overseas">海外同好会</button>
                 <button class="user-nav-btn" data-action="calendar">活动日历</button>
                 <button class="user-nav-btn" data-action="project-hub">企划枢纽</button>
-                <button class="user-nav-btn" data-action="forum">论坛（beta）</button>
+                <button class="user-nav-btn" data-action="forum">专栏</button>
               </div>
             </div>
 
@@ -964,10 +1351,13 @@
                       <button id="listSubmitEventBtn" class="submit-btn" type="button">企划枢纽</button>
                       <button id="listSubmitPublicationBtn" class="submit-btn" type="button" style="display:none;">企划枢纽</button>
                       <button id="listSubmitGalonlyBtn" class="submit-btn" type="button">GalOnly 高校专属通道</button>
-                      <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-box"></use></svg></span> 开源仓库</a>
+                      <div class="link-btn-grid">
+                        <a class="submit-btn" href="https://github.com/VNFestMap/china-visualnovelcircle-maps" target="_blank" rel="noopener noreferrer"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-box"></use></svg></span> 开源仓库</a>
+                        <a class="submit-btn" href="./wiki/index.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-book"></use></svg></span> VNFest WIKI</a>
+                        <a class="submit-btn link-btn-full" href="./feedback.html"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-megaphone"></use></svg></span> Bug 反馈与功能建议</a>
+                      </div>
                     </div>
                     <p class="list-intro-gpl">基于 <a href="https://github.com/HELPMEEADICE/china-bandori-maps" target="_blank">china-bandori-maps</a> 二次开发，遵循 <a href="./LICENSE" target="_blank">GPLv3</a></p>
-                    <p class="list-intro-gpl"><a href="./wiki/index.html">VNFest WIKI</a> · <a href="./feedback.html">Bug 反馈与功能建议</a></p>
                   </div>
                 </div>
 
@@ -1580,6 +1970,12 @@
                                 <button id="accDiscordBindBtn" class="btn-small">绑定</button>
                                 <button id="accDiscordUnbindBtn" class="btn-small btn-danger" style="display: none;">解绑</button>
                             </div>
+                            <div class="settings-row">
+                                <span class="settings-label">Bangumi</span>
+                                <span id="accBangumiStatus" class="social-bind-status unbound" title="未绑定">未绑定</span>
+                                <button id="accBangumiBindBtn" class="btn-small">绑定</button>
+                                <button id="accBangumiUnbindBtn" class="btn-small btn-danger" style="display: none;">解绑</button>
+                            </div>
                         </div>
 
                         <!-- 同好会管理 -->
@@ -1905,7 +2301,7 @@
 
     <!-- 页脚 -->
     <footer id="siteFooter">
-        <a href="#" target="_blank">Visual Novel Festival</a>
+        <a href="https://icp.gov.moe/?keyword=20268421" target="_blank" rel="noopener noreferrer">萌ICP备20268421号</a>
     </footer>
 
     <!-- 脚本文件 -->
@@ -1934,32 +2330,55 @@
 
         function loadScript(entry) {
             return new Promise(function(resolve, reject) {
-                var script = document.createElement('script');
                 var src = typeof entry === 'string' ? entry : entry.src;
                 var attrs = typeof entry === 'string' ? null : entry.attrs;
-                var settled = false;
-                var timer = window.setTimeout(function() {
-                    finish(false, new Error('Timed out loading ' + src));
-                }, 8000);
+                var retryable = /(?:^|\/)project-hub\.js(?:\?|$)/.test(src);
+                var maxAttempts = retryable ? 2 : 1;
+                var attempts = 0;
 
-                function finish(ok, value) {
-                    if (settled) return;
-                    settled = true;
-                    window.clearTimeout(timer);
-                    if (ok) resolve(value);
-                    else reject(value);
+                function withRetryToken(url) {
+                    var separator = url.indexOf('?') === -1 ? '?' : '&';
+                    return url + separator + '_vnfest_retry=' + Date.now();
                 }
 
-                script.src = src;
-                script.async = false;
-                if (attrs) {
-                    Object.keys(attrs).forEach(function(name) {
-                        script.setAttribute(name, attrs[name]);
-                    });
+                function loadAttempt(attemptSrc) {
+                    var script = document.createElement('script');
+                    var settled = false;
+                    var timer = window.setTimeout(function() {
+                        finish(false, new Error('Timed out loading ' + src));
+                    }, 8000);
+
+                    attempts += 1;
+
+                    function finish(ok, value) {
+                        if (settled) return;
+                        settled = true;
+                        window.clearTimeout(timer);
+                        if (ok) {
+                            resolve(value);
+                            return;
+                        }
+                        if (attempts < maxAttempts) {
+                            console.warn('Retrying map dependency:', src);
+                            loadAttempt(withRetryToken(src));
+                            return;
+                        }
+                        reject(value);
+                    }
+
+                    script.src = attemptSrc;
+                    script.async = false;
+                    if (attrs) {
+                        Object.keys(attrs).forEach(function(name) {
+                            script.setAttribute(name, attrs[name]);
+                        });
+                    }
+                    script.onload = function() { finish(true, attemptSrc); };
+                    script.onerror = function() { finish(false, new Error('Failed to load ' + src)); };
+                    document.head.appendChild(script);
                 }
-                script.onload = function() { finish(true, src); };
-                script.onerror = function() { finish(false, new Error('Failed to load ' + src)); };
-                document.head.appendChild(script);
+
+                loadAttempt(src);
             });
         }
 

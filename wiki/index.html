@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <meta charset="UTF-8">
   <script src="../js/language-runtime.js?v=20260813-language"></script>
   <script src="../js/language-catalog.js?v=20260813-language"></script>
   <script src="../js/language-static-ja.js?v=20260813-account-language"></script>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VNFest WIKI</title>
   <link rel="stylesheet" href="../css/site-header.css?v=20260827-site-header" />
   <script defer src="../js/site-header.js?v=20260827-site-header"></script>
-  <link rel="stylesheet" href="./wiki.css">
+  <link rel="stylesheet" href="./wiki.css?v=20260830-wiki-index-layout">
+<script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body class="wiki-index-body">
   <header class="wiki-header wiki-site-header vn-topbar" data-page-header data-header-manual>
@@ -26,30 +27,36 @@
     </nav>
   </header>
 
-  <main class="wiki-index-page wiki-encyclopedia-layout">
+  <main class="wiki-index-page wiki-encyclopedia-layout wiki-encyclopedia-index">
     <aside class="wiki-index-sidebar" aria-label="站点目录">
       <div class="wiki-sidebar-card">
         <p class="wiki-index-kicker">VNFest WIKI</p>
-        <h1>高校同好会百科</h1>
+        <p class="wiki-sidebar-title">高校同好会百科</p>
         <p>集中整理高校视觉小说、Galgame 与相关同好会资料。</p>
       </div>
-      <nav class="wiki-nav wiki-index-toc" aria-label="首页目录">
-        <a href="#recent-updates">最近更新</a>
-        <a href="#country-china">中国</a>
-        <a href="#country-japan">日本</a>
-        <a href="#all-pages">全部页面</a>
-        <a href="#wiki-library">文档库</a>
-        <a href="#publication-library">资料公开库</a>
-        <a href="#daily-report">每日日报</a>
-        <a href="#maintenance">维护中心</a>
-      </nav>
+      <details class="wiki-index-toc-wrap" id="wikiTocWrap" open>
+        <summary class="wiki-index-toc-summary">
+          <span>页面目录</span>
+          <span class="wiki-index-toc-caret" aria-hidden="true">▾</span>
+        </summary>
+        <nav class="wiki-nav wiki-index-toc" aria-label="首页目录">
+          <a href="#publication-library">资料公开库</a>
+          <a href="#daily-report">每日日报</a>
+          <a href="#recent-updates">最近更新</a>
+          <a href="#country-china">中国</a>
+          <a href="#country-japan">日本</a>
+          <a href="#all-pages">全部页面</a>
+          <a href="#wiki-library">文档库</a>
+          <a href="#maintenance">维护中心</a>
+        </nav>
+      </details>
     </aside>
 
     <section class="wiki-index-main">
       <section class="wiki-index-hero wiki-article-shell">
         <div>
           <p class="wiki-index-kicker">百科索引</p>
-          <h2>VNFest WIKI 首页</h2>
+          <h1>VNFest WIKI 首页</h1>
           <p>按地区、学校、文档和维护状态浏览同好会 Wiki。新增页面后，首页会从 JSON 索引自动同步。</p>
         </div>
         <div class="wiki-index-hero-actions">
@@ -67,46 +74,45 @@
       <section class="wiki-index-tools wiki-article-shell" aria-label="检索">
         <label class="wiki-search-label" for="wikiIndexSearch">搜索条目</label>
         <input id="wikiIndexSearch" type="search" placeholder="搜索学校、同好会、地区或文档" autocomplete="off">
+        <p id="searchStatus" hidden>匹配到 0 个条目</p>
         <p>搜索会同时过滤地区索引、全部页面和文档库。地图主页中的条目仍是资料来源，Wiki 页面用于整理可公开阅读的长文本资料。</p>
+        <div class="wiki-empty-search" id="emptySearch">没有找到匹配的结果，试试其他关键词。</div>
       </section>
 
-      <section class="wiki-index-notice wiki-article-shell">
-        <strong>索引规则</strong>
-        <span>本页从 wiki/index.json、wiki/library/index.json、wiki/feature-slots.json 读取数据后渲染；如果读取失败，会保留静态兜底索引。</span>
-      </section>
+      <div class="wiki-index-featured">
+        <section class="wiki-index-country wiki-article-shell" id="publication-library">
+          <div class="wiki-index-section-heading">
+            <h2>资料公开库</h2>
+            <span>3D 翻页预览</span>
+          </div>
+          <div class="wiki-entry-list">
+            <article class="wiki-library-card wiki-entry" data-search="刊物 资料库 同好会 3d 翻页 预览 阅读 pdf">
+              <div class="wiki-index-card-meta">资料库补充 · 即时发布</div>
+              <h3><a href="./publications.html">资料公开库</a></h3>
+              <p>为同好会提供 PDF 或页面图片上传、实时生成 3D 翻页阅读入口的公开资料库。</p>
+            </article>
+          </div>
+        </section>
 
-      <section class="wiki-index-country wiki-article-shell" id="publication-library">
-        <div class="wiki-index-section-heading">
-          <h2>资料公开库</h2>
-          <span>3D 翻页预览</span>
-        </div>
-        <div class="wiki-entry-list">
-          <article class="wiki-library-card wiki-entry" data-search="刊物 资料库 同好会 3d 翻页 预览 阅读 pdf">
-            <div class="wiki-index-card-meta">资料库补充 · 即时发布</div>
-            <h3><a href="./publications.html">资料公开库</a></h3>
-            <p>为同好会提供 PDF 或页面图片上传、实时生成 3D 翻页阅读入口的公开资料库。</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="wiki-index-country wiki-article-shell" id="daily-report">
-        <div class="wiki-index-section-heading">
-          <h2>每日日报</h2>
-          <span>Notion 自动抓取</span>
-        </div>
-        <div class="wiki-entry-list">
-          <article class="wiki-library-card wiki-entry" data-search="每日日报 每日简报 早报 galgame 行业 新闻 情报 notion 往期 查询">
-            <div class="wiki-index-card-meta">情报速览 · 每天一期，三分钟读完</div>
-            <h3><a href="./daily/index.html">每日日报</a></h3>
-            <p>每天从 Notion 信息台抓取的日本 Galgame 行业简报，支持本期关键词搜索，并可查询、跳转往期各天日报。</p>
-            <p style="margin-top:8px">
-              <a class="wiki-text-link" href="./daily/index.html">进入今日日报 →</a>
-              &nbsp;·&nbsp;
-              <a class="wiki-text-link" href="./daily/archive.html">查询往期日报 →</a>
-            </p>
-          </article>
-        </div>
-      </section>
+        <section class="wiki-index-country wiki-article-shell" id="daily-report">
+          <div class="wiki-index-section-heading">
+            <h2>每日日报</h2>
+            <span>Notion 自动抓取</span>
+          </div>
+          <div class="wiki-entry-list">
+            <article class="wiki-library-card wiki-entry" data-search="每日日报 每日简报 早报 galgame 行业 新闻 情报 notion 往期 查询">
+              <div class="wiki-index-card-meta">情报速览 · 每天一期，三分钟读完</div>
+              <h3><a href="./daily/index.html">每日日报</a></h3>
+              <p>每天从 Notion 信息台抓取的日本 Galgame 行业简报，支持本期关键词搜索，并可查询、跳转往期各天日报。</p>
+              <p class="wiki-entry-links">
+                <a class="wiki-text-link" href="./daily/index.html">进入今日日报 →</a>
+                &nbsp;·&nbsp;
+                <a class="wiki-text-link" href="./daily/archive.html">查询往期日报 →</a>
+              </p>
+            </article>
+          </div>
+        </section>
+      </div>
 
       <section class="wiki-index-country wiki-article-shell" id="recent-updates">
         <div class="wiki-index-section-heading">
@@ -187,7 +193,7 @@
         </section>
       </div>
 
-      <div class="wiki-empty-search" id="emptySearch">没有找到匹配的结果，试试其他关键词。</div>
+      <p class="wiki-index-finenote"><strong>索引规则</strong>：本页从 wiki/index.json、wiki/library/index.json、wiki/feature-slots.json 读取数据后渲染；如果读取失败，会保留静态兜底索引。</p>
     </section>
 
     <aside class="wiki-index-aside" aria-label="维护与编写">
@@ -219,6 +225,7 @@
     var elStatExt = document.getElementById('statExt');
     var elExtensions = document.getElementById('extensionsGrid');
     var elEmpty = document.getElementById('emptySearch');
+    var elSearchStatus = document.getElementById('searchStatus');
     var elRecent = document.getElementById('recentUpdates');
     var elAllPages = document.getElementById('allPagesList');
     var elAllPagesCount = document.getElementById('allPagesCount');
@@ -228,6 +235,15 @@
       ? { label: '利用ガイド', description: 'メインサイト、サークル管理、MakoQuiz、AstrBot の操作ガイドを確認' }
       : { label: '使用文档', description: '查看主站、社团管理、MakoQuiz 与 AstrBot 的操作指南' };
     document.documentElement.lang = currentWikiLang === 'ja' ? 'ja' : 'zh-CN';
+    var mobileMedia = window.matchMedia ? window.matchMedia('(max-width: 760px)') : null;
+
+    function syncDisclosures() {
+      var open = !(mobileMedia && mobileMedia.matches);
+      ['wikiTocWrap', 'wikiReservedDetails'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.open = open;
+      });
+    }
 
     function esc(s) {
       var d = document.createElement('div');
@@ -276,10 +292,14 @@
 
     function renderExtension(slot) {
       var enabled = slot.status === 'active' && !!slot.url;
-      return '<article class="wiki-extension-card wiki-maintenance-item' + (enabled ? '' : ' is-disabled') +
-        '"><div class="wiki-index-card-meta">' + (enabled ? '已启用' : '预留模块') + ' · ' + esc(slot.key) +
-        '</div><h3>' + esc(slot.title) + '</h3><p>' + esc(slot.description) +
-        '</p><a href="' + esc(slot.url || '#') + '">' + (enabled ? '进入模块' : '等待后续开发') + '</a></article>';
+      if (enabled) {
+        return '<article class="wiki-extension-card wiki-maintenance-item">' +
+          '<div class="wiki-index-card-meta">已启用 · ' + esc(slot.key) + '</div>' +
+          '<h3>' + esc(slot.title) + '</h3><p>' + esc(slot.description) +
+          '</p><a href="' + esc(slot.url) + '">进入模块</a></article>';
+      }
+      return '<div class="wiki-maintenance-reserved" title="' + esc(slot.description || '') + '"><span>' +
+        esc(slot.title) + '</span><span class="wiki-maintenance-reserved-state">预留</span></div>';
     }
 
     function localizedLibraryDoc(doc) {
@@ -365,22 +385,33 @@
       }
 
       if (DATA.features && DATA.features.length) {
-        elExtensions.innerHTML = DATA.features.map(renderExtension).join('');
+        var activeHtml = [];
+        var reservedHtml = [];
+        DATA.features.forEach(function (slot) {
+          if (slot.status === 'active' && slot.url) activeHtml.push(renderExtension(slot));
+          else reservedHtml.push(renderExtension(slot));
+        });
+        elExtensions.innerHTML = activeHtml.join('') +
+          (reservedHtml.length ? '<details class="wiki-maintenance-reserved-details" id="wikiReservedDetails" open>' +
+            '<summary class="wiki-maintenance-reserved-summary"><span>预留模块 · ' + reservedHtml.length + '</span>' +
+            '<span class="wiki-index-toc-caret" aria-hidden="true">▾</span></summary>' +
+            '<div class="wiki-maintenance-reserved-list">' + reservedHtml.join('') + '</div></details>' : '');
         elStatExt.textContent = DATA.features.length + ' 个扩展位';
       } else {
         elExtensions.innerHTML = '<p class="wiki-index-empty">暂无扩展预留。</p>';
         elStatExt.textContent = '0 个扩展位';
       }
+      syncDisclosures();
     }
 
     function onSearch() {
       var keyword = (elSearch.value || '').trim().toLowerCase();
       var searchableCards = document.querySelectorAll('.wiki-index-card, .wiki-library-card');
-      var anyVisible = false;
+      var visibleCount = 0;
       searchableCards.forEach(function (card) {
         var visible = !keyword || (card.getAttribute('data-search') || '').indexOf(keyword) !== -1;
         card.style.display = visible ? '' : 'none';
-        if (visible && card.closest('#wikiCountries, #wikiLibrary, #all-pages')) anyVisible = true;
+        if (visible) visibleCount += 1;
       });
       document.querySelectorAll('.wiki-index-region').forEach(function (region) {
         var hasVisible = Array.prototype.some.call(region.querySelectorAll('.wiki-index-card'), function (card) {
@@ -388,23 +419,27 @@
         });
         region.classList.toggle('is-hidden', !hasVisible);
       });
-      document.querySelectorAll('#wikiCountries .wiki-index-country').forEach(function (country) {
-        var hasVisible = Array.prototype.some.call(country.querySelectorAll('.wiki-index-card'), function (card) {
+      document.querySelectorAll('.wiki-index-main .wiki-article-shell[id]').forEach(function (shell) {
+        if (!shell.querySelector('.wiki-index-card, .wiki-library-card')) return;
+        var hasVisible = Array.prototype.some.call(shell.querySelectorAll('.wiki-index-card, .wiki-library-card'), function (card) {
           return card.style.display !== 'none';
         });
-        country.classList.toggle('is-hidden', !hasVisible);
+        shell.classList.toggle('is-hidden', !!keyword && !hasVisible);
       });
-      if (elLibrary) {
-        var libVisible = Array.prototype.some.call(elLibrary.querySelectorAll('.wiki-library-card'), function (card) {
-          return card.style.display !== 'none';
-        });
-        elLibrary.style.display = (!keyword || libVisible) ? '' : 'none';
+      if (elSearchStatus) {
+        elSearchStatus.hidden = !keyword;
+        if (keyword) elSearchStatus.textContent = '匹配到 ' + visibleCount + ' 个条目';
       }
-      elEmpty.classList.toggle('is-visible', !!keyword && !anyVisible);
+      elEmpty.classList.toggle('is-visible', !!keyword && visibleCount === 0);
     }
 
     function initInteractions() {
       if (elSearch) elSearch.addEventListener('input', onSearch);
+      if (mobileMedia) {
+        if (mobileMedia.addEventListener) mobileMedia.addEventListener('change', syncDisclosures);
+        else if (mobileMedia.addListener) mobileMedia.addListener(syncDisclosures);
+      }
+      syncDisclosures();
       document.querySelectorAll('[data-wiki-guide-link]').forEach(function (link) {
         link.href = './guide/#/platform/getting-started';
       });

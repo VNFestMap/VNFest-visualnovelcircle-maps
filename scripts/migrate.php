@@ -7,7 +7,11 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/moe.php';
 require_once __DIR__ . '/../includes/twelve.php';
+require_once __DIR__ . '/../includes/spy_schema.php';
 require_once __DIR__ . '/../Forum/includes/forum_schema.php';
+require_once __DIR__ . '/../includes/column/schema.php';
+require_once __DIR__ . '/../includes/galonly_application_numbers.php';
+require_once __DIR__ . '/../includes/galonly_merchandise.php';
 
 echo "开始创建数据库表... (驱动: " . (defined('DB_DRIVER') ? DB_DRIVER : 'sqlite') . ")\n";
 
@@ -72,6 +76,49 @@ if ($isMysql) {
     echo "[OK] sessions 表已创建\n";
 
     $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_resumes (
+            user_id        INT PRIMARY KEY,
+            payload        LONGTEXT NOT NULL,
+            schema_version  VARCHAR(20) NOT NULL DEFAULT '1',
+            created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "[OK] galgame_resumes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_memes (
+            user_id        INT PRIMARY KEY,
+            payload        LONGTEXT NOT NULL,
+            schema_version VARCHAR(20) NOT NULL DEFAULT '1',
+            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "[OK] galgame_memes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS bangumi_bindings (
+            id                         INT AUTO_INCREMENT PRIMARY KEY,
+            vnfmap_user_id             INT NOT NULL,
+            bangumi_user_id            BIGINT NOT NULL,
+            bangumi_username           VARCHAR(255) NOT NULL,
+            bangumi_nickname           VARCHAR(255) NOT NULL DEFAULT '',
+            access_token_ciphertext    TEXT NOT NULL,
+            refresh_token_ciphertext   TEXT NOT NULL,
+            token_expires_at           DATETIME NULL,
+            created_at                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_bangumi_vnfmap_user (vnfmap_user_id),
+            UNIQUE KEY uq_bangumi_user (bangumi_user_id),
+            FOREIGN KEY (vnfmap_user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "[OK] bangumi_bindings 表已创建\n";
+
+    $db->exec("
         CREATE TABLE IF NOT EXISTS clubs (
             id            INT AUTO_INCREMENT PRIMARY KEY,
             province      VARCHAR(255) NOT NULL DEFAULT '',
@@ -99,6 +146,47 @@ if ($isMysql) {
     $tryIndex("CREATE INDEX idx_audit_user ON audit_logs(user_id)");
     $tryIndex("CREATE INDEX idx_audit_created ON audit_logs(created_at)");
     echo "[OK] audit_logs 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS analytics_pageviews (
+            id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            event_id          CHAR(36) NOT NULL UNIQUE,
+            visitor_hash      CHAR(64) NOT NULL,
+            page_path         VARCHAR(512) NOT NULL,
+            page_title        VARCHAR(255) NOT NULL DEFAULT '',
+            source_category   VARCHAR(32) NOT NULL DEFAULT 'external',
+            referrer_host     VARCHAR(255) NOT NULL DEFAULT '',
+            device_type       VARCHAR(16) NOT NULL DEFAULT 'unknown',
+            browser_name      VARCHAR(32) NOT NULL DEFAULT 'other',
+            is_authenticated  TINYINT(1) NOT NULL DEFAULT 0,
+            day_key           DATE NOT NULL,
+            created_at        DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_analytics_day ON analytics_pageviews(day_key)");
+    $tryIndex("CREATE INDEX idx_analytics_created ON analytics_pageviews(created_at)");
+    $tryIndex("CREATE INDEX idx_analytics_visitor_day ON analytics_pageviews(visitor_hash, day_key)");
+    $tryIndex("CREATE INDEX idx_analytics_page_day ON analytics_pageviews(page_path(191), day_key)");
+    echo "[OK] analytics_pageviews 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS analytics_historical_pv (
+            id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            day_key           DATE NOT NULL,
+            page_path         VARCHAR(512) NOT NULL,
+            page_title        VARCHAR(255) NOT NULL DEFAULT '',
+            source_category   VARCHAR(32) NOT NULL DEFAULT 'external',
+            referrer_host     VARCHAR(255) NOT NULL DEFAULT '',
+            device_type       VARCHAR(16) NOT NULL DEFAULT 'unknown',
+            browser_name      VARCHAR(32) NOT NULL DEFAULT 'other',
+            pv_count          INT UNSIGNED NOT NULL DEFAULT 0,
+            imported_at       DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE UNIQUE INDEX uq_analytics_historical_dimension ON analytics_historical_pv(day_key, page_path(191), source_category, referrer_host(191), device_type, browser_name)");
+    $tryIndex("CREATE INDEX idx_analytics_historical_day ON analytics_historical_pv(day_key)");
+    $tryIndex("CREATE INDEX idx_analytics_historical_page_day ON analytics_historical_pv(page_path(191), day_key)");
+    echo "[OK] analytics_historical_pv 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS rate_limits (
@@ -148,6 +236,8 @@ if ($isMysql) {
             apply_reason TEXT,
             application_email_enabled TINYINT(1) NOT NULL DEFAULT 1,
             joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at DATETIME NULL,
+            reviewed_by INT NULL,
             left_at  DATETIME,
             UNIQUE(user_id, club_id, country),
             FOREIGN KEY (user_id) REFERENCES users(id)
@@ -155,6 +245,9 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_memberships_user ON club_memberships(user_id)");
     $tryIndex("CREATE INDEX idx_memberships_club ON club_memberships(club_id)");
+    $tryAlter("ALTER TABLE club_memberships ADD COLUMN reviewed_at DATETIME NULL");
+    $tryAlter("ALTER TABLE club_memberships ADD COLUMN reviewed_by INT NULL");
+    $tryIndex("CREATE INDEX idx_memberships_reviewed ON club_memberships(reviewed_at)");
     echo "[OK] club_memberships 表已创建\n";
 
     $db->exec("
@@ -285,6 +378,7 @@ if ($isMysql) {
         CREATE TABLE IF NOT EXISTS galonly_applications (
             id            INT AUTO_INCREMENT PRIMARY KEY,
             event_id      INT NOT NULL,
+            event_number  INT DEFAULT NULL,
             user_id       INT NOT NULL,
             is_joint      TINYINT(1) NOT NULL DEFAULT 0,
             joint_name    VARCHAR(255) NOT NULL DEFAULT '',
@@ -302,6 +396,7 @@ if ($isMysql) {
     $tryIndex("CREATE INDEX idx_galonly_app_event ON galonly_applications(event_id)");
     $tryIndex("CREATE INDEX idx_galonly_app_user ON galonly_applications(user_id)");
     $tryIndex("CREATE INDEX idx_galonly_app_status ON galonly_applications(status)");
+    galonlyEnsureApplicationNumberSchema($db);
     echo "[OK] galonly_applications 表已创建\n";
 
     $db->exec("
@@ -510,7 +605,9 @@ if ($isMysql) {
     // 2026-08 陪审分阶段审核：唯一约束需包含 phase，否则同一陪审无法在两个阶段分别发表意见。
     // 旧库唯一索引名为首列名 application_id（未命名 UNIQUE）；此处 phase 列已确保存在后重建索引。
     $tryAlter("ALTER TABLE galonly_votes DROP INDEX application_id");
-    $tryAlter("ALTER TABLE galonly_votes ADD UNIQUE KEY uk_galonly_votes_app_phase (application_id, auditer_id, phase)");
+    $tryAlter("ALTER TABLE galonly_votes DROP INDEX uk_galonly_votes_app_phase");
+    $tryAlter("ALTER TABLE galonly_votes ADD UNIQUE KEY uk_galonly_votes_app_phase_version (application_id, auditer_id, phase, merchandise_version)");
+    galonlyEnsureMerchandiseSchema($db);
     $db->exec("
         CREATE TABLE IF NOT EXISTS galonly_reviewers (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -589,7 +686,7 @@ if ($isMysql) {
             program_id       INT NOT NULL,
             version_no       VARCHAR(20) NOT NULL,
             status           VARCHAR(20) NOT NULL DEFAULT 'draft',
-            content_snapshot TEXT NOT NULL,
+            content_snapshot MEDIUMTEXT NOT NULL,
             published_by     INT NULL,
             published_at     DATETIME NULL,
             created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -686,7 +783,7 @@ if ($isMysql) {
             user_id            INT NOT NULL,
             status             VARCHAR(20) NOT NULL DEFAULT 'created',
             score              INT NULL,
-            answers            TEXT,
+            answers            MEDIUMTEXT,
             attempt_no         INT NOT NULL DEFAULT 1,
             started_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             finished_at        DATETIME NULL,
@@ -905,6 +1002,44 @@ if ($isMysql) {
     echo "[OK] sessions 表已创建\n";
 
     $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_resumes (
+            user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            payload        TEXT NOT NULL,
+            schema_version  TEXT NOT NULL DEFAULT '1',
+            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    echo "[OK] galgame_resumes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_memes (
+            user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            payload        TEXT NOT NULL,
+            schema_version TEXT NOT NULL DEFAULT '1',
+            created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    echo "[OK] galgame_memes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS bangumi_bindings (
+            id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+            vnfmap_user_id             INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            bangumi_user_id            INTEGER NOT NULL UNIQUE,
+            bangumi_username           TEXT NOT NULL,
+            bangumi_nickname           TEXT NOT NULL DEFAULT '',
+            access_token_ciphertext    TEXT NOT NULL,
+            refresh_token_ciphertext   TEXT NOT NULL,
+            token_expires_at           TEXT,
+            created_at                 TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at                 TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    echo "[OK] bangumi_bindings 表已创建\n";
+
+    $db->exec("
         CREATE TABLE IF NOT EXISTS clubs (
             id            INTEGER PRIMARY KEY,
             province      TEXT NOT NULL DEFAULT '',
@@ -931,6 +1066,47 @@ if ($isMysql) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)");
     echo "[OK] audit_logs 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS analytics_pageviews (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id          TEXT NOT NULL UNIQUE,
+            visitor_hash      TEXT NOT NULL,
+            page_path         TEXT NOT NULL,
+            page_title        TEXT NOT NULL DEFAULT '',
+            source_category   TEXT NOT NULL DEFAULT 'external',
+            referrer_host     TEXT NOT NULL DEFAULT '',
+            device_type       TEXT NOT NULL DEFAULT 'unknown',
+            browser_name      TEXT NOT NULL DEFAULT 'other',
+            is_authenticated  INTEGER NOT NULL DEFAULT 0,
+            day_key           TEXT NOT NULL,
+            created_at        TEXT NOT NULL
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_day ON analytics_pageviews(day_key)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics_pageviews(created_at)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_visitor_day ON analytics_pageviews(visitor_hash, day_key)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_page_day ON analytics_pageviews(page_path, day_key)");
+    echo "[OK] analytics_pageviews 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS analytics_historical_pv (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            day_key           TEXT NOT NULL,
+            page_path         TEXT NOT NULL,
+            page_title        TEXT NOT NULL DEFAULT '',
+            source_category   TEXT NOT NULL DEFAULT 'external',
+            referrer_host     TEXT NOT NULL DEFAULT '',
+            device_type       TEXT NOT NULL DEFAULT 'unknown',
+            browser_name      TEXT NOT NULL DEFAULT 'other',
+            pv_count          INTEGER NOT NULL DEFAULT 0,
+            imported_at       TEXT NOT NULL
+        )
+    ");
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_analytics_historical_dimension ON analytics_historical_pv(day_key, page_path, source_category, referrer_host, device_type, browser_name)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_historical_day ON analytics_historical_pv(day_key)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_analytics_historical_page_day ON analytics_historical_pv(page_path, day_key)");
+    echo "[OK] analytics_historical_pv 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS rate_limits (
@@ -999,12 +1175,15 @@ if ($isMysql) {
             apply_reason TEXT,
             application_email_enabled INTEGER NOT NULL DEFAULT 1,
             joined_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            reviewed_at TEXT,
+            reviewed_by INTEGER,
             left_at     TEXT,
             UNIQUE(user_id, club_id, country)
         )
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_memberships_user ON club_memberships(user_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_memberships_club ON club_memberships(club_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_memberships_reviewed ON club_memberships(reviewed_at)");
     echo "[OK] club_memberships 表已创建\n";
 
     $db->exec("
@@ -1129,6 +1308,7 @@ if ($isMysql) {
         CREATE TABLE IF NOT EXISTS galonly_applications (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id      INTEGER NOT NULL REFERENCES galonly_events(id),
+            event_number  INTEGER DEFAULT NULL,
             user_id       INTEGER NOT NULL REFERENCES users(id),
             is_joint      INTEGER NOT NULL DEFAULT 0,
             joint_name    TEXT NOT NULL DEFAULT '',
@@ -1137,7 +1317,10 @@ if ($isMysql) {
             notes         TEXT,
             image_path    TEXT NOT NULL DEFAULT '',
             status        TEXT NOT NULL DEFAULT 'pending'
-                          CHECK(status IN ('pending','approved','rejected')),
+                          CHECK(status IN ('pending','approved','rejected','phase2_pending','phase2_revision','phase2_additional_pending','confirmed','shared')),
+            merchandise_version INTEGER NOT NULL DEFAULT 0,
+            merchandise_updated_at TEXT NULL,
+            phase2_approved_status TEXT DEFAULT NULL,
             created_at    TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
         )
@@ -1145,6 +1328,7 @@ if ($isMysql) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_app_event ON galonly_applications(event_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_app_user ON galonly_applications(user_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_app_status ON galonly_applications(status)");
+    galonlyEnsureApplicationNumberSchema($db);
     echo "[OK] galonly_applications 表已创建\n";
 
     $db->exec("
@@ -1167,8 +1351,9 @@ if ($isMysql) {
             vote            TEXT NOT NULL CHECK(vote IN ('approve','reject')),
             comment         TEXT NULL,
             phase           INTEGER NOT NULL DEFAULT 1,
+            merchandise_version INTEGER NOT NULL DEFAULT 0,
             created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE(application_id, auditer_id, phase)
+            UNIQUE(application_id, auditer_id, phase, merchandise_version)
         )
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_votes_app ON galonly_votes(application_id)");
@@ -1176,8 +1361,9 @@ if ($isMysql) {
     // 2026-08 陪审分阶段审核：旧 SQLite 库唯一约束不含 phase，需重建表升级
     try {
         $oldUnique = $db->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='galonly_votes'")->fetchColumn();
-        if (is_string($oldUnique) && strpos($oldUnique, 'UNIQUE(application_id, auditer_id)') !== false
-            && strpos($oldUnique, 'phase') === false) {
+        if (is_string($oldUnique) && (strpos($oldUnique, 'UNIQUE(application_id, auditer_id)') !== false
+            || strpos($oldUnique, 'UNIQUE(application_id, auditer_id, phase)') !== false
+            || strpos($oldUnique, 'merchandise_version') === false)) {
             $db->exec("ALTER TABLE galonly_votes RENAME TO galonly_votes_old");
             $db->exec("CREATE TABLE galonly_votes (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1186,10 +1372,11 @@ if ($isMysql) {
                 vote            TEXT NOT NULL CHECK(vote IN ('approve','reject')),
                 comment         TEXT NULL,
                 phase           INTEGER NOT NULL DEFAULT 1,
+                merchandise_version INTEGER NOT NULL DEFAULT 0,
                 created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-                UNIQUE(application_id, auditer_id, phase)
+                UNIQUE(application_id, auditer_id, phase, merchandise_version)
             )");
-            $db->exec("INSERT INTO galonly_votes (id, application_id, auditer_id, vote, created_at) SELECT id, application_id, auditer_id, vote, created_at FROM galonly_votes_old");
+            $db->exec("INSERT INTO galonly_votes (id, application_id, auditer_id, vote, comment, phase, merchandise_version, created_at) SELECT id, application_id, auditer_id, vote, comment, COALESCE(phase, 1), COALESCE(merchandise_version, 0), created_at FROM galonly_votes_old");
             $db->exec("DROP TABLE galonly_votes_old");
             $db->exec("CREATE INDEX IF NOT EXISTS idx_galonly_votes_app ON galonly_votes(application_id)");
             echo "[OK] galonly_votes 唯一约束已升级为 (application_id, auditer_id, phase)\n";
@@ -1341,6 +1528,9 @@ if ($isMysql) {
     $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase2_feedback TEXT NULL");
     $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_items TEXT NULL");
     $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_attachments TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_version INTEGER NOT NULL DEFAULT 0");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN merchandise_updated_at TEXT NULL");
+    $tryAlter("ALTER TABLE galonly_applications ADD COLUMN phase2_approved_status TEXT DEFAULT NULL");
     echo "[OK] galonly_applications 两阶段审核列已添加\n";
 
     // ===== GalOnly 北京 2.0：联系方式 QQ+手机号、参展经历 =====
@@ -1351,7 +1541,9 @@ if ($isMysql) {
 
     $tryAlter("ALTER TABLE galonly_votes ADD COLUMN comment TEXT NULL");
     $tryAlter("ALTER TABLE galonly_votes ADD COLUMN phase INTEGER NOT NULL DEFAULT 1");
+    $tryAlter("ALTER TABLE galonly_votes ADD COLUMN merchandise_version INTEGER NOT NULL DEFAULT 0");
     echo "[OK] galonly_votes 意见/阶段列已添加\n";
+    galonlyEnsureMerchandiseSchema($db);
     $db->exec("
         CREATE TABLE IF NOT EXISTS galonly_reviewers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1649,8 +1841,14 @@ echo "[OK] moe contest tables ready\n";
 twelveEnsureSchema($db);
 echo "[OK] twelve contest tables ready\n";
 
+spyEnsureSchema($db, $isMysql);
+echo "[OK] spy game tables ready\n";
+
 forumEnsureSchema($db);
 echo "[OK] forum tables and search indexes ready\n";
+
+columnMigrateSchema($db);
+echo "[OK] column document tables and indexes ready\n";
 
 // ===== 北京视觉小说Only 第二届（摊位与 Staff 并行项目种子）=====
 $stmt = $db->prepare("SELECT id, location, staff_deadline, date, event_code, staff_only FROM galonly_events WHERE name = ?");

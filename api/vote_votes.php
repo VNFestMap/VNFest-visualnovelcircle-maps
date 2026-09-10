@@ -4,11 +4,17 @@
 require_once __DIR__ . '/../includes/vote_projects.php';
 require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/image_proxy_helper.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 
 voteBootstrap();
 voteEnsureSchema();
 $action = trim((string)($_GET['action'] ?? ''));
 $db = getDB();
+
+// 投票提交按 IP 限频（正常用户远低于此阈值，用于抬高脚本化刷票成本）
+if ($action === 'cast') {
+    checkRateLimit('vote_cast', 30, 1);
+}
 
 function voteResultsMatchRows(PDO $db, int $stageId, ?int $poolId = null): array {
     $table = $poolId ? 'vote_flow_matches' : 'vote_matches';
@@ -79,16 +85,43 @@ switch ($action) {
         $user = getCurrentUser();
         $project = voteGetProject((int)($_GET['project_id'] ?? $_GET['contest_id'] ?? 0));
         if (!$project) voteRespond(['success' => true, 'eligible' => false, 'reason' => 'project_not_found']);
-        voteRespond(['success' => true, 'eligible' => voteCanParticipateProject($user, $project), 'reason' => $user ? '' : 'login_required']);
+        $shareParam = trim((string)($_GET['share'] ?? ''));
+        $guestEligible = (int)($project['guest_vote'] ?? 0) === 1
+            && voteShareTokenMatches($project, $shareParam)
+            && ($project['status'] ?? '') === 'running';
+        voteRespond([
+            'success' => true,
+            'eligible' => ($user && voteCanParticipateProject($user, $project)) || $guestEligible,
+            'guest_eligible' => $guestEligible,
+            'reason' => $user ? '' : ($guestEligible ? 'guest_share' : 'login_required'),
+        ]);
 
     case 'cast':
-        $user = requireLogin();
+        $user = getCurrentUser();
         $input = voteReadJson();
         $stage = voteFetchStage((int)($input['stage_id'] ?? 0));
         if (!$stage) voteRespond(['success' => false, 'message' => '阶段不存在'], 404);
         $project = voteGetProject((int)$stage['project_id']);
         if (!$project) voteRespond(['success' => false, 'message' => '企划不存在'], 404);
-        if (!voteCanParticipateProject($user, $project)) voteRespond(['success' => false, 'message' => '当前账号不符合投票资格'], 403);
+        // 免登录投票：企划开启 guest_vote + 携带匹配的分享令牌 + 活动进行中。
+        $guestKey = '';
+        if (!$user) {
+            $shareToken = trim((string)($input['share'] ?? $_GET['share'] ?? ''));
+            if ((int)($project['guest_vote'] ?? 0) !== 1 || !voteShareTokenMatches($project, $shareToken)) {
+                voteRespond(['success' => false, 'message' => '该企划未开放免登录投票，请先登录', 'logged_in' => false], 401);
+            }
+            if (($project['status'] ?? '') !== 'running') {
+                voteRespond(['success' => false, 'message' => '活动不在进行中，无法投票'], 400);
+            }
+            $guestKey = voteGuestKey();
+        } else {
+            if (!voteCanParticipateProject($user, $project)) voteRespond(['success' => false, 'message' => '当前账号不符合投票资格'], 403);
+        }
+        $voterId = $user ? (int)$user['id'] : 0;
+        $guestVote = $guestKey !== '';
+        // 访客票 user_id 为 NULL（MySQL 外键允许 NULL），以 guest_key 做同设备去重。
+        $voterWhere = $guestVote ? 'user_id IS NULL AND guest_key = ?' : "user_id = ? AND guest_key = ''";
+        $voterParams = $guestVote ? [$guestKey] : [$voterId];
 
         $flowPool = voteFlowPoolForStage($db, (int)$stage['id']);
         if ($flowPool) {
@@ -100,6 +133,7 @@ switch ($action) {
             $entryIds = $input['entry_ids'] ?? (isset($input['entry_id']) ? [$input['entry_id']] : []);
             if (!is_array($entryIds)) $entryIds = [];
             $entryIds = array_values(array_unique(array_map('intval', $entryIds)));
+            if (count($entryIds) > 200) voteRespond(['success' => false, 'message' => '投票数量不符合当前阶段设置'], 400);
             $maxSelect = max(1, (int)$runtime['max_select']);
             if (($flowPool['vote_mode'] ?? '') === 'match_single') $maxSelect = 1;
             $groupMaxSelect = $maxSelect;
@@ -144,21 +178,36 @@ switch ($action) {
                 if (!$match || ($match['status'] ?? '') !== 'open') voteRespond(['success' => false, 'message' => '对阵不存在或不可投票'], 400);
                 $slots = array_filter([(int)($match['slot_a_entry_id'] ?? 0), (int)($match['slot_b_entry_id'] ?? 0)]);
                 if (count($entryIds) !== 1 || !in_array($entryIds[0], $slots, true)) voteRespond(['success' => false, 'message' => '投票条目不属于当前对阵'], 400);
+            } else {
+                // 非 1v1 模式忽略 match_id，防止借不同 match_id 绕过阶段级去重刷票
+                $matchId = 0;
             }
 
             $scoreMap = is_array($input['scores'] ?? null) ? $input['scores'] : [];
             $db->beginTransaction();
+            // 事务内锁池行：串行化同池去重检查（防并发快照读漏判），并复查池状态（防与结算竞态产生幽灵票）
+            if (voteIsMysql()) {
+                $db->prepare('SELECT status FROM vote_flow_pools WHERE id = ? FOR UPDATE')->execute([(int)$flowPool['id']]);
+            } else {
+                $db->prepare('UPDATE vote_flow_pools SET status = status WHERE id = ?')->execute([(int)$flowPool['id']]);
+            }
+            $stmt = $db->prepare('SELECT status FROM vote_flow_pools WHERE id = ?');
+            $stmt->execute([(int)$flowPool['id']]);
+            if ((string)$stmt->fetchColumn() !== 'open') {
+                $db->rollBack();
+                voteRespond(['success' => false, 'message' => '当前阶段池未开放投票'], 400);
+            }
             if (!empty($runtime['allow_vote_change'])) {
-                $deleteSql = 'DELETE FROM vote_votes WHERE stage_id = ? AND user_id = ?';
-                $deleteParams = [(int)$stage['id'], (int)$user['id']];
+                $deleteSql = "DELETE FROM vote_votes WHERE stage_id = ? AND $voterWhere";
+                $deleteParams = array_merge([(int)$stage['id']], $voterParams);
                 if ($matchId > 0) {
                     $deleteSql .= ' AND match_id = ?';
                     $deleteParams[] = $matchId;
                 }
                 $db->prepare($deleteSql)->execute($deleteParams);
             } else {
-                $existsSql = 'SELECT COUNT(*) FROM vote_votes WHERE stage_id = ? AND user_id = ?';
-                $existsParams = [(int)$stage['id'], (int)$user['id']];
+                $existsSql = "SELECT COUNT(*) FROM vote_votes WHERE stage_id = ? AND $voterWhere";
+                $existsParams = array_merge([(int)$stage['id']], $voterParams);
                 if ($matchId > 0) {
                     $existsSql .= ' AND match_id = ?';
                     $existsParams[] = $matchId;
@@ -170,7 +219,7 @@ switch ($action) {
                     voteRespond(['success' => false, 'message' => '本阶段已投票'], 400);
                 }
             }
-            $ins = $db->prepare('INSERT INTO vote_votes (project_id, stage_id, entry_id, match_id, user_id, vote_value, score_value) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $ins = $db->prepare('INSERT INTO vote_votes (project_id, stage_id, entry_id, match_id, user_id, guest_key, vote_value, score_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
             foreach ($entryIds as $entryId) {
                 $score = null;
                 if (($flowPool['vote_mode'] ?? '') === 'score') {
@@ -180,10 +229,10 @@ switch ($action) {
                         voteRespond(['success' => false, 'message' => '评分超出范围'], 400);
                     }
                 }
-                $ins->execute([(int)$project['id'], (int)$stage['id'], $entryId, $matchId ?: null, (int)$user['id'], 1, $score]);
+                $ins->execute([(int)$project['id'], (int)$stage['id'], $entryId, $matchId ?: null, $guestVote ? null : $voterId, $guestKey, 1, $score]);
             }
             $db->commit();
-            logAction('vote.cast.flow', 'vote_stages', (int)$stage['id'], ['project_id' => (int)$project['id'], 'pool_id' => (int)$flowPool['id'], 'count' => count($entryIds), 'match_id' => $matchId ?: null]);
+            logAction('vote.cast.flow', 'vote_stages', (int)$stage['id'], ['project_id' => (int)$project['id'], 'pool_id' => (int)$flowPool['id'], 'count' => count($entryIds), 'match_id' => $matchId ?: null, 'guest' => $guestVote]);
             voteRespond(['success' => true, 'count' => count($entryIds), 'pool_id' => (int)$flowPool['id']]);
         }
 
@@ -195,6 +244,7 @@ switch ($action) {
         $entryIds = $input['entry_ids'] ?? (isset($input['entry_id']) ? [$input['entry_id']] : []);
         if (!is_array($entryIds)) $entryIds = [];
         $entryIds = array_values(array_unique(array_map('intval', $entryIds)));
+        if (count($entryIds) > 200) voteRespond(['success' => false, 'message' => '投票数量不符合当前阶段设置'], 400);
         $maxSelect = max(1, (int)($stage['max_select'] ?? 1));
         if (($stage['vote_mode'] ?? '') === 'match_single') $maxSelect = 1;
         if (!$entryIds || count($entryIds) > $maxSelect) {
@@ -229,21 +279,36 @@ switch ($action) {
             if (count($entryIds) !== 1 || !in_array($entryIds[0], $slots, true)) {
                 voteRespond(['success' => false, 'message' => '投票条目不属于当前对阵'], 400);
             }
+        } else {
+            // 非 1v1 模式忽略 match_id，防止借不同 match_id 绕过阶段级去重刷票
+            $matchId = 0;
         }
 
         $scoreMap = is_array($input['scores'] ?? null) ? $input['scores'] : [];
         $db->beginTransaction();
+        // 事务内锁阶段行：串行化去重检查（防并发快照读漏判），并复查阶段状态
+        if (voteIsMysql()) {
+            $db->prepare('SELECT status FROM vote_stages WHERE id = ? FOR UPDATE')->execute([(int)$stage['id']]);
+        } else {
+            $db->prepare('UPDATE vote_stages SET status = status WHERE id = ?')->execute([(int)$stage['id']]);
+        }
+        $stmt = $db->prepare('SELECT status FROM vote_stages WHERE id = ?');
+        $stmt->execute([(int)$stage['id']]);
+        if ((string)$stmt->fetchColumn() !== 'open') {
+            $db->rollBack();
+            voteRespond(['success' => false, 'message' => '当前阶段未开放投票'], 400);
+        }
         if (!empty($stage['allow_vote_change'])) {
-            $deleteSql = 'DELETE FROM vote_votes WHERE stage_id = ? AND user_id = ?';
-            $deleteParams = [(int)$stage['id'], (int)$user['id']];
+            $deleteSql = "DELETE FROM vote_votes WHERE stage_id = ? AND $voterWhere";
+            $deleteParams = array_merge([(int)$stage['id']], $voterParams);
             if ($matchId > 0) {
                 $deleteSql .= ' AND match_id = ?';
                 $deleteParams[] = $matchId;
             }
             $db->prepare($deleteSql)->execute($deleteParams);
         } else {
-            $existsSql = 'SELECT COUNT(*) FROM vote_votes WHERE stage_id = ? AND user_id = ?';
-            $existsParams = [(int)$stage['id'], (int)$user['id']];
+            $existsSql = "SELECT COUNT(*) FROM vote_votes WHERE stage_id = ? AND $voterWhere";
+            $existsParams = array_merge([(int)$stage['id']], $voterParams);
             if ($matchId > 0) {
                 $existsSql .= ' AND match_id = ?';
                 $existsParams[] = $matchId;
@@ -256,7 +321,7 @@ switch ($action) {
             }
         }
 
-        $ins = $db->prepare('INSERT INTO vote_votes (project_id, stage_id, entry_id, match_id, user_id, vote_value, score_value) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $ins = $db->prepare('INSERT INTO vote_votes (project_id, stage_id, entry_id, match_id, user_id, guest_key, vote_value, score_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         foreach ($entryIds as $entryId) {
             $score = null;
             if (($stage['vote_mode'] ?? '') === 'score') {
@@ -266,15 +331,29 @@ switch ($action) {
                     voteRespond(['success' => false, 'message' => '评分超出范围'], 400);
                 }
             }
-            $ins->execute([(int)$project['id'], (int)$stage['id'], $entryId, $matchId ?: null, (int)$user['id'], 1, $score]);
+            $ins->execute([(int)$project['id'], (int)$stage['id'], $entryId, $matchId ?: null, $guestVote ? null : $voterId, $guestKey, 1, $score]);
         }
         $db->commit();
-        logAction('vote.cast', 'vote_stages', (int)$stage['id'], ['project_id' => (int)$project['id'], 'count' => count($entryIds), 'match_id' => $matchId ?: null]);
-        voteRespond(['success' => true, 'count' => count($entryIds)]);
+        logAction('vote.cast', 'vote_stages', (int)$stage['id'], ['project_id' => (int)$project['id'], 'count' => count($entryIds), 'match_id' => $matchId ?: null, 'guest' => $guestVote]);
+        voteRespond(['success' => true, 'count' => count($entryIds), 'guest' => $guestVote]);
 
     case 'my_votes':
-        $user = requireLogin();
+        $user = getCurrentUser();
         $projectId = (int)($_GET['project_id'] ?? $_GET['contest_id'] ?? 0);
+        if (!$user) {
+            // 访客：按设备 Cookie 返回其免登录投票记录
+            $guestKey = voteGuestKey();
+            $stmt = $db->prepare(
+                "SELECT v.*, e.title, e.title_cn, s.title AS stage_title
+                 FROM vote_votes v
+                 JOIN vote_entries e ON e.id = v.entry_id
+                 JOIN vote_stages s ON s.id = v.stage_id
+                 WHERE v.user_id IS NULL AND v.guest_key = ? AND (? = 0 OR v.project_id = ?)
+                 ORDER BY v.created_at DESC"
+            );
+            $stmt->execute([$guestKey, $projectId, $projectId]);
+            voteRespond(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'guest' => true]);
+        }
         $stmt = $db->prepare(
             "SELECT v.*, e.title, e.title_cn, s.title AS stage_title
              FROM vote_votes v
@@ -347,6 +426,8 @@ switch ($action) {
                 (string)($flowPool['status'] ?? ''),
                 (string)$runtime['result_visibility']
             );
+            $userForRuntime = getCurrentUser();
+            $canManageRuntime = $userForRuntime && $project ? voteCanManageProject($userForRuntime, $project) : false;
             $matchResults = voteResultsMatchRows($db, $stageId, (int)$flowPool['id']);
             if (empty($visibility['rank_visible'])) {
                 $rows = [];
@@ -361,7 +442,7 @@ switch ($action) {
                 'match_results' => $matchResults,
                 'stage_status' => $flowPool['status'] ?? '',
                 'pool_id' => (int)$flowPool['id'],
-                'runtime' => $runtime,
+                'runtime' => $canManageRuntime ? $runtime : voteStripTieBreaks($runtime),
                 'result_visibility' => $runtime['result_visibility'],
                 'rank_visible' => $visibility['rank_visible'],
                 'metrics_visible' => $visibility['metrics_visible'],

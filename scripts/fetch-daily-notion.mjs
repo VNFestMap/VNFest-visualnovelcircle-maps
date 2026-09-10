@@ -21,6 +21,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  hasTopSection,
+  META_DATE_RE,
+  parseItems,
+  parseStructuredItems,
+  parseTopItems,
+} from './daily-report-parser.mjs'
 
 const TOKEN = process.env.NOTION_TOKEN
 if (!TOKEN) {
@@ -116,10 +123,16 @@ async function searchTodayPage(date) {
     .filter(({ title }) => title.includes('日本 Galgame 行业日报') && title.endsWith(date))
     .sort((a, b) => String(b.page.last_edited_time || '').localeCompare(String(a.page.last_edited_time || '')))
 
-  return matches[0]?.page || null
+  // 同一天可能同时存在“正式日报”和“文案版/草稿版”。不要直接使用
+  // Notion 搜索结果的更新时间排序：文案版经常比正式日报更晚编辑。
+  return matches.map(({ page }) => page)
 }
 
-async function parseIssue(pageId) {
+const parsedIssueCache = new Map()
+
+async function parseIssue(pageId, { announce = true } = {}) {
+  if (parsedIssueCache.has(pageId)) return parsedIssueCache.get(pageId)
+
   const [page, blocks] = await Promise.all([api(`/pages/${pageId}`), getBlocks(pageId)])
   const pageTitle = pageTitleOf(page)
   const m = pageTitle.match(/(\d{4})-(\d{2})-(\d{2})\s*$/)
@@ -136,27 +149,72 @@ async function parseIssue(pageId) {
   }
   if (cur.length) groups.push(cur)
 
-  const items = groups
-    .filter((g) => g.length >= 2)
-    .map((g) => ({
-      title: g[0],
-      summary: g[1] ?? '',
-      meta: g.find((l) => /^(?:约)?\d{4}-\d{2}-\d{2}/.test(l)) ?? '',
-      url: (g.find((l) => /^https?:\/\//.test(l)) ?? '').trim(),
-    }))
+  const topItems = parseTopItems(blocks, { fallbackUrl: page.url || SOURCE_SHARE_URL })
+  const structuredItems = parseStructuredItems(blocks)
+  let items
+  let parser
+  if (hasTopSection(blocks)) {
+    items = topItems
+    parser = 'TOP/重点新闻章节'
+  } else if (structuredItems.length) {
+    items = structuredItems
+    parser = '最近动态列表'
+  } else {
+    items = parseItems(groups, { pageTitle })
+    parser = '空段落分组'
+  }
+  if (announce) console.log(`解析策略：${parser}；有效条目：${items.length}`)
 
-  return { date, title: '日本 Galgame 行业日报', pageId, pageTitle, lastEdited: page.last_edited_time, items }
+  const issue = {
+    date,
+    title: '日本 Galgame 行业日报',
+    pageId,
+    pageTitle,
+    lastEdited: page.last_edited_time,
+    parser,
+    items,
+  }
+  parsedIssueCache.set(pageId, issue)
+  return issue
+}
+
+function issueQuality(issue) {
+  // 用户指定抓取“文案版”。同日页面选择先服从页面类型，再比较
+  // 页面结构；这样不会因为正式版的 TOP 结构或更新时间更高而误选正式版。
+  const editionWeight = issue.pageTitle.includes('文案版') ? 5_000_000 : 0
+  // 在同一类页面内，TOP 章节是最稳定的结构，其次是最近动态列表，
+  // 最后才使用旧式空段落分组。
+  const parserWeight = issue.parser.startsWith('TOP/')
+    ? 3_000_000
+    : issue.parser === '最近动态列表'
+      ? 2_000_000
+      : 1_000_000
+  const validItems = issue.items.filter((item) =>
+    item.title && item.summary && META_DATE_RE.test(item.meta || '') && /^https?:\/\//.test(item.url || ''),
+  ).length
+  const directItems = issue.items.filter((item) => item.sourceType === 'direct').length
+  const itemWeight = Math.min(validItems, 100) * 1_000
+  const directWeight = directItems * 10
+  return editionWeight + parserWeight + itemWeight + directWeight
 }
 
 if (autoDiscoverToday) {
   const today = dateInTimeZone()
-  const todayPage = await searchTodayPage(today)
-  if (!todayPage) {
+  const todayPages = await searchTodayPage(today)
+  if (!todayPages.length) {
     throw new Error(`未找到 ${today} 的 Notion 日报页面，请确认页面已创建且集成有权限；如需手动回填可设置 NOTION_AUTO_DISCOVER=0`)
   }
-  const todayPageId = todayPage.id
+  const candidates = await Promise.all(todayPages.map((page) => parseIssue(page.id, { announce: false })))
+  const ranked = candidates
+    .map((issue) => ({ issue, quality: issueQuality(issue) }))
+    .sort((a, b) => b.quality - a.quality)
+  const todayIssue = ranked.find(({ issue }) => issue.items.length > 0)?.issue || ranked[0].issue
+  const todayPageId = todayIssue.pageId
   pageIds = [todayPageId, ...pageIds.filter((id) => id !== todayPageId)]
-  console.log(`自动发现今日页面：${pageTitleOf(todayPage)}（${todayPageId}）`)
+  console.log(`自动发现今日页面：${todayIssue.pageTitle}（${todayPageId}）`)
+  if (ranked.length > 1) {
+    console.log(`同日候选页面 ${ranked.length} 个，已按页面结构和有效条目数选择：${todayIssue.parser}；${todayIssue.items.length} 条`)
+  }
 }
 
 // 读取已有数据以便按日期累积合并

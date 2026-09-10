@@ -109,6 +109,7 @@
     }
   </style>
   <link rel="stylesheet" href="../css/galonly-poster-theme.css">
+    <script defer src="../js/analytics.js?v=20260905-analytics"></script>
 </head>
 <body>
   <main class="page-shell">
@@ -123,6 +124,7 @@
       <div class="notice" id="loading-msg">正在加载申请信息…</div>
       <div class="notice error" id="error-msg" hidden></div>
       <div class="notice success" id="revision-msg" hidden></div>
+      <div class="notice warning" id="merchandise-state-msg" hidden></div>
 
       <div id="form-area" hidden>
           <div class="notice warning">
@@ -183,6 +185,7 @@
     var $ = function (id) { return document.getElementById(id); };
     var eventId = 0;
     var applicationId = 0;
+    var merchandiseVersion = 0;
     var eventData = null;
     var items = [];
     var attachments = []; // [{path, name}]
@@ -661,7 +664,8 @@
           application_id: applicationId,
           merchandise_items: collected,
           merchandise_attachments: attachments.map(function (a) { return a.path; }),
-          display_image: autoPath || uploadedDisplayImagePath || null
+          display_image: autoPath || uploadedDisplayImagePath || null,
+          merchandise_version: merchandiseVersion
         };
         return fetch('../api/galonly.php?action=submit_merchandise', {
           method: 'POST',
@@ -694,7 +698,19 @@
       });
       renderAttachmentList();
       uploadedDisplayImagePath = app.display_image || '';
+      merchandiseVersion = parseInt(app.merchandise_version, 10) || 0;
       renderDisplayImagePreview();
+      var stateMessage = $('merchandise-state-msg');
+      if (app.status === 'phase2_additional_pending') {
+        stateMessage.hidden = false;
+        stateMessage.textContent = '已通过 · 追加检查中：原有已通过资格继续保留，本次提交会开启新的追加检查。材料版本 v' + merchandiseVersion + '，最近更新：' + (app.merchandise_updated_at || '未记录') + '。';
+      } else if (app.status === 'confirmed' || app.status === 'shared') {
+        stateMessage.hidden = false;
+        stateMessage.textContent = '当前资格已通过（' + app.status + '）。编辑制品不会直接取消资格，提交后会进入追加检查；只有审核端明确撤回通过才会改变资格。';
+      } else if (app.status === 'phase2_pending') {
+        stateMessage.hidden = false;
+        stateMessage.textContent = '材料版本 v' + merchandiseVersion + ' 正在审核中，仍可继续编辑并提交；提交后会开启当前材料的新一轮审核。最近更新：' + (app.merchandise_updated_at || '未记录') + '。';
+      }
       if (app.status === 'phase2_revision' && app.phase2_feedback) {
         setVisible('revision-msg', true);
         $('revision-msg').innerHTML = '您的制品表单被打回修改（资格保留）：<div style="margin-top:8px;">' + escapeHtml(app.phase2_feedback) + '</div>';
@@ -738,14 +754,9 @@
             return;
           }
           var app = merchData.application;
-          if (app.status !== 'approved' && app.status !== 'phase2_pending' && app.status !== 'phase2_revision') {
+          if (!['approved', 'phase2_pending', 'phase2_revision', 'phase2_additional_pending', 'confirmed', 'shared'].includes(app.status)) {
             setVisible('loading-msg', false);
             showError('error-msg', '当前申请状态无法提交制品表单。若已通过第一阶段，请从活动列表「提交制品」进入。');
-            return;
-          }
-          if (app.status === 'phase2_pending') {
-            setVisible('loading-msg', false);
-            showError('error-msg', '您的制品表单已提交，正在制品审核中，请耐心等待结果。');
             return;
           }
           if (app.status === 'phase2_revision' && !app.within_deadline) {

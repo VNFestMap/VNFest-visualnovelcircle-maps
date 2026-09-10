@@ -18,6 +18,7 @@ require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../includes/recognition/events.php';
 require_once __DIR__ . '/../includes/recognition/pipeline.php';
+require_once __DIR__ . '/../includes/recognition/quiz.php';
 
 function recogRespond(array $payload, int $code = 200): void {
     http_response_code($code);
@@ -50,35 +51,11 @@ function recogOpenVersion(int $programId): array {
 }
 
 /**
- * 判分：单选题/判断题精确匹配，多选题集合完全一致，填空题忽略首尾空白与大小写
+ * 计算考试截止时间戳（不限时返回 0）
  */
-function recogGradeQuestions(array $questions, array $answers): array {
-    $score = 0;
-    $total = 0;
-    $detail = [];
-    foreach ($questions as $i => $q) {
-        $points = max(1, (int)($q['points'] ?? 10));
-        $total += $points;
-        $given = $answers[(string)$i] ?? $answers[$i] ?? null;
-        $correct = false;
-        if (in_array($q['type'], ['single', 'judge'], true)) {
-            $expected = ($q['answer'] ?? [])[0] ?? null;
-            $correct = ($given !== null && (int)$given === (int)$expected);
-        } elseif ($q['type'] === 'multiple') {
-            $expected = $q['answer'] ?? [];
-            $givenArr = is_array($given) ? array_map('intval', $given) : [];
-            sort($expected); sort($givenArr);
-            $correct = $expected === $givenArr && $expected !== [];
-        } elseif ($q['type'] === 'fill_blank') {
-            $expected = mb_strtolower(trim((string)($q['answer_text'] ?? '')));
-            $correct = $expected !== '' && mb_strtolower(trim((string)$given)) === $expected;
-        }
-        if ($correct) $score += $points;
-        $detail[$i] = $correct;
-    }
-    // 折算为百分制
-    $percent = $total > 0 ? (int)round($score * 100 / $total) : 0;
-    return ['score' => $percent, 'raw' => $score, 'total' => $total, 'detail' => $detail];
+function recogQuizDeadline(array $settings, string $startedAt): int {
+    if ((int)$settings['time_limit'] <= 0) return 0;
+    return strtotime($startedAt) + (int)$settings['time_limit'] * 60;
 }
 
 $action = $_GET['action'] ?? '';
@@ -103,6 +80,30 @@ switch ($action) {
         if (!$questions) recogRespond(['success' => false, 'message' => '该项目不是答题类考核']);
 
         $versionId = (int)$version['id'];
+        $settings = recogQuizSettings($content['quiz']);
+
+        // 续答：已有进行中的尝试直接复用（不消耗次数），返回试卷与暂存答案；
+        // 试卷以开始时的快照保存在 answers 列，保证乱序/抽题下题目不变。
+        $stmt = $db->prepare(
+            "SELECT * FROM recognition_attempts
+             WHERE program_version_id = ? AND user_id = ? AND status = 'in_progress'
+             ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute([$versionId, (int)$user['id']]);
+        $ongoing = $stmt->fetch();
+        if ($ongoing) {
+            $saved = json_decode((string)$ongoing['answers'], true);
+            $paper = is_array($saved['quiz_paper'] ?? null) ? $saved['quiz_paper'] : recogBuildPaper($content);
+            recogRespond([
+                'success' => true,
+                'attempt_id' => (int)$ongoing['id'],
+                'questions' => $paper,
+                'settings' => $settings,
+                'deadline' => recogQuizDeadline($settings, (string)$ongoing['started_at']),
+                'saved_answers' => is_array($saved['answers'] ?? null) ? $saved['answers'] : [],
+                'resumed' => true,
+            ]);
+        }
 
         // 尝试次数限制
         $stmt = $db->prepare('SELECT COUNT(*) AS c FROM recognition_attempts WHERE program_version_id = ? AND user_id = ?');
@@ -129,33 +130,19 @@ switch ($action) {
             }
         }
 
-        // 组卷（可选乱序）
-        $indexes = range(0, count($questions) - 1);
-        if (!empty($content['quiz']['shuffle'])) {
-            shuffle($indexes);
-        }
-        $pick = (int)($content['quiz']['pick_count'] ?? 0);
-        if ($pick > 0 && $pick < count($indexes)) {
-            $indexes = array_slice($indexes, 0, $pick);
-        }
-        $paper = [];
-        foreach ($indexes as $seq => $origIdx) {
-            $q = $questions[$origIdx];
-            $paper[] = [
-                'seq' => $seq,
-                'orig' => $origIdx, // 判分用原始索引
-                'type' => $q['type'],
-                'question' => $q['question'],
-                'options' => $q['options'] ?? [],
-                'points' => (int)($q['points'] ?? 10),
-            ];
-        }
+        // 组卷（乱序/抽题/选项乱序由考试设置驱动，见 includes/recognition/quiz.php）
+        $paper = recogBuildPaper($content);
 
+        $startedAt = date('Y-m-d H:i:s');
         $stmt = $db->prepare(
-            'INSERT INTO recognition_attempts (program_version_id, user_id, status, attempt_no, started_at)
-             VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO recognition_attempts (program_version_id, user_id, status, attempt_no, started_at, answers)
+             VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$versionId, (int)$user['id'], 'in_progress', $used + 1, date('Y-m-d H:i:s')]);
+        // answers 列暂存试卷快照（续答用），提交后覆写为正式答案，格式不变兼容旧数据读取方
+        $stmt->execute([
+            $versionId, (int)$user['id'], 'in_progress', $used + 1, $startedAt,
+            json_encode(['quiz_paper' => $paper], JSON_UNESCAPED_UNICODE),
+        ]);
         $attemptId = (int)$db->lastInsertId();
 
         recogRecordEvent([
@@ -169,7 +156,37 @@ switch ($action) {
             'source_verified' => true,
         ]);
 
-        recogRespond(['success' => true, 'attempt_id' => $attemptId, 'questions' => $paper]);
+        recogRespond([
+            'success' => true,
+            'attempt_id' => $attemptId,
+            'questions' => $paper,
+            'settings' => $settings,
+            'deadline' => recogQuizDeadline($settings, $startedAt),
+        ]);
+    }
+
+    // ---- 暂存答案（续答支持，不影响判分与次数） ----
+    case 'temp_save': {
+        checkRateLimit('recog_temp_save', 20, 1);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') recogRespond(['success' => false, 'message' => '仅支持 POST']);
+        $user = requireLogin();
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $attemptId = (int)($input['attempt_id'] ?? 0);
+        $answers = is_array($input['answers'] ?? null) ? $input['answers'] : [];
+
+        $stmt = $db->prepare('SELECT * FROM recognition_attempts WHERE id = ? AND user_id = ?');
+        $stmt->execute([$attemptId, (int)$user['id']]);
+        $attempt = $stmt->fetch();
+        if (!$attempt) recogRespond(['success' => false, 'message' => '答题记录不存在'], 404);
+        if ($attempt['status'] !== 'in_progress') recogRespond(['success' => false, 'message' => '该次答题已结束']);
+
+        // 保留试卷快照，只更新答案部分；大小限制防止滥用（按题号 ≤ 500 题）
+        $saved = json_decode((string)$attempt['answers'], true) ?: [];
+        if (count($answers) > 500) recogRespond(['success' => false, 'message' => '暂存内容非法']);
+        $saved['answers'] = $answers;
+        $db->prepare('UPDATE recognition_attempts SET answers = ? WHERE id = ?')
+            ->execute([json_encode($saved, JSON_UNESCAPED_UNICODE), $attemptId]);
+        recogRespond(['success' => true]);
     }
 
     // ---- 提交答卷：判分 → 事件 → 规则评估 → 签发 ----
@@ -190,6 +207,11 @@ switch ($action) {
         $version = recogLoadVersion($db, (int)$attempt['program_version_id']);
         if (!$version) recogRespond(['success' => false, 'message' => '项目版本不存在'], 404);
         $questions = $version['content']['quiz']['questions'] ?? [];
+        $settings = recogQuizSettings($version['content']['quiz'] ?? []);
+
+        // 限时校验（服务端为准，允许 60 秒网络宽限）；超时照常记分但强制不通过、不签发
+        $deadline = recogQuizDeadline($settings, (string)$attempt['started_at']);
+        $overdue = $deadline > 0 && time() > $deadline + 60;
 
         // 客户端按 seq 提交，还原为原始索引
         $paper = $input['paper'] ?? null;
@@ -206,7 +228,28 @@ switch ($action) {
             $origAnswers = $answers;
         }
 
-        $grade = recogGradeQuestions($questions, $origAnswers);
+        // 判分按实际下发的试卷（抽题/乱序后参与者所见题目），而非全量题库：
+        // 抽题时若按全量折算百分制，会把得分压低，造成“实际考核与最终得分不一致”。
+        // 试卷快照只含 orig 索引（不含答案），expected 仍取自版本快照的原始题目。
+        // 以原始索引为键构建判分集合：判分函数按 $i 取答案、detail 也以 $i 为键，自然对齐。
+        $savedAttempt = json_decode((string)$attempt['answers'], true);
+        $paperSnapshot = is_array($savedAttempt['quiz_paper'] ?? null) ? $savedAttempt['quiz_paper'] : null;
+        if ($paperSnapshot) {
+            $picked = [];
+            foreach ($paperSnapshot as $item) {
+                $orig = (int)($item['orig'] ?? -1);
+                if ($orig >= 0 && isset($questions[$orig])) {
+                    $picked[$orig] = $questions[$orig];
+                }
+            }
+            if ($picked) {
+                $questions = $picked; // 键 = 题库原始索引
+            } else {
+                $questions = array_values($questions); // 快照异常时退回全量题库
+            }
+        }
+
+        $grade = recogGradeQuestions($questions, $origAnswers, $settings);
 
         $passed = false;
         $credential = null;
@@ -241,11 +284,15 @@ switch ($action) {
             'source_verified' => true,
         ]);
 
-        // 规则评估与签发（同步）
-        $award = recogEvaluateAndAward((int)$attempt['program_version_id'], (int)$user['id'], [
-            'score' => $grade['score'],
-            'source' => 'site',
-        ]);
+        // 规则评估与签发（同步）；超时强制不通过且不评估签发
+        if ($overdue) {
+            $award = ['passed' => false, 'issued' => false, 'duplicate' => false, 'credential' => null, 'reasons' => [], 'error' => null];
+        } else {
+            $award = recogEvaluateAndAward((int)$attempt['program_version_id'], (int)$user['id'], [
+                'score' => $grade['score'],
+                'source' => 'site',
+            ]);
+        }
         $passed = $award['passed'];
 
         recogRecordEvent([
@@ -261,16 +308,31 @@ switch ($action) {
         $db->prepare('UPDATE recognition_attempts SET status = ? WHERE id = ?')
             ->execute([$passed ? 'passed' : 'failed', $attemptId]);
 
-        recogRespond([
+        // 成绩展示模式（immediate=分数+逐题解析 / pass_only=仅结果 / hidden=只提示已提交）
+        $resultMode = $settings['result_mode'];
+        if ($resultMode === 'hidden') {
+            recogRespond(['success' => true, 'mode' => 'hidden', 'message' => '已提交，结果请稍后在考核详情页查看']);
+        }
+
+        $payload = [
             'success' => true,
-            'score' => $grade['score'],
+            'mode' => $resultMode,
             'passed' => $passed,
             'issued' => $award['issued'],
             'already_held' => $award['duplicate'],
             'credential' => $award['credential'],
-            'reasons' => $award['reasons'],
-            'message' => $award['error'] ?: ($passed ? '恭喜，考核通过' : '未满足通过条件，可再次尝试'),
-        ]);
+        ];
+        if ($resultMode === 'immediate') {
+            $payload['score'] = $grade['score'];
+            $payload['detail'] = $grade['detail'];
+            $payload['reasons'] = $award['reasons'];
+        }
+        if ($overdue) {
+            $payload['message'] = '已超出考试限时，本次作答不计通过';
+        } else {
+            $payload['message'] = $award['error'] ?: ($passed ? '恭喜，考核通过' : '未满足通过条件，可再次尝试');
+        }
+        recogRespond($payload);
     }
 
     // ---- 兑换码 / 二维码签到（先参与、后领取） ----
@@ -351,8 +413,24 @@ switch ($action) {
         $versionId = (int)($input['program_version_id'] ?? 0);
         $content = trim((string)($input['content'] ?? ''));
 
-        if ($content === '' || recogSafeStrlen($content) > 5000) {
-            recogRespond(['success' => false, 'message' => '提交内容必填且不超过 5000 字']);
+        // 附图（最多 4 张，须为本站 submission_image.php 落盘的路径，防注入/外链）
+        $images = [];
+        if (isset($input['images']) && is_array($input['images'])) {
+            foreach (array_slice($input['images'], 0, 4) as $img) {
+                $img = trim((string)$img);
+                if ($img === '') continue;
+                if (!preg_match('#^data/submission_images/[A-Za-z0-9_\-.]+\.(jpe?g|png|gif|webp)$#', $img)) {
+                    recogRespond(['success' => false, 'message' => '图片地址不合法']);
+                }
+                $images[] = $img;
+            }
+            if (count($images) > 4) {
+                recogRespond(['success' => false, 'message' => '图片最多 4 张']);
+            }
+        }
+
+        if (($content === '' && !$images) || recogSafeStrlen($content) > 5000) {
+            recogRespond(['success' => false, 'message' => '请填写说明或上传图片，文字不超过 5000 字']);
         }
 
         $version = recogLoadVersion($db, $versionId);
@@ -383,9 +461,15 @@ switch ($action) {
             recogRespond(['success' => false, 'message' => '你已有一份待审提交，请等待审核结果']);
         }
 
+        // 有图时 content 存 JSON {text, images}（审核端兼容解析），纯文本保持原样；
+        // file_path 同步记录图片路径（竖线分隔），便于列表快速识别附件
+        $storeContent = $images
+            ? json_encode(['text' => $content, 'images' => $images], JSON_UNESCAPED_UNICODE)
+            : $content;
+
         $db->prepare(
-            'INSERT INTO recognition_submissions (program_version_id, user_id, content, status) VALUES (?, ?, ?, ?)'
-        )->execute([$versionId, (int)$user['id'], $content, 'pending']);
+            'INSERT INTO recognition_submissions (program_version_id, user_id, content, file_path, status) VALUES (?, ?, ?, ?, ?)'
+        )->execute([$versionId, (int)$user['id'], $storeContent, $images ? implode('|', $images) : '', 'pending']);
         $submissionId = (int)$db->lastInsertId();
 
         recogRecordEvent([

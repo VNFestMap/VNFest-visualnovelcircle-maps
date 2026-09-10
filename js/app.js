@@ -755,6 +755,9 @@ function loadSocialBindStatus() {
     const discordStatus = document.getElementById('accDiscordStatus');
     const discordBindBtn = document.getElementById('accDiscordBindBtn');
     const discordUnbindBtn = document.getElementById('accDiscordUnbindBtn');
+    const bangumiStatus = document.getElementById('accBangumiStatus');
+    const bangumiBindBtn = document.getElementById('accBangumiBindBtn');
+    const bangumiUnbindBtn = document.getElementById('accBangumiUnbindBtn');
 
     if (qqStatus && qqBindBtn && qqUnbindBtn) {
         const qqBound = !!user.qq_bound;
@@ -770,6 +773,16 @@ function loadSocialBindStatus() {
         discordStatus.className = 'social-bind-status ' + (dcBound ? 'bound' : 'unbound');
         discordBindBtn.style.display = dcBound ? 'none' : '';
         discordUnbindBtn.style.display = dcBound ? '' : 'none';
+    }
+
+    if (bangumiStatus && bangumiBindBtn && bangumiUnbindBtn) {
+        const bgmBound = !!user.bangumi_bound;
+        const bgmName = String(user.bangumi_username || '').trim();
+        bangumiStatus.textContent = bgmBound ? (bgmName ? `已绑定 · ${bgmName}` : '已绑定') : '未绑定';
+        bangumiStatus.title = bgmBound && bgmName ? `Bangumi 用户：${bgmName}` : bangumiStatus.textContent;
+        bangumiStatus.className = 'social-bind-status ' + (bgmBound ? 'bound' : 'unbound');
+        bangumiBindBtn.style.display = bgmBound ? 'none' : '';
+        bangumiUnbindBtn.style.display = bgmBound ? '' : 'none';
     }
 }
 
@@ -805,6 +818,10 @@ function initiateDiscordBind() {
     window.location.href = './api/auth.php?action=discord_auth&mode=bind';
 }
 
+function initiateBangumiBind() {
+    window.location.href = './api/auth.php?action=bangumi_auth&mode=bind';
+}
+
 async function unbindQQ() {
     if (!confirm(__('confirmUnbind'))) return;
     try {
@@ -833,6 +850,24 @@ async function unbindDiscord() {
             currentUser.user.discord_bound = false;
             loadSocialBindStatus();
             alert('Discord 已解绑');
+        } else {
+            alert(data.message || '解绑失败');
+        }
+    } catch { alert(__('alertNetworkError')); }
+}
+
+async function unbindBangumi() {
+    if (!confirm(__('confirmUnbind'))) return;
+    try {
+        const resp = await fetch('./api/auth.php?action=unbind_bangumi', {
+            method: 'POST', credentials: 'same-origin',
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentUser.user.bangumi_bound = false;
+            currentUser.user.bangumi_username = '';
+            loadSocialBindStatus();
+            alert('Bangumi 已解绑');
         } else {
             alert(data.message || '解绑失败');
         }
@@ -1019,6 +1054,18 @@ function handleOAuthCallback() {
 document.addEventListener('click', (e) => {
     if (e.target.id === 'accAvatarWrap' || e.target.closest('#accAvatarWrap')) {
         document.getElementById('accAvatarInput')?.click();
+    }
+});
+
+// ====== Bangumi 绑定/解绑 ======
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accBangumiBindBtn') {
+        initiateBangumiBind();
+    }
+});
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'accBangumiUnbindBtn') {
+        unbindBangumi();
     }
 });
 document.addEventListener('change', (e) => {
@@ -2493,9 +2540,11 @@ function updateUILanguage() {
     if (drawerDesc1) drawerDesc1.textContent = t.intro;
     const drawerOpenSource = document.querySelector('#mobileDrawer .submit-btn[href*="github"]');
     if (drawerOpenSource) drawerOpenSource.innerHTML = `${vnIconHtml('box')} ${t.openSource}`;
-    ['submitClubBtnDrawer', 'submitEventBtnDrawer', 'submitPublicationBtnDrawer'].forEach(id => {
+    const drawerClubBtn = document.getElementById('submitClubBtnDrawer');
+    if (drawerClubBtn) drawerClubBtn.innerHTML = `${vnIconHtml('pen')} ${t.submitClub}`;
+    ['submitEventBtnDrawer', 'submitPublicationBtnDrawer'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.textContent = t[id.replace('BtnDrawer', '').replace('submit', 'submit')];
+        if (el) el.textContent = t[id.replace('BtnDrawer', '')];
     });
     setTextById('submitEventBtnDrawer', '企划枢纽');
     setTextById('submitPublicationBtnDrawer', '企划枢纽');
@@ -3386,8 +3435,9 @@ function bindListModeControls() {
           document.getElementById('calendarModal')?.classList.add('open');
           document.getElementById('calendarModal')?.setAttribute('aria-hidden', 'false');
           return; // 不重新渲染
+        case 'column':
         case 'forum':
-          window.location.href = './Forum/forum-plaza.html';
+          window.location.href = './column/index.html';
           return;
         case 'publication':
         case 'project-hub':
@@ -7765,8 +7815,9 @@ function initTopUserBar() {
           document.getElementById('calendarModal')?.classList.add('open');
           document.getElementById('calendarModal')?.setAttribute('aria-hidden', 'false');
           break;
+        case 'column':
         case 'forum':
-          window.location.href = './Forum/forum-plaza.html';
+          window.location.href = './column/index.html';
           break;
         case 'publication':
         case 'project-hub':
@@ -8227,30 +8278,112 @@ init();
     var NOTIFICATION_SYNC_STORAGE_KEY = 'vnfest.notification-sync';
 
     // ---- helpers ----
-    function getNotifIcon(type) {
-        var icons = {
-            galonly_approved: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-            galonly_rejected: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
-            join_approved: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>',
-            join_rejected: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>',
-            member_kicked: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>',
-            role_changed: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-            system: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    // 通知类型来自多个业务模块，前端统一在这里补齐可读的注释和视觉语义。
+    function getNotifMeta(type, relatedType, title) {
+        var value = String(type || '').toLowerCase();
+        var related = String(relatedType || '').toLowerCase();
+        var heading = String(title || '');
+        var meta = {
+            label: '系统通知',
+            context: '站内消息',
+            tone: 'system',
+            icon: 'info'
         };
-        return icons[type] || icons.system;
+        var phaseLabels = {
+            galonly_phase1_passed: ['初审通过', '资料已进入下一阶段'],
+            galonly_phase2_submitted: ['资料已提交', '等待复核'],
+            galonly_phase2_passed: ['复核通过', '资料审核已完成'],
+            galonly_phase2_revision: ['需要修改', '请查看审核意见'],
+            galonly_shared: ['已公示', '活动信息已发布'],
+            galonly_approved: ['审核通过', '报名审核已通过'],
+            galonly_rejected: ['审核未通过', '报名审核结果'],
+            galonly_staff_pooled: ['进入候选', 'Staff审核进度'],
+            galonly_staff_rejected: ['审核未通过', 'Staff申请结果'],
+            galonly_staff_pending: ['待处理', 'Staff审核进度'],
+            galonly_staff_confirmed: ['名单已确认', 'Staff审核进度'],
+            galonly_staff_roster_unlocked: ['名单已解锁', 'Staff审核进度']
+        };
+        var supportingLabels = {
+            project_participation: ['项目动态', '参与状态变更', 'system', 'clipboard'],
+            recognition_issued: ['成就认证', '获得新徽章', 'approved', 'check'],
+            recognition_revoked: ['成就认证', '凭证状态变更', 'rejected', 'x'],
+            recognition_expired: ['成就认证', '凭证已过期', 'audit', 'clipboard']
+        };
+
+        if (related === 'announcement' || value === 'system' || /^📢\s*/.test(heading)) {
+            meta.label = related === 'announcement' || /^📢\s*/.test(heading) ? '全站公告' : '系统通知';
+            meta.context = related === 'announcement' || /^📢\s*/.test(heading) ? '站点公告' : '站内消息';
+            meta.tone = 'announcement';
+            meta.icon = 'megaphone';
+            return meta;
+        }
+        if (supportingLabels[value]) {
+            meta.label = supportingLabels[value][0];
+            meta.context = supportingLabels[value][1];
+            meta.tone = supportingLabels[value][2];
+            meta.icon = supportingLabels[value][3];
+            return meta;
+        }
+        if (phaseLabels[value]) {
+            meta.label = value.indexOf('staff') !== -1 ? 'Staff审核' : 'GalOnly审核';
+            meta.context = phaseLabels[value][0] + ' · ' + phaseLabels[value][1];
+            meta.tone = value.indexOf('rejected') !== -1 ? 'rejected' : (value.indexOf('passed') !== -1 || value.indexOf('approved') !== -1 || value.indexOf('confirmed') !== -1 || value.indexOf('shared') !== -1 ? 'approved' : 'audit');
+            meta.icon = meta.tone === 'rejected' ? 'x' : (meta.tone === 'approved' ? 'check' : 'clipboard');
+            return meta;
+        }
+        if (value === 'join_approved' || value === 'join_rejected') {
+            meta.label = '同好会';
+            meta.context = value === 'join_approved' ? '加入申请已通过' : '加入申请未通过';
+            meta.tone = value === 'join_approved' ? 'approved' : 'rejected';
+            meta.icon = value === 'join_approved' ? 'user-check' : 'user-x';
+            return meta;
+        }
+        if (value === 'member_kicked') {
+            meta.label = '同好会';
+            meta.context = '成员关系变更';
+            meta.tone = 'rejected';
+            meta.icon = 'user-minus';
+            return meta;
+        }
+        if (value === 'role_changed') {
+            meta.label = '同好会';
+            meta.context = '角色权限变更';
+            meta.tone = 'role';
+            meta.icon = 'shield';
+            return meta;
+        }
+        if (value.indexOf('galonly') === 0) {
+            meta.label = 'GalOnly审核';
+            meta.context = '活动申请进度';
+            meta.tone = value.indexOf('rejected') !== -1 ? 'rejected' : 'audit';
+            meta.icon = meta.tone === 'rejected' ? 'x' : 'clipboard';
+        }
+        return meta;
     }
-    function getNotifIconClass(type) {
-        if (type.indexOf('approved') !== -1) return 'approved';
-        if (type.indexOf('rejected') !== -1) return 'rejected';
-        if (type.indexOf('join') !== -1 || type.indexOf('kicked') !== -1) return 'join';
-        if (type.indexOf('role') !== -1) return 'role';
-        return 'system';
+    function getNotifIcon(type, relatedType, title) {
+        var icons = {
+            check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16.5 9"/></svg>',
+            x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+            'user-check': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 3 18.5V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="m16 11 2 2 4-4"/></svg>',
+            'user-x': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 3 18.5V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="m16 9 5 5M21 9l-5 5"/></svg>',
+            'user-minus': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 3 18.5V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="M16 11h6"/></svg>',
+            shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-3.5 7-9V5l-7-2-7 2v7c0 5.5 7 9 7 9Z"/><path d="M9 12h6"/></svg>',
+            clipboard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h4"/></svg>',
+            megaphone: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a2 2 0 0 0 2 2h3l8 4V5l-8 4H5a2 2 0 0 0-2 2Z"/><path d="M19 9a4 4 0 0 1 0 6"/></svg>',
+            info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+        };
+        var key = getNotifMeta(type, relatedType, title).icon;
+        return icons[key] || icons.info;
+    }
+    function getNotifIconClass(type, relatedType, title) {
+        return getNotifMeta(type, relatedType, title).tone;
     }
     function matchesFilter(notif, filter) {
+        var type = String(notif && notif.type || '').toLowerCase();
         if (filter === 'all') return true;
-        if (filter === 'audit') return notif.type.indexOf('galonly') !== -1;
-        if (filter === 'club') return notif.type.indexOf('join') !== -1 || notif.type.indexOf('kicked') !== -1 || notif.type.indexOf('role') !== -1;
-        if (filter === 'system') return notif.type === 'system';
+        if (filter === 'audit') return type.indexOf('galonly') !== -1;
+        if (filter === 'club') return type.indexOf('join') !== -1 || type.indexOf('kicked') !== -1 || type.indexOf('role') !== -1;
+        if (filter === 'system') return type === 'system';
         return true;
     }
     function formatTime(dateStr) {
@@ -8271,6 +8404,20 @@ init();
         var div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+    }
+    function getNotifDisplayTitle(title, type, relatedType) {
+        var value = String(title || '');
+        var meta = getNotifMeta(type, relatedType, value);
+        // 公告已经有专属喇叭图标，移除历史数据中的 emoji 前缀，避免重复表达。
+        if (meta.icon === 'megaphone') value = value.replace(/^📢\s*/, '');
+        return value || meta.label;
+    }
+    function renderNotifAnnotation(notification) {
+        var meta = getNotifMeta(notification.type, notification.related_type, notification.title);
+        return '<div class="notif-item-meta" aria-label="通知分类：' + escapeHtml(meta.label) + '">' +
+            '<span class="notif-type-label notif-tone-' + escapeHtml(meta.tone) + '">' + escapeHtml(meta.label) + '</span>' +
+            '<span class="notif-source-label">' + escapeHtml(meta.context) + '</span>' +
+            '</div>';
     }
 
     // ---- API ----
@@ -8355,20 +8502,22 @@ init();
             return;
         }
         panelList.innerHTML = notifications.map(function (n) {
+            var title = getNotifDisplayTitle(n.title, n.type, n.related_type);
             return '<div class="notif-item' + (n.is_read ? ' read' : '') +
                 '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
                 '" data-title="' + escapeHtml(n.title) +
                 '" data-message="' + escapeHtml(n.message || '') +
                 '" data-related-type="' + escapeHtml(n.related_type || '') +
                 '" data-related-id="' + (n.related_id || 0) +
+                '" data-link="' + escapeHtml(n.link || '') +
                 '" data-time="' + (n.created_at || '') + '">' +
                 '<span class="notif-dot"></span>' +
-                '<div class="notif-icon ' + getNotifIconClass(n.type) + '">' + getNotifIcon(n.type) + '</div>' +
+                '<div class="notif-icon ' + getNotifIconClass(n.type, n.related_type, n.title) + '">' + getNotifIcon(n.type, n.related_type, n.title) + '</div>' +
                 '<div class="notif-content">' +
-                '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+                '<div class="notif-title-row"><div class="notif-title">' + escapeHtml(title) + '</div><span class="notif-time">' + formatTime(n.created_at) + '</span></div>' +
                 (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
+                renderNotifAnnotation(n) +
                 '</div>' +
-                '<span class="notif-time">' + formatTime(n.created_at) + '</span>' +
                 '</div>';
         }).join('');
     }
@@ -8424,23 +8573,18 @@ init();
             detailDialog.className = 'notif-detail-dialog';
             detailOverlay.appendChild(detailDialog);
         }
-        var typeLabels = {
-            galonly_approved: '审核通过', galonly_rejected: '审核拒绝',
-            join_approved: '加入通过', join_rejected: '加入拒绝',
-            member_kicked: '已移出', role_changed: '角色变更', system: '系统通知'
-        };
-        var typeLabel = typeLabels[type] || type;
-        var iconClass = getNotifIconClass(type);
+        var meta = getNotifMeta(type, '', title);
+        var iconClass = getNotifIconClass(type, '', title);
         detailDialog.innerHTML =
             '<div class="notif-detail-header">' +
-            '<div class="notif-icon ' + iconClass + '">' + getNotifIcon(type) + '</div>' +
-            '<h3>' + escapeHtml(title) + '</h3>' +
+            '<div class="notif-icon ' + iconClass + '">' + getNotifIcon(type, '', title) + '</div>' +
+            '<div><div class="notif-detail-kicker">' + escapeHtml(meta.label) + '</div><h3>' + escapeHtml(getNotifDisplayTitle(title, type, '')) + '</h3></div>' +
             '<button class="notif-detail-close" id="notifDetailClose" aria-label="关闭通知详情">×</button>' +
             '</div>' +
             '<div class="notif-detail-body">' +
             (message ? '<div class="notif-detail-message notif-md-content">' + renderNotifMarkdown(message) + '</div>' : '') +
             '<div class="notif-detail-meta">' +
-            '<span class="notif-detail-type">' + escapeHtml(typeLabel) + '</span>' +
+            '<span class="notif-detail-type">' + escapeHtml(meta.context) + '</span>' +
             '<span class="notif-detail-time">' + formatTime(time) + '</span>' +
             '</div>' +
             '</div>' +
@@ -8527,7 +8671,7 @@ init();
 
     var isMobileCenter = false;
 
-    function showCenterDetail(title, message, type, time, itemId) {
+    function showCenterDetail(title, message, type, time, itemId, relatedType, isRead, link) {
         if (!centerDetailPanel) return;
         centerActiveId = itemId;
         // highlight active item
@@ -8538,13 +8682,18 @@ init();
         if (isMobileCenter && centerOverlay) {
             centerOverlay.querySelector('.notif-center-modal').classList.add('showing-detail');
         }
-        var typeLabels = {
-            galonly_approved: '审核通过', galonly_rejected: '审核拒绝',
-            join_approved: '加入通过', join_rejected: '加入拒绝',
-            member_kicked: '已移出', role_changed: '角色变更', system: '系统通知'
-        };
-        var typeLabel = typeLabels[type] || type;
-        var iconClass = getNotifIconClass(type);
+        var meta = getNotifMeta(type, relatedType, title);
+        var displayTitle = getNotifDisplayTitle(title, type, relatedType);
+        var iconClass = getNotifIconClass(type, relatedType, title);
+        var safeLink = '';
+        if (link) {
+            try {
+                var resolvedLink = new URL(String(link), window.location.href);
+                if (resolvedLink.protocol === 'http:' || resolvedLink.protocol === 'https:') safeLink = escapeHtml(String(link));
+            } catch (e) { safeLink = ''; }
+        }
+        var readLabel = isRead === false ? '未读' : '已读';
+        var actionMarkup = safeLink ? '<a class="nd-btn-primary" href="' + safeLink + '" target="_blank" rel="noopener noreferrer">查看相关内容</a>' : '';
         var backBtn = isMobileCenter
             ? '<button class="notif-detail-back" id="ndBackBtn">← 返回列表</button>'
             : '';
@@ -8552,12 +8701,13 @@ init();
             '<div class="notif-detail-view">' +
             backBtn +
             '<div class="nd-header">' +
-            '<div class="nd-icon notif-icon ' + iconClass + '">' + getNotifIcon(type) + '</div>' +
-            '<div><h3 class="nd-title">' + escapeHtml(title) + '</h3>' +
-            '<div class="nd-meta"><span>' + escapeHtml(typeLabel) + '</span><span>' + formatTime(time) + '</span></div>' +
+            '<div class="nd-icon notif-icon ' + iconClass + '">' + getNotifIcon(type, relatedType, title) + '</div>' +
+            '<div class="nd-heading"><div class="nd-kicker">' + escapeHtml(meta.label) + '</div><h3 class="nd-title">' + escapeHtml(displayTitle) + '</h3>' +
+            '<div class="nd-meta"><span>' + escapeHtml(meta.context) + '</span><span class="nd-status ' + (isRead === false ? 'is-unread' : 'is-read') + '">' + readLabel + '</span><time datetime="' + escapeHtml(time || '') + '">' + formatTime(time) + '</time></div>' +
             '</div></div>' +
             '<div class="nd-body">' + (message ? renderNotifMarkdown(message) : '<span style="opacity:0.5">无详细内容</span>') + '</div>' +
             '<div class="nd-footer">' +
+            actionMarkup +
             '<button class="nd-btn-ghost" id="ndCloseBtn">' + (isMobileCenter ? '返回' : '关闭') + '</button>' +
             '</div></div>';
         // back button (mobile)
@@ -8609,7 +8759,10 @@ init();
                 options.announcementContent || target.dataset.message || '',
                 target.dataset.type || 'system',
                 target.dataset.time || '',
-                id
+                id,
+                target.dataset.relatedType || '',
+                target.classList.contains('read') || id > 0,
+                target.dataset.link || ''
             );
             return;
         }
@@ -8620,7 +8773,10 @@ init();
                 options.announcementContent,
                 'system',
                 options.time || '',
-                0
+                0,
+                'announcement',
+                true,
+                ''
             );
         }
     }
@@ -8645,7 +8801,10 @@ init();
                 pendingCenterFocus.announcementContent,
                 'system',
                 pendingCenterFocus.time || '',
-                0
+                0,
+                'announcement',
+                true,
+                ''
             );
         }
         loadCenterPage(1);
@@ -8698,21 +8857,23 @@ init();
         }
         var html = filtered.map(function (n) {
             var checked = centerSelected[n.id] ? ' checked' : '';
+            var title = getNotifDisplayTitle(n.title, n.type, n.related_type);
             return '<div class="notif-item' + (n.is_read ? ' read' : '') +
                 '" data-id="' + n.id + '" data-type="' + escapeHtml(n.type) +
                 '" data-title="' + escapeHtml(n.title) +
                 '" data-message="' + escapeHtml(n.message || '') +
                 '" data-related-type="' + escapeHtml(n.related_type || '') +
                 '" data-related-id="' + (n.related_id || 0) +
+                '" data-link="' + escapeHtml(n.link || '') +
                 '" data-time="' + (n.created_at || '') + '">' +
                 '<label class="notif-center-cb" onclick="event.stopPropagation()"><input type="checkbox" class="notif-cb" value="' + n.id + '"' + checked + '></label>' +
                 '<span class="notif-dot"></span>' +
-                '<div class="notif-icon ' + getNotifIconClass(n.type) + '">' + getNotifIcon(n.type) + '</div>' +
+                '<div class="notif-icon ' + getNotifIconClass(n.type, n.related_type, n.title) + '">' + getNotifIcon(n.type, n.related_type, n.title) + '</div>' +
                 '<div class="notif-content">' +
-                '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+                '<div class="notif-title-row"><div class="notif-title">' + escapeHtml(title) + '</div><span class="notif-time">' + formatTime(n.created_at) + '</span></div>' +
                 (n.message ? '<div class="notif-message">' + escapeHtml(n.message) + '</div>' : '') +
+                renderNotifAnnotation(n) +
                 '</div>' +
-                '<span class="notif-time">' + formatTime(n.created_at) + '</span>' +
                 '</div>';
         }).join('');
         centerList.innerHTML = html;
@@ -8739,9 +8900,10 @@ init();
     function updateTabCounts(notifications) {
         var counts = { all: notifications.length, audit: 0, club: 0, system: 0 };
         notifications.forEach(function (n) {
-            if (n.type.indexOf('galonly') !== -1) counts.audit++;
-            else if (n.type.indexOf('join') !== -1 || n.type.indexOf('kicked') !== -1 || n.type.indexOf('role') !== -1) counts.club++;
-            else if (n.type === 'system') counts.system++;
+            var type = String(n.type || '').toLowerCase();
+            if (type.indexOf('galonly') !== -1) counts.audit++;
+            else if (type.indexOf('join') !== -1 || type.indexOf('kicked') !== -1 || type.indexOf('role') !== -1) counts.club++;
+            else if (type === 'system') counts.system++;
         });
         centerOverlay.querySelectorAll('.notif-center-tab').forEach(function (tab) {
             var filter = tab.dataset.filter;
@@ -8949,9 +9111,12 @@ init();
             var title = item.dataset.title || '';
             var message = item.dataset.message || '';
             var type = item.dataset.type || 'system';
+            var relatedType = item.dataset.relatedType || '';
+            var link = item.dataset.link || '';
             var time = item.dataset.time || '';
+            var wasRead = item.classList.contains('read');
             // mark read
-            if (!item.classList.contains('read')) {
+            if (!wasRead) {
             markNotificationRead(id).then(function (data) {
                 if (data.success) {
                     item.classList.add('read');
@@ -8960,7 +9125,7 @@ init();
             });
             }
             // show detail in right panel
-            showCenterDetail(title, message, type, time, id);
+            showCenterDetail(title, message, type, time, id, relatedType, wasRead || id > 0, link);
         });
     }
 

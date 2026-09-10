@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['action'])) {
 
 // PUT / POST ?action=save - 管理员批量保存
 require_once __DIR__ . '/../includes/auth.php';
-requireAdmin();
+$currentUser = requireAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT' || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'save')) {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -80,6 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' || ($_SERVER['REQUEST_METHOD'] === 'POS
         echo json_encode(['success' => false, 'message' => '无效数据']);
         exit();
     }
+    require_once __DIR__ . '/../includes/admin_insights.php';
+    $previous = [];
+    if (file_exists($dataFile)) {
+        $decoded = json_decode((string)file_get_contents($dataFile), true);
+        if (is_array($decoded)) $previous = $decoded;
+    }
+    $input = adminInsightsStampReviewTransitions($previous, $input, (int)($currentUser['id'] ?? 0));
     file_put_contents($dataFile, json_encode($input, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     echo json_encode(['success' => true, 'message' => '保存成功']);
     exit();

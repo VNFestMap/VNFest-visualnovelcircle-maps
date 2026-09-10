@@ -51,6 +51,10 @@
   --chart-red: oklch(70% 0.14 25);
   --chart-gray: oklch(65% 0.04 268);
   --chart-area-fill: oklch(72% 0.05 290 / 0.12);
+  --chart-pv: var(--color-success);
+  --chart-pv-area: oklch(72% 0.10 155 / 0.11);
+  --chart-uv: var(--color-primary);
+  --chart-track: oklch(30% 0.045 270 / 0.42);
 
   /* Badge type colors */
   --badge-info-bg: oklch(72% 0.05 290 / 0.12);
@@ -320,6 +324,158 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .data-table tbody tr { transition: background 0.15s; }
 .data-table tbody tr:hover { background: var(--color-review-hover); }
 .data-table tbody tr:last-child td { border-bottom: none; }
+
+/* Traffic analytics */
+.analytics-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 14px 20px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); background: var(--color-surface);
+  margin-bottom: var(--space-md);
+}
+.analytics-toolbar .log-filter { min-height: 36px; }
+.analytics-presets { display: flex; gap: 4px; flex-wrap: wrap; }
+.analytics-presets .chip { min-height: 36px; }
+.analytics-range-label { margin-left: auto; color: var(--color-text-muted); font-size: 11px; }
+.analytics-notice {
+  padding: 10px 14px; margin-bottom: var(--space-md); border-left: 3px solid var(--color-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: oklch(72% 0.05 290 / .07);
+  color: var(--color-text-secondary); font-size: 12px; line-height: 1.6;
+}
+.analytics-overview { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.analytics-card { padding: 12px 14px; }
+.analytics-card .kpi-value { font-size: 22px; font-variant-numeric: tabular-nums; }
+.analytics-kpi-pv { margin-top: 2px; color: var(--color-text-secondary); font-size: 10px; }
+.analytics-kpi-delta { margin-top: 5px; color: var(--color-text-muted); font-size: 10px; }
+.analytics-chart-card { margin-bottom: 12px; }
+.analytics-chart { min-height: 0; width: 100%; padding: 0; }
+.analytics-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.analytics-chart svg circle { transition: r .15s ease, stroke-width .15s ease; }
+.analytics-chart svg circle:hover,
+.analytics-chart svg circle:focus { stroke: var(--color-text); stroke-width: 1.5; outline: none; }
+.analytics-chart-card .panel-header { padding: 12px 16px 8px; }
+.analytics-chart-card .panel-body { padding: 8px 16px 12px; }
+.analytics-legend { display: flex; gap: 6px; color: var(--color-text-muted); font-size: 11px; }
+.analytics-legend span {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border: 1px solid var(--color-border); border-radius: 6px;
+  background: var(--color-surface-alt); font-weight: 600;
+}
+.analytics-legend span::before {
+  content: ''; display: inline-block; width: 12px; height: 3px; border-radius: 2px; background: var(--chart-uv);
+}
+.analytics-legend .pv::before { background: var(--chart-pv); }
+.analytics-breakdown-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);
+}
+.analytics-breakdown-card { min-width: 0; }
+.analytics-table-wrap { overflow-x: auto; }
+.analytics-table-wrap .data-table { min-width: 440px; }
+.analytics-table-wrap .data-table th { padding: 7px 10px; font-size: 10px; }
+.analytics-table-wrap .data-table td { padding: 8px 10px; }
+.analytics-bar-list { display: grid; gap: 11px; }
+.analytics-bar-row { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(100px, 2fr) auto; gap: 9px; align-items: center; font-size: 12px; }
+.analytics-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.analytics-bar-track { height: 8px; overflow: hidden; border-radius: 4px; background: var(--color-surface-alt); }
+.analytics-bar-fill { height: 100%; min-width: 0; border-radius: 4px; background: var(--color-primary); transition: width .35s var(--transition-smooth); }
+.analytics-bar-value { color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.analytics-auth-grid { display: grid; gap: 12px; }
+.analytics-auth-row { display: grid; grid-template-columns: 76px 1fr auto; gap: 10px; align-items: center; font-size: 12px; }
+.analytics-auth-track { height: 9px; overflow: hidden; border-radius: 5px; background: var(--color-surface-alt); }
+.analytics-auth-fill { height: 100%; border-radius: 5px; background: var(--color-success); }
+.analytics-auth-row.anonymous .analytics-auth-fill { background: var(--color-primary); }
+.analytics-auth-row.historical { color: var(--color-text-muted); }
+.analytics-auth-row.historical .analytics-auth-fill { background: var(--color-text-muted); }
+.analytics-empty { padding: 34px 16px; text-align: center; color: var(--color-text-muted); font-size: 12px; }
+.analytics-export-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.analytics-export-actions .btn { min-width: 44px; }
+.analytics-page-title { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Dashboard chart surfaces */
+#module-dashboard .charts-grid { align-items: start; }
+#module-dashboard .charts-grid .panel-card { margin-bottom: 0; }
+#module-dashboard .charts-grid .panel-header,
+#module-dashboard [data-od-id="region-dist"] .panel-header { padding: 12px 16px 8px; }
+#module-dashboard [data-od-id="region-dist"] .panel-body { padding: 8px 16px 12px; }
+#module-dashboard #reviewTrendChart,
+#module-dashboard #regionDistChart { min-height: 0; }
+
+.region-chart-meta {
+  display: flex; justify-content: space-between; gap: 12px; padding: 0 2px 8px;
+  color: var(--color-text-muted); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.region-ranking { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 28px; list-style: none; padding: 0; margin: 0; }
+.region-ranking-row {
+  display: grid; grid-template-columns: 24px minmax(100px, 136px) minmax(72px, 1fr) 34px;
+  gap: 8px; align-items: center; min-height: 26px;
+  transition: background-color .18s ease;
+}
+.region-ranking-row:hover { background: var(--color-review-hover); }
+.region-rank {
+  color: var(--color-text-muted); font-size: 10px; font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.region-name {
+  overflow: hidden; color: var(--color-text-secondary); font-size: 12px;
+  font-weight: 600; text-overflow: ellipsis; white-space: nowrap;
+}
+.region-track { height: 8px; overflow: hidden; border-radius: 4px; background: var(--chart-track); }
+.region-track-fill { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); transition: width .35s var(--transition-smooth); }
+.region-ranking-row.jp .region-track-fill { background: var(--chart-blue); }
+.region-value {
+  color: var(--color-text); font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+
+/* Operation log inspector */
+.log-toolbar {
+  padding: 14px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border); background: oklch(21% 0.036 273 / 0.55);
+}
+.log-toolbar .search-input { flex: 1 1 260px; min-width: 220px; }
+.log-filter {
+  min-height: 36px; padding: 7px 10px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill); font-size: 12px; background: var(--color-surface-alt);
+  color: var(--color-text); outline: none;
+}
+.log-filter:focus { border-color: var(--color-primary); }
+.log-summary {
+  display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px;
+  padding: 12px 20px; border-bottom: 1px solid var(--color-border);
+}
+.log-stat {
+  padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+}
+.log-stat-value { display: block; color: var(--color-text); font-size: 18px; font-weight: 700; line-height: 1.2; }
+.log-stat-label { display: block; margin-top: 3px; color: var(--color-text-muted); font-size: 10px; letter-spacing: .04em; }
+.log-event-title { font-weight: 650; color: var(--color-text); line-height: 1.35; }
+.log-event-code { margin-top: 3px; color: var(--color-text-muted); font: 10px/1.35 var(--font-mono); word-break: break-all; }
+.log-operator-meta, .log-source-meta { margin-top: 2px; color: var(--color-text-muted); font-size: 10px; line-height: 1.45; }
+.log-pill {
+  display: inline-flex; align-items: center; min-height: 23px; padding: 2px 8px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-pill);
+  font-size: 10px; font-weight: 650; white-space: nowrap;
+}
+.log-pill.info { color: var(--color-primary); background: oklch(72% 0.05 290 / .1); }
+.log-pill.success { color: var(--color-success); background: var(--color-success-light); }
+.log-pill.attention { color: var(--color-warning); background: var(--color-warning-light); }
+.log-pill.high { color: var(--color-danger); background: var(--color-danger-light); }
+.log-pill.neutral { color: var(--color-text-secondary); background: rgba(255,255,255,.025); }
+.log-result-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.log-detail-button { min-height: 32px; }
+.log-pagination {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 11px;
+}
+.log-detail-json {
+  margin: 0; padding: 12px; max-height: 260px; overflow: auto; border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm); background: oklch(18% 0.03 273); color: var(--color-text-secondary);
+  font: 11px/1.6 var(--font-mono); white-space: pre-wrap; word-break: break-all; user-select: text;
+}
+.log-explanation {
+  padding: 10px 12px; border-left: 3px solid var(--color-primary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: oklch(72% 0.05 290 / .07); color: var(--color-text-secondary); font-size: 12px; line-height: 1.65;
+}
 
 .btn {
   display: inline-flex; align-items: center; gap: 5px;
@@ -695,18 +851,45 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   .charts-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
-  .app-layout { grid-template-columns: 1fr; }
+  .app-layout { grid-template-columns: minmax(0, 1fr); min-width: 0; }
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.3); }
-  .main-content { grid-column: 1; }
-  .mobile-menu-btn { display: flex; }
+  .main-content, .content-area, .module-panel { grid-column: 1; min-width: 0; width: 100%; }
+  .topbar { min-width: 0; padding: 0 12px; }
+  .topbar-left { min-width: 0; overflow: hidden; }
+  .topbar-left .breadcrumb { display: none; }
+  .topbar-left .page-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-right { flex-shrink: 0; }
+  .mobile-menu-btn { display: flex; width: 44px; height: 44px; align-items: center; justify-content: center; }
+  .topbar-right .btn { min-height: 44px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .form-row { flex-direction: column; }
   .content-area { padding: var(--space-md); }
   .search-input { min-width: 140px; }
+  .log-toolbar { align-items: stretch; }
+  .log-toolbar .search-input { flex-basis: 100%; min-width: 100%; }
+  .log-toolbar .search-input, .log-toolbar .log-filter, .log-toolbar .btn { min-height: 44px; }
+  .log-detail-button, .log-pagination .btn { min-width: 44px; min-height: 44px; }
+  .log-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .log-pagination { align-items: flex-start; flex-direction: column; }
+  .analytics-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-breakdown-grid { grid-template-columns: 1fr; }
+  .analytics-toolbar { align-items: stretch; }
+  .analytics-toolbar .log-filter, .analytics-toolbar .btn, .analytics-presets .chip { min-height: 44px; }
+  #module-analytics .analytics-export-actions .btn { min-height: 44px; }
+  .analytics-range-label { flex-basis: 100%; margin-left: 0; }
+  #module-dashboard [data-od-id="region-dist"] .panel-header { align-items: flex-start; }
+  .region-ranking { grid-template-columns: 1fr; gap: 5px; }
+  .region-ranking-row { grid-template-columns: 24px minmax(92px, 1fr) minmax(72px, 1.25fr) 34px; gap: 8px; }
+  .region-name, .region-value { font-size: 12px; }
+  .region-chart-meta { padding-bottom: 10px; }
 }
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
+  .analytics-overview { grid-template-columns: 1fr; }
+  .analytics-toolbar > .log-filter, .analytics-toolbar > .btn { width: 100%; }
+  .analytics-presets { width: 100%; }
+  .analytics-presets .chip { flex: 1; }
 }
 
 /* Sidebar overlay on mobile */
@@ -754,6 +937,133 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .gap-sm { gap: var(--space-sm); }
 .flex { display: flex; }
 .flex-wrap { flex-wrap: wrap; }
+
+/* ================================================================
+   OPERATIONAL INSIGHTS — dense admin workbench
+   ================================================================ */
+.insights-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.insights-presets { display: flex; gap: 4px; }
+.insights-range-label { margin-left: auto; font-size: 11px; color: var(--color-text-muted); }
+.insights-notice {
+  border: 1px solid oklch(72% 0.07 290 / 0.18); background: var(--color-primary-light);
+  color: var(--color-text-secondary); border-radius: var(--radius-sm);
+  padding: 7px 10px; font-size: 11px; margin-bottom: 10px;
+}
+.insights-kpi-grid {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px;
+}
+.insights-kpi {
+  min-width: 0; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--color-surface), var(--color-surface-alt));
+  color: var(--color-text); text-align: left; padding: 11px 12px 9px;
+  display: flex; flex-direction: column; gap: 2px; min-height: 86px; transition: border-color .15s, transform .15s;
+}
+button.insights-kpi { font: inherit; cursor: pointer; }
+.insights-kpi:hover { border-color: var(--color-primary); transform: translateY(-1px); }
+.insights-kpi.danger { border-color: oklch(70% 0.14 25 / 0.26); }
+.insights-kpi-label { color: var(--color-text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insights-kpi strong { font-size: 25px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; }
+.insights-kpi small { color: var(--color-text-muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insights-layout { display: grid; gap: 10px; margin-bottom: 10px; min-width: 0; }
+.insights-top-layout { grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); align-items: start; }
+.insights-quality-layout { grid-template-columns: minmax(220px, .8fr) minmax(220px, .8fr) minmax(0, 1.4fr); align-items: start; }
+.insights-panel { min-width: 0; overflow: hidden; }
+.insights-panel .panel-header { min-height: 42px; padding: 9px 12px; }
+.insights-panel .panel-body { padding: 10px 12px; }
+.insights-table-wrap { width: 100%; overflow-x: auto; }
+.insights-table { min-width: 650px; font-size: 11px; }
+.insights-table th { padding: 7px 8px; font-size: 10px; white-space: nowrap; }
+.insights-table td { padding: 7px 8px; white-space: nowrap; }
+.insights-table tbody tr:hover { background: var(--color-review-hover); }
+.insights-empty { text-align: center !important; color: var(--color-text-muted); padding: 26px 12px !important; }
+.insight-link { color: var(--color-primary); font-size: 11px; border: 0; background: none; padding: 3px 0; white-space: nowrap; }
+.insight-link:hover { text-decoration: underline; }
+.insight-review-chart { height: 108px; width: 100%; }
+.insight-review-chart svg { width: 100%; height: 100%; display: block; }
+.insight-review-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
+.insight-review-stat { background: var(--color-surface-alt); border-radius: 6px; padding: 5px 6px; min-width: 0; }
+.insight-review-stat span { display: block; color: var(--color-text-muted); font-size: 10px; white-space: nowrap; }
+.insight-review-stat strong { display: block; margin-top: 2px; font-size: 14px; }
+.insight-review-by-type-wrap { margin-top: 8px; overflow-x: auto; border-top: 1px solid var(--color-border); }
+.insight-review-by-type-wrap .insights-table { min-width: 0; width: 100%; table-layout: fixed; }
+.insight-review-by-type-wrap .insights-table td,
+.insight-review-by-type-wrap .insights-table th { padding: 4px 5px; overflow: hidden; text-overflow: ellipsis; }
+.insight-review-by-type-wrap .insights-table td { padding: 4px 5px; overflow: hidden; text-overflow: ellipsis; }
+.insight-score-head { display: flex; align-items: baseline; gap: 7px; margin-bottom: 9px; }
+.insight-score-head strong { font-size: 27px; line-height: 1; }
+.insight-score-head span { color: var(--color-text-muted); font-size: 10px; }
+.insight-score-head span:last-child { margin-left: auto; }
+.insight-score-bars { display: grid; gap: 5px; }
+.insight-score-row { display: grid; grid-template-columns: 45px minmax(40px, 1fr) 28px; align-items: center; gap: 6px; font-size: 10px; }
+.insight-score-row > span:first-child { color: var(--color-text-muted); }
+.insight-score-track { height: 6px; background: var(--chart-track); border-radius: 99px; overflow: hidden; }
+.insight-score-fill { height: 100%; border-radius: inherit; background: var(--chart-uv); }
+.insight-score-row:nth-child(2) .insight-score-fill { background: var(--color-success); }
+.insight-score-row:nth-child(3) .insight-score-fill { background: var(--color-warning); }
+.insight-score-row:nth-child(4) .insight-score-fill { background: var(--color-danger); }
+.insight-score-row > strong { text-align: right; font-size: 10px; }
+.insight-missing-list { border-top: 1px solid var(--color-border); margin-top: 10px; padding-top: 7px; display: grid; gap: 4px; }
+.insight-missing-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--color-text-secondary); }
+.insight-missing-row strong { color: var(--color-text); }
+.insight-low-list { border-top: 1px solid var(--color-border); margin-top: 9px; padding-top: 7px; display: grid; gap: 3px; }
+.insight-low-list-label { color: var(--color-text-muted); font-size: 10px; }
+.insight-low-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; font-size: 10px; }
+.insight-low-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.insight-low-row strong { flex: 0 0 auto; color: var(--color-danger); font-variant-numeric: tabular-nums; }
+.insight-low-row button { min-width: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.insight-filter-group { display: flex; gap: 3px; }
+.insight-filter-group .chip { padding: 4px 8px; font-size: 10px; }
+.priority-table { min-width: 600px; }
+.priority-severity { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; }
+.priority-severity::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); }
+.priority-severity.urgent { color: var(--color-danger); }
+.priority-severity.urgent::before { background: var(--color-danger); }
+.priority-severity.warning { color: var(--color-warning); }
+.priority-severity.warning::before { background: var(--color-warning); }
+.priority-severity.info { color: var(--color-primary); }
+.priority-severity.info::before { background: var(--color-primary); }
+.priority-title { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.insight-pagination { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 10px; font-size: 10px; color: var(--color-text-muted); }
+.insight-pagination .btn { padding: 5px 10px; }
+.insights-summary-strip { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: -5px 0 12px; }
+.insights-summary-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-border); background: var(--color-surface-alt); border-radius: var(--radius-pill); padding: 5px 9px; color: var(--color-text-secondary); font-size: 11px; }
+.insights-summary-pill strong { color: var(--color-text); }
+.insights-summary-pill.urgent { border-color: oklch(70% 0.14 25 / 0.3); }
+.insights-summary-link { margin-left: auto; font-size: 11px; }
+.insight-focused-row { animation: insightFocus 1.5s ease both; }
+@keyframes insightFocus { 0%, 100% { background: transparent; } 20%, 60% { background: var(--color-primary-light); } }
+@media (max-width: 1180px) {
+  .insights-top-layout { grid-template-columns: 1fr; }
+  .insights-quality-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-priority-panel { grid-column: 1 / -1; }
+}
+@media (max-width: 768px) {
+  .insights-toolbar { align-items: stretch; }
+  .insights-presets { width: 100%; }
+  .insights-presets .chip { flex: 1; min-height: 44px; }
+  .insights-toolbar > .log-filter, .insights-toolbar > .btn { min-height: 44px; }
+  .insights-toolbar > .log-filter { flex: 1; min-width: 130px; }
+  .insights-range-label { flex-basis: 100%; margin-left: 0; }
+  .insights-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-quality-layout { grid-template-columns: 1fr; }
+  .insights-priority-panel { grid-column: auto; }
+  .insights-table-wrap { margin: 0 -1px; }
+  .insight-filter-group .chip, .insight-link { min-height: 44px; }
+  .insight-link { display: inline-flex; align-items: center; padding: 8px 10px; }
+  .insight-pagination .btn { min-height: 44px; }
+  .insights-summary-link { flex-basis: 100%; margin-left: 0; }
+}
+@media (max-width: 480px) {
+  .insights-kpi-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .insights-kpi { min-height: 78px; padding: 9px; }
+  .insights-kpi strong { font-size: 21px; }
+  .insights-toolbar > .log-filter { flex-basis: 100%; width: 100%; }
+  .insights-toolbar > .text-muted { display: none; }
+  .insights-toolbar > .btn { width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -770,12 +1080,19 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
       <button class="nav-item active" data-module="dashboard" onclick="switchModule('dashboard')">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="9" width="3" height="6" rx="0.5"/><rect x="6.5" y="5" width="3" height="10" rx="0.5"/><rect x="12" y="1" width="3" height="14" rx="0.5"/></svg></span> 数据概览
       </button>
+      <button class="nav-item" data-module="analytics" id="analyticsNav" onclick="switchModule('analytics')" style="display:none;">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13.5V9.5M6 13.5V6M10 13.5V3M14 13.5V1.5"/><path d="M1.5 14h13"/></svg></span> 访问与统计
+      </button>
+      <button class="nav-item" data-module="insights" id="insightsNav" onclick="switchModule('insights')" style="display:none;">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2.5h12v11H2z"/><path d="M5 5.5h6M5 8h4M5 10.5h2"/><path d="M11.5 10.5l1 1 1.8-2.2"/></svg></span> 运营洞察
+      </button>
 
       <div class="nav-section-label">内容管理</div>
       <button class="nav-item" data-module="review" onclick="switchModule('review')">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span> 审核中心
         <span class="nav-badge" id="navPendingBadge" style="display:none;">0</span>
       </button>
+      <a class="nav-item" href="./column.html"><span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v12H3z"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3"/></svg></span> 专栏内容</a>
       <button class="nav-item" data-module="galonly-reviewers" onclick="switchModule('galonly-reviewers')" id="galonlyReviewersNav" style="display:none;">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><path d="M2 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/><path d="M8.5 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/></svg></span> 摊位审核成员
       </button>
@@ -831,6 +1148,13 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
           <div class="kpi-card"><div class="kpi-label">活动总数</div><div class="kpi-value" id="kpiEvents">--</div><div class="kpi-delta text-muted">加载中</div></div>
           <div class="kpi-card"><div class="kpi-label">成员总数</div><div class="kpi-value" id="kpiMembers">--</div><div class="kpi-delta text-muted">加载中</div></div>
         </div>
+        <div class="insights-summary-strip" id="insightsSummaryStrip" style="display:none;" aria-label="运营洞察摘要">
+          <span class="insights-summary-pill"><span>待处理</span><strong id="dashboardInsightPending">—</strong></span>
+          <span class="insights-summary-pill urgent"><span>72h+</span><strong id="dashboardInsightOverdue">—</strong></span>
+          <span class="insights-summary-pill"><span>无负责人</span><strong id="dashboardInsightOwners">—</strong></span>
+          <span class="insights-summary-pill"><span>低完整度</span><strong id="dashboardInsightQuality">—</strong></span>
+          <button class="insight-link insights-summary-link" type="button" onclick="switchModule('insights')">打开运营洞察 →</button>
+        </div>
 
         <div class="charts-grid" style="grid-template-columns: 2fr 1fr;">
           <div class="panel-card" data-component="Review Trend Chart" data-od-id="review-trend">
@@ -844,8 +1168,154 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
         </div>
 
         <div class="panel-card" data-component="Region Distribution" data-od-id="region-dist">
-          <div class="panel-header"><span class="panel-title">地区分布 — 同好会数量</span></div>
-          <div class="panel-body" style="padding:12px 20px;"><div class="chart-container" id="regionDistChart"></div></div>
+          <div class="panel-header"><span class="panel-title">地区分布</span><span class="text-sm text-muted">同好会数量 Top 12</span></div>
+          <div class="panel-body"><div class="chart-container" id="regionDistChart"></div></div>
+        </div>
+      </section>
+
+      <!-- ====== MODULE: TRAFFIC ANALYTICS ====== -->
+      <section class="module-panel" id="module-analytics" data-component="Traffic Analytics" data-od-id="analytics">
+        <div class="analytics-toolbar" aria-label="访问统计筛选">
+          <div class="analytics-presets" role="group" aria-label="日期范围快捷筛选">
+            <button class="chip" type="button" data-analytics-preset="7" onclick="analyticsSetPreset(7)">最近 7 天</button>
+            <button class="chip active" type="button" data-analytics-preset="30" onclick="analyticsSetPreset(30)">最近 30 天</button>
+            <button class="chip" type="button" data-analytics-preset="90" onclick="analyticsSetPreset(90)">最近 90 天</button>
+          </div>
+          <input type="date" id="analyticsFrom" class="log-filter" aria-label="统计起始日期" onchange="analyticsSetCustomRange()">
+          <span class="text-muted" aria-hidden="true">至</span>
+          <input type="date" id="analyticsTo" class="log-filter" aria-label="统计结束日期" onchange="analyticsSetCustomRange()">
+          <button class="btn btn-primary btn-sm" type="button" onclick="loadAnalytics()">刷新数据</button>
+          <span class="analytics-range-label" id="analyticsRangeLabel">加载中...</span>
+        </div>
+        <div class="analytics-notice" id="analyticsTrackingNotice">
+          统计时区：Asia/Shanghai。上线后的 UV 使用 Cookie 精确统计；历史日志仅补充 PV，历史 UV 无法还原。页面统计、来源和设备中的 UV 均为“维度内 UV”。
+        </div>
+
+        <div class="kpi-grid analytics-overview" id="analyticsOverview">
+          <div class="kpi-card analytics-card"><div class="kpi-label">累计访客</div><div class="kpi-value" id="analyticsLifetimeUv">—</div><div class="analytics-kpi-pv" id="analyticsLifetimePv">PV —</div><div class="analytics-kpi-delta text-muted">上线后累计</div></div>
+          <div class="kpi-card analytics-card"><div class="kpi-label">今日访客</div><div class="kpi-value" id="analyticsTodayUv">—</div><div class="analytics-kpi-pv" id="analyticsTodayPv">PV —</div><div class="analytics-kpi-delta" id="analyticsTodayDelta">—</div></div>
+          <div class="kpi-card analytics-card"><div class="kpi-label">本周访客</div><div class="kpi-value" id="analyticsWeekUv">—</div><div class="analytics-kpi-pv" id="analyticsWeekPv">PV —</div><div class="analytics-kpi-delta" id="analyticsWeekDelta">—</div></div>
+          <div class="kpi-card analytics-card"><div class="kpi-label">本月访客</div><div class="kpi-value" id="analyticsMonthUv">—</div><div class="analytics-kpi-pv" id="analyticsMonthPv">PV —</div><div class="analytics-kpi-delta" id="analyticsMonthDelta">—</div></div>
+        </div>
+
+        <div class="panel-card analytics-chart-card">
+          <div class="panel-header"><span class="panel-title">访问趋势</span><div class="analytics-legend"><span>UV</span><span class="pv">PV</span></div></div>
+          <div class="panel-body"><div class="analytics-chart" id="analyticsTrendChart"><div class="analytics-empty">加载中...</div></div></div>
+        </div>
+
+        <div class="analytics-breakdown-grid">
+          <div class="panel-card analytics-breakdown-card">
+            <div class="panel-header"><span class="panel-title">热门页面</span><span class="text-sm text-muted">维度内 UV</span></div>
+            <div class="analytics-table-wrap"><table class="data-table"><thead><tr><th>页面名称</th><th>路径</th><th>UV</th><th>PV</th><th>PV/UV</th></tr></thead><tbody id="analyticsPagesBody"><tr><td colspan="5" class="analytics-empty">加载中...</td></tr></tbody></table></div>
+          </div>
+          <div class="panel-card analytics-breakdown-card">
+            <div class="panel-header"><span class="panel-title">来源分析</span><span class="text-sm text-muted">主机名聚合</span></div>
+            <div class="analytics-table-wrap"><table class="data-table"><thead><tr><th>来源分类</th><th>来源域名</th><th>UV</th><th>PV</th></tr></thead><tbody id="analyticsSourcesBody"><tr><td colspan="4" class="analytics-empty">加载中...</td></tr></tbody></table></div>
+          </div>
+          <div class="panel-card analytics-breakdown-card">
+            <div class="panel-header"><span class="panel-title">设备类型</span><span class="text-sm text-muted">PV / UV</span></div>
+            <div class="panel-body"><div class="analytics-bar-list" id="analyticsDevicesBody"><div class="analytics-empty">加载中...</div></div></div>
+          </div>
+          <div class="panel-card analytics-breakdown-card">
+            <div class="panel-header"><span class="panel-title">浏览器</span><span class="text-sm text-muted">PV / UV</span></div>
+            <div class="panel-body"><div class="analytics-bar-list" id="analyticsBrowsersBody"><div class="analytics-empty">加载中...</div></div></div>
+          </div>
+        </div>
+
+        <div class="panel-card analytics-breakdown-card">
+          <div class="panel-header"><span class="panel-title">登录访问情况</span><span class="text-sm text-muted">按 PV 统计</span></div>
+          <div class="panel-body">
+            <div class="analytics-auth-grid">
+              <div class="analytics-auth-row"><span>登录访问</span><div class="analytics-auth-track"><div class="analytics-auth-fill" id="analyticsAuthBar" style="width:0"></div></div><span id="analyticsAuthLabel">—</span></div>
+              <div class="analytics-auth-row anonymous"><span>匿名访问</span><div class="analytics-auth-track"><div class="analytics-auth-fill" id="analyticsAnonBar" style="width:0"></div></div><span id="analyticsAnonLabel">—</span></div>
+              <div class="analytics-auth-row historical"><span>历史日志</span><div class="analytics-auth-track"><div class="analytics-auth-fill" id="analyticsHistoricalBar" style="width:0"></div></div><span id="analyticsHistoricalLabel">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card" style="margin-top:var(--space-md);">
+          <div class="panel-header"><span class="panel-title">访问统计导出</span><span class="text-sm text-muted">仅导出聚合结果，不包含访客标识</span></div>
+          <div class="panel-body"><div class="analytics-export-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="exportAnalytics('trend','csv')">趋势 CSV</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="exportAnalytics('trend','json')">趋势 JSON</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="exportAnalytics('pages','csv')">页面 CSV</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="exportAnalytics('pages','json')">页面 JSON</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="exportAnalytics('sources','csv')">来源 CSV</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="exportAnalytics('sources','json')">来源 JSON</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="exportAnalytics('devices','csv')">设备 CSV</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="exportAnalytics('devices','json')">设备 JSON</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="exportAnalytics('browsers','csv')">浏览器 CSV</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="exportAnalytics('browsers','json')">浏览器 JSON</button>
+          </div></div>
+        </div>
+      </section>
+
+      <!-- ====== MODULE: OPERATIONAL INSIGHTS ====== -->
+      <section class="module-panel" id="module-insights" data-component="Operational Insights" data-od-id="insights">
+        <div class="insights-toolbar" aria-label="运营洞察筛选">
+          <div class="insights-presets" role="group" aria-label="审核效率日期范围">
+            <button class="chip" type="button" data-insight-preset="7" onclick="insightsSetPreset(7)">最近 7 天</button>
+            <button class="chip active" type="button" data-insight-preset="30" onclick="insightsSetPreset(30)">最近 30 天</button>
+            <button class="chip" type="button" data-insight-preset="90" onclick="insightsSetPreset(90)">最近 90 天</button>
+          </div>
+          <input type="date" id="insightsFrom" class="log-filter" aria-label="审核效率起始日期" onchange="insightsSetCustomRange()">
+          <span class="text-muted" aria-hidden="true">至</span>
+          <input type="date" id="insightsTo" class="log-filter" aria-label="审核效率结束日期" onchange="insightsSetCustomRange()">
+          <select id="insightsCountry" class="log-filter" aria-label="同好会地区" onchange="loadInsights()">
+            <option value="all">中国 + 日本</option>
+            <option value="china">中国</option>
+            <option value="japan">日本</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="button" onclick="loadInsights()">刷新数据</button>
+          <span class="insights-range-label" id="insightsRangeLabel">加载中...</span>
+        </div>
+        <div class="insights-notice" id="insightsNotice">当前待办和资料质量是最新快照；日期范围只影响审核效率趋势。</div>
+
+        <div class="insights-kpi-grid" id="insightsKpiGrid">
+          <button class="insights-kpi" type="button" onclick="insightsOpenIssueFilter('queue')"><span class="insights-kpi-label">当前待处理</span><strong id="insightKpiPending">—</strong><small>全部待办</small></button>
+          <button class="insights-kpi danger" type="button" onclick="insightsOpenIssueFilter('queue','all')"><span class="insights-kpi-label">超过 24 小时</span><strong id="insightKpiOverdue24">—</strong><small>需要跟进</small></button>
+          <button class="insights-kpi danger" type="button" onclick="insightsOpenIssueFilter('queue','urgent')"><span class="insights-kpi-label">超过 72 小时</span><strong id="insightKpiOverdue72">—</strong><small>紧急积压</small></button>
+          <div class="insights-kpi"><span class="insights-kpi-label">最老待办</span><strong id="insightKpiOldest">—</strong><small>当前快照</small></div>
+          <div class="insights-kpi"><span class="insights-kpi-label">筛选期已处理</span><strong id="insightKpiProcessed">—</strong><small id="insightKpiProcessedHint">终态记录</small></div>
+          <div class="insights-kpi"><span class="insights-kpi-label">处理时长中位数</span><strong id="insightKpiMedian">—</strong><small id="insightKpiMedianHint">可靠记录</small></div>
+          <button class="insights-kpi" type="button" onclick="insightsOpenIssueFilter('public_quality')"><span class="insights-kpi-label">低完整度同好会</span><strong id="insightKpiLowQuality">—</strong><small>公开资料 &lt; 70</small></button>
+          <button class="insights-kpi" type="button" onclick="insightsOpenIssueFilter('governance','urgent')"><span class="insights-kpi-label">无有效负责人</span><strong id="insightKpiNoOwner">—</strong><small>治理高优先级</small></button>
+        </div>
+
+        <div class="insights-layout insights-top-layout">
+          <div class="panel-card insights-panel">
+            <div class="panel-header"><span class="panel-title">待办矩阵</span><span class="text-sm text-muted">当前快照 · 24h / 72h</span></div>
+            <div class="insights-table-wrap"><table class="data-table insights-table"><thead><tr><th>类型</th><th>待处理</th><th>24h+</th><th>72h+</th><th>最老</th><th>进入</th><th>已处理</th><th>入口</th></tr></thead><tbody id="insightQueueBody"><tr><td colspan="8" class="insights-empty">加载中...</td></tr></tbody></table></div>
+          </div>
+          <div class="panel-card insights-panel">
+            <div class="panel-header"><span class="panel-title">审核效率</span><span class="text-sm text-muted" id="insightCoverageLabel">加载中...</span></div>
+            <div class="panel-body"><div class="insight-review-chart" id="insightReviewChart"><div class="insights-empty">加载中...</div></div><div class="insight-review-summary" id="insightReviewSummary"></div><div class="insight-review-by-type-wrap"><table class="data-table insights-table"><thead><tr><th>类型</th><th>处理</th><th>通过率</th><th>中位数</th><th>P90</th></tr></thead><tbody id="insightReviewByTypeBody"><tr><td colspan="5" class="insights-empty">加载中...</td></tr></tbody></table></div></div>
+          </div>
+        </div>
+
+        <div class="insights-layout insights-quality-layout">
+          <div class="panel-card insights-panel">
+            <div class="panel-header"><span class="panel-title">公开资料完整度</span><span class="text-sm text-muted">复用公开页面评分</span></div>
+            <div class="panel-body">
+              <div class="insight-score-head"><strong id="insightPublicAverage">—</strong><span>平均分</span><span id="insightPublicEvaluated">—</span></div>
+              <div class="insight-score-bars" id="insightPublicBuckets"></div>
+              <div class="insight-missing-list" id="insightPublicMissing"></div>
+              <div class="insight-low-list" id="insightPublicLowList"></div>
+            </div>
+          </div>
+          <div class="panel-card insights-panel">
+            <div class="panel-header"><span class="panel-title">治理健康度</span><span class="text-sm text-muted">负责人 · 绑定 · 新鲜度</span></div>
+            <div class="panel-body">
+              <div class="insight-score-head"><strong id="insightGovernanceAverage">—</strong><span>平均分</span><span id="insightGovernanceEvaluated">—</span></div>
+              <div class="insight-score-bars" id="insightGovernanceBuckets"></div>
+              <div class="insight-missing-list" id="insightGovernanceIssues"></div>
+            </div>
+          </div>
+          <div class="panel-card insights-panel insights-priority-panel">
+            <div class="panel-header"><span class="panel-title">优先处理清单</span><div class="insight-filter-group"><button class="chip active" type="button" data-insight-issue-filter="all" onclick="loadInsightIssues('all')">全部</button><button class="chip" type="button" data-insight-issue-filter="urgent" onclick="loadInsightIssues('urgent')">紧急</button><button class="chip" type="button" data-insight-issue-filter="warning" onclick="loadInsightIssues('warning')">警告</button></div></div>
+            <div class="insights-table-wrap"><table class="data-table insights-table priority-table"><thead><tr><th>级别</th><th>类型</th><th>对象</th><th>问题</th><th>时间/评分</th><th>处理</th></tr></thead><tbody id="insightIssuesBody"><tr><td colspan="6" class="insights-empty">加载中...</td></tr></tbody></table></div>
+            <div class="insight-pagination"><span id="insightIssuePageInfo">—</span><div class="flex gap-sm"><button class="btn btn-ghost btn-sm" type="button" id="insightIssuePrev" onclick="changeInsightIssuePage(-1)">上一页</button><button class="btn btn-ghost btn-sm" type="button" id="insightIssueNext" onclick="changeInsightIssuePage(1)">下一页</button></div></div>
+          </div>
         </div>
       </section>
 
@@ -1044,27 +1514,49 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
       <section class="module-panel" id="module-logs" data-component="Operation Logs" data-od-id="logs">
         <div class="panel-card">
           <div class="panel-header">
-            <span class="panel-title">操作日志</span>
-            <div class="flex gap-sm">
-              <select id="logTypeFilter" onchange="filterLogs()" style="padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-pill);font-size:12px;background:var(--color-surface-alt);color:var(--color-text);">
-                <option value="all">全部类型</option>
-                <option value="review">审核操作</option>
-                <option value="user">用户管理</option>
-                <option value="club">同好会操作</option>
-                <option value="announce">公告管理</option>
-                <option value="system">系统操作</option>
-              </select>
-              <input type="date" id="logDateFrom" onchange="filterLogs()" style="padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-pill);font-size:12px;background:var(--color-surface-alt);color:var(--color-text);">
-              <input type="date" id="logDateTo" onchange="filterLogs()" style="padding:7px 10px;border:1px solid var(--color-border);border-radius:var(--radius-pill);font-size:12px;background:var(--color-surface-alt);color:var(--color-text);">
-            </div>
+            <span class="panel-title">操作日志 <span class="text-sm text-muted" id="logTotalCount">共 0 条</span></span>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="loadLogs()">刷新</button>
+          </div>
+          <div class="log-toolbar" aria-label="日志筛选">
+            <input type="search" class="search-input" id="logSearch" aria-label="搜索操作日志" placeholder="搜索操作、用户、目标 ID、IP 或详情..." oninput="scheduleLogFilter()">
+            <select id="logTypeFilter" class="log-filter" onchange="filterLogs()" aria-label="日志类型">
+              <option value="all">全部类型</option>
+              <option value="auth">账号与安全</option>
+              <option value="user">用户管理</option>
+              <option value="review">申请与审核</option>
+              <option value="club">同好会与成员</option>
+              <option value="vote">投票活动</option>
+              <option value="recognition">认证与题库</option>
+              <option value="column">专栏内容</option>
+              <option value="forum">论坛归档</option>
+              <option value="announce">公告管理</option>
+              <option value="integration">Bot 与接入</option>
+              <option value="system">其他系统操作</option>
+            </select>
+            <input type="date" id="logDateFrom" class="log-filter" onchange="filterLogs()" aria-label="起始日期">
+            <input type="date" id="logDateTo" class="log-filter" onchange="filterLogs()" aria-label="结束日期">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="resetLogFilters()">重置</button>
+          </div>
+          <div class="log-summary" aria-label="当前页日志概览">
+            <div class="log-stat"><span class="log-stat-value" id="logVisibleCount">0</span><span class="log-stat-label">当前页记录</span></div>
+            <div class="log-stat"><span class="log-stat-value" id="logHighRiskCount">0</span><span class="log-stat-label">高影响操作</span></div>
+            <div class="log-stat"><span class="log-stat-value" id="logOperatorCount">0</span><span class="log-stat-label">涉及操作者</span></div>
+            <div class="log-stat"><span class="log-stat-value" id="logContextCount">0</span><span class="log-stat-label">含请求环境</span></div>
           </div>
           <div style="overflow-x:auto;">
             <table class="data-table" id="logsTable">
-              <thead><tr><th>时间</th><th>操作者</th><th>类型</th><th>说明</th><th>操作</th><th>详情</th></tr></thead>
+              <thead><tr><th>时间</th><th>操作者</th><th>检测到的操作</th><th>结果 / 影响</th><th>目标</th><th>来源</th><th>详情</th></tr></thead>
               <tbody id="logsTableBody">
-                <tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>
+                <tr><td colspan="7" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="log-pagination">
+            <span id="logPageInfo">第 1 页</span>
+            <div class="flex gap-sm">
+              <button class="btn btn-ghost btn-sm" id="logPrevPage" type="button" onclick="changeLogPage(-1)">上一页</button>
+              <button class="btn btn-ghost btn-sm" id="logNextPage" type="button" onclick="changeLogPage(1)">下一页</button>
+            </div>
           </div>
         </div>
       </section>
@@ -1116,6 +1608,15 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
                   </div>
                 </div>
               </div>
+              <div class="panel-card" style="margin-bottom:0;">
+                <div class="panel-body">
+                  <h4 style="font-size:14px;margin-bottom:8px;">访问统计</h4>
+                  <p class="text-sm text-muted" style="margin-bottom:12px;">按访问统计当前筛选日期导出趋势、页面、来源、设备或浏览器聚合数据。</p>
+                  <div class="flex gap-sm">
+                    <button class="btn btn-primary btn-sm" onclick="switchModule('analytics')">打开访问与统计</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1150,6 +1651,14 @@ let currentModule = 'dashboard';
 let currentReviewTab = 'club';
 let currentFilter = 'all';
 let editingAnnounceId = null;
+let analyticsData = null;
+let analyticsLoadToken = 0;
+let insightsData = null;
+let insightsLoadToken = 0;
+let insightIssueFilter = 'all';
+let insightIssueType = 'all';
+let insightIssuePage = 1;
+let insightIssueTotal = 0;
 
 // Review data
 let clubSubmissions = [];
@@ -1271,10 +1780,11 @@ async function checkAuth() {
     if ((ROLE_LEVEL[data.user.role] ?? -1) < 2) { alert('权限不足'); window.location.href = '../index.html'; return false; }
     currentUser = data.user;
     isSuperAdmin = data.user.role === 'super_admin';
-    // 用户管理 / 操作日志 / 摊位审核成员仅超级管理员可用（与后端 API 权限对齐）
-    document.querySelectorAll('.nav-item[data-module="users"], .nav-item[data-module="logs"], .nav-item[data-module="galonly-reviewers"]').forEach(function(n) {
+    // 用户管理 / 操作日志 / 摊位审核成员 / 访问统计 / 运营洞察仅超级管理员可用（与后端 API 权限对齐）
+    document.querySelectorAll('.nav-item[data-module="users"], .nav-item[data-module="logs"], .nav-item[data-module="galonly-reviewers"], .nav-item[data-module="analytics"], .nav-item[data-module="insights"]').forEach(function(n) {
       n.style.display = isSuperAdmin ? '' : 'none';
     });
+    if (isSuperAdmin) { analyticsInitializeRange(); insightsInitializeRange(); }
     // Update sidebar user info
     const nameEl = document.getElementById('sidebarUserName');
     const avatarEl = document.getElementById('sidebarAvatar');
@@ -1292,6 +1802,8 @@ async function checkAuth() {
    ================================================================ */
 const MODULE_META = {
   dashboard:     { breadcrumb: '数据看板', title: '数据概览' },
+  analytics:     { breadcrumb: '数据看板', title: '访问与统计' },
+  insights:      { breadcrumb: '数据看板', title: '运营洞察' },
   review:        { breadcrumb: '内容管理', title: '审核中心' },
   'galonly-reviewers': { breadcrumb: '内容管理', title: '摊位审核成员' },
   users:         { breadcrumb: '内容管理', title: '用户管理' },
@@ -1301,8 +1813,17 @@ const MODULE_META = {
   export:        { breadcrumb: '系统运维', title: '数据导出' }
 };
 
-function switchModule(mod) {
+function switchModule(mod, options = {}) {
+  if ((mod === 'analytics' || mod === 'insights') && !isSuperAdmin) {
+    showToast(mod === 'insights' ? '运营洞察仅限超级管理员' : '访问统计仅限超级管理员', 'error');
+    return;
+  }
   currentModule = mod;
+  if (options.updateUrl !== false && window.history?.pushState) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('module', mod);
+    window.history.pushState({ module: mod }, '', nextUrl.pathname + nextUrl.search + nextUrl.hash);
+  }
   // Update nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.module === mod));
   // Update panels
@@ -1317,7 +1838,7 @@ function switchModule(mod) {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('show');
   // Load data
-  loadModuleData(mod);
+  return loadModuleData(mod);
 }
 
 async function loadModuleData(mod) {
@@ -1328,6 +1849,8 @@ async function loadModuleData(mod) {
   else if (mod === 'users') loadUsers();
   else if (mod === 'announcements') await loadAnnouncements();
   else if (mod === 'logs') loadLogs();
+  else if (mod === 'analytics') await loadAnalytics();
+  else if (mod === 'insights') await loadInsights();
 }
 
 function refreshCurrentModule() { loadModuleData(currentModule); }
@@ -1402,6 +1925,7 @@ async function loadDashboard() {
   renderReviewStats(totalApproved, totalRejected, totalPending, totalReviewed);
   renderRegionDistChart();
   updatePendingBadge(totalPending);
+  if (isSuperAdmin) loadInsights({ dashboardOnly: true });
 }
 
 function updatePendingBadge(count) {
@@ -1418,16 +1942,39 @@ function updatePendingBadge(count) {
 function renderReviewTrendChart() {
   const container = document.getElementById('reviewTrendChart');
   if (!container) return;
-  // Generate mock 30-day trend data
   const days = 30;
-  const data = [];
-  for (let i = 0; i < days; i++) {
-    data.push({
-      day: i + 1,
-      approved: Math.floor(Math.random() * 8) + 1,
-      rejected: Math.floor(Math.random() * 3),
-      pending: Math.floor(Math.random() * 5)
-    });
+  const today = new Date();
+  const dayKey = d => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const keys = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setHours(12, 0, 0, 0);
+    d.setDate(today.getDate() - i);
+    keys.push(dayKey(d));
+  }
+  const data = keys.map(date => ({ date, approved: 0, rejected: 0, pending: 0 }));
+  const byDate = Object.fromEntries(data.map(row => [row.date, row]));
+  const submissions = [clubSubmissions, eventSubmissions, publicationSubmissions].flat();
+  let datedRecords = 0;
+  submissions.forEach(item => {
+    const rawDate = item && (item.submitted_at || item.timestamp || item.created_at);
+    if (!rawDate) return;
+    const parsed = new Date(rawDate);
+    if (Number.isNaN(parsed.getTime())) return;
+    const row = byDate[dayKey(parsed)];
+    if (!row) return;
+    const status = item.status === 'approved' ? 'approved' : item.status === 'rejected' ? 'rejected' : 'pending';
+    row[status] += 1;
+    datedRecords += 1;
+  });
+  if (!datedRecords) {
+    container.innerHTML = '<div class="analytics-empty">暂无真实审核趋势数据</div>';
+    return;
   }
   const W = 600, H = 200, padL = 36, padR = 12, padT = 16, padB = 28;
   const chartW = W - padL - padR, chartH = H - padT - padB;
@@ -1460,8 +2007,9 @@ function renderReviewTrendChart() {
   // X axis labels (every 5 days)
   let xLabels = '';
   for (let i = 0; i < days; i += 5) {
-    xLabels += `<text x="${padL + i * xStep}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--color-chart-label)">${i + 1}日</text>`;
+    xLabels += `<text x="${padL + i * xStep}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--color-chart-label)">${escapeHtml(data[i].date.slice(5))}</text>`;
   }
+  const points = data.map((d, i) => `<circle cx="${padL + i * xStep}" cy="${padT + chartH - d.approved * yScale}" r="2.5" fill="var(--chart-blue)"><title>${d.date}：通过 ${d.approved}，拒绝 ${d.rejected}，待审核 ${d.pending}</title></circle>`).join('');
 
   container.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="审核趋势图：近30天审核数据变化">
@@ -1470,6 +2018,7 @@ function renderReviewTrendChart() {
       <path d="${areaPath}" fill="var(--chart-area-fill)"/>
       <polyline points="${approvedPoints}" fill="none" stroke="var(--chart-blue)" stroke-width="2" stroke-linejoin="round"/>
       <polyline points="${pendingPoints}" fill="none" stroke="var(--color-warning)" stroke-width="1.5" stroke-dasharray="4 2" stroke-linejoin="round"/>
+      ${points}
       ${xLabels}
       <g transform="translate(${padL}, ${padT - 4})">
         <rect x="0" y="-8" width="8" height="3" rx="1" fill="var(--chart-blue)"/><text x="12" y="-4" font-size="9" fill="var(--color-text-secondary)">已通过</text>
@@ -1520,6 +2069,659 @@ function renderReviewStats(approved, rejected, pending, totalReviewed) {
     </div>`;
 }
 
+/* ================================================================
+   OPERATIONAL INSIGHTS
+   ================================================================ */
+function insightsLocalDateKey(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function insightsInitializeRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - 29);
+  const fromEl = document.getElementById('insightsFrom');
+  const toEl = document.getElementById('insightsTo');
+  if (fromEl && !fromEl.value) fromEl.value = insightsLocalDateKey(from);
+  if (toEl && !toEl.value) toEl.value = insightsLocalDateKey(to);
+}
+
+function insightsSetPreset(days) {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - Number(days) + 1);
+  const fromEl = document.getElementById('insightsFrom');
+  const toEl = document.getElementById('insightsTo');
+  if (fromEl) fromEl.value = insightsLocalDateKey(from);
+  if (toEl) toEl.value = insightsLocalDateKey(to);
+  document.querySelectorAll('[data-insight-preset]').forEach(button => {
+    button.classList.toggle('active', button.dataset.insightPreset === String(days));
+  });
+  loadInsights();
+}
+
+function insightsSetCustomRange() {
+  document.querySelectorAll('[data-insight-preset]').forEach(button => button.classList.remove('active'));
+  loadInsights();
+}
+
+function insightsRangeParams() {
+  const from = document.getElementById('insightsFrom')?.value || '';
+  const to = document.getElementById('insightsTo')?.value || '';
+  const country = document.getElementById('insightsCountry')?.value || 'all';
+  return from && to ? `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&country=${encodeURIComponent(country)}` : `&country=${encodeURIComponent(country)}`;
+}
+
+function insightNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString('zh-CN') : '—';
+}
+
+function insightHours(value) {
+  const hours = Number(value);
+  if (!Number.isFinite(hours)) return '—';
+  if (hours >= 24) return `${Math.floor(hours / 24)}天 ${Math.round(hours % 24)}小时`;
+  if (hours < 1) return '< 1 小时';
+  return `${Math.round(hours)} 小时`;
+}
+
+function insightDate(value) {
+  if (!value) return '—';
+  const text = String(value);
+  return text.length >= 10 ? text.slice(0, 10) : text;
+}
+
+function insightsSetText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function insightsCurrentCountry() {
+  return document.getElementById('insightsCountry')?.value || 'all';
+}
+
+function insightsIssueCount(items, code) {
+  return (Array.isArray(items) ? items : []).find(item => item.issue_code === code)?.count || 0;
+}
+
+function insightsLowQualityCount(publicQuality) {
+  return (publicQuality?.buckets || [])
+    .filter(item => ['0-49', '50-69'].includes(item.label))
+    .reduce((sum, item) => sum + Number(item.count || 0), 0);
+}
+
+function renderDashboardInsights(data) {
+  if (!isSuperAdmin || !data || data.success !== true) return;
+  const strip = document.getElementById('insightsSummaryStrip');
+  if (strip) strip.style.display = '';
+  insightsSetText('dashboardInsightPending', insightNumber(data.queue?.pending));
+  insightsSetText('dashboardInsightOverdue', insightNumber(data.queue?.overdue_72h));
+  insightsSetText('dashboardInsightOwners', insightNumber(insightsIssueCount(data.quality?.governance?.issue_counts, 'no_representative')));
+  insightsSetText('dashboardInsightQuality', insightNumber(insightsLowQualityCount(data.quality?.public)));
+}
+
+function setInsightsLoading() {
+  ['insightKpiPending', 'insightKpiOverdue24', 'insightKpiOverdue72', 'insightKpiOldest', 'insightKpiProcessed', 'insightKpiMedian', 'insightKpiLowQuality', 'insightKpiNoOwner'].forEach(id => insightsSetText(id, '—'));
+  const queue = document.getElementById('insightQueueBody');
+  if (queue) queue.innerHTML = '<tr><td colspan="8" class="insights-empty">加载中...</td></tr>';
+  const issues = document.getElementById('insightIssuesBody');
+  if (issues) issues.innerHTML = '<tr><td colspan="6" class="insights-empty">加载中...</td></tr>';
+  const chart = document.getElementById('insightReviewChart');
+  if (chart) chart.innerHTML = '<div class="insights-empty">加载中...</div>';
+  const reviewByType = document.getElementById('insightReviewByTypeBody');
+  if (reviewByType) reviewByType.innerHTML = '<tr><td colspan="5" class="insights-empty">加载中...</td></tr>';
+  const lowList = document.getElementById('insightPublicLowList');
+  if (lowList) lowList.innerHTML = '';
+}
+
+async function loadInsights(options = {}) {
+  if (!isSuperAdmin) return;
+  const token = ++insightsLoadToken;
+  if (!options.dashboardOnly) setInsightsLoading();
+  try {
+    const response = await fetch('../api/admin_insights.php?action=summary' + insightsRangeParams(), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data || data.success !== true) throw new Error(data?.message || '运营洞察接口返回无效数据');
+    if (token !== insightsLoadToken) return;
+    insightsData = data;
+    renderDashboardInsights(data);
+    if (!options.dashboardOnly) {
+      renderInsights(data);
+      await loadInsightIssues(insightIssueFilter, insightIssueType, false);
+    }
+  } catch (error) {
+    if (token !== insightsLoadToken) return;
+    if (options.dashboardOnly) {
+      const strip = document.getElementById('insightsSummaryStrip');
+      if (strip) strip.style.display = 'none';
+      return;
+    }
+    insightsData = null;
+    const message = error?.message || '网络错误';
+    const notice = document.getElementById('insightsNotice');
+    if (notice) notice.textContent = `运营洞察加载失败：${message}。请检查权限、数据库迁移和数据文件状态后重试。`;
+    const queue = document.getElementById('insightQueueBody');
+    if (queue) queue.innerHTML = '<tr><td colspan="8" class="insights-empty">数据加载失败</td></tr>';
+    const chart = document.getElementById('insightReviewChart');
+    if (chart) chart.innerHTML = `<div class="insights-empty">数据加载失败：${escapeHtml(message)}</div>`;
+    const issues = document.getElementById('insightIssuesBody');
+    if (issues) issues.innerHTML = '<tr><td colspan="6" class="insights-empty">数据加载失败</td></tr>';
+    showToast('运营洞察加载失败：' + message, 'error');
+  }
+}
+
+function renderInsights(data) {
+  const range = data.meta?.range || {};
+  insightsSetText('insightsRangeLabel', `审核效率：${range.from || '—'} 至 ${range.to || '—'} · Asia/Shanghai`);
+  const sourceEntries = Object.entries(data.meta?.sources || {}).filter(([, value]) => value?.status && value.status !== 'ok');
+  const coverage = data.meta?.review_time_coverage || {};
+  const coverageText = coverage.percentage === null || coverage.percentage === undefined
+    ? '处理时长暂无可计算数据'
+    : `处理时长覆盖 ${insightNumber(coverage.reliable)}/${insightNumber(coverage.terminal_records)} · ${Number(coverage.percentage).toFixed(1)}%`;
+  insightsSetText('insightCoverageLabel', coverageText);
+  const notice = document.getElementById('insightsNotice');
+  if (notice) notice.textContent = `当前待办和资料质量是最新快照；日期范围只影响审核效率趋势。统计生成于 ${insightDate(data.meta?.generated_at)}${sourceEntries.length ? ` · ${sourceEntries.length} 个数据源需检查` : ''}。`;
+
+  const queue = data.queue || {};
+  const review = data.review || {};
+  const publicQuality = data.quality?.public || {};
+  const governance = data.quality?.governance || {};
+  insightsSetText('insightKpiPending', insightNumber(queue.pending));
+  insightsSetText('insightKpiOverdue24', insightNumber(queue.overdue_24h));
+  insightsSetText('insightKpiOverdue72', insightNumber(queue.overdue_72h));
+  insightsSetText('insightKpiOldest', insightHours(queue.oldest_wait_hours));
+  insightsSetText('insightKpiProcessed', insightNumber(review.processed));
+  insightsSetText('insightKpiProcessedHint', `${insightNumber(review.approved)} 通过 · ${insightNumber(review.rejected)} 拒绝`);
+  insightsSetText('insightKpiMedian', insightHours(review.median_hours));
+  insightsSetText('insightKpiMedianHint', coverage.percentage === null || coverage.percentage === undefined ? '可靠记录不足' : `覆盖 ${Number(coverage.percentage).toFixed(1)}%`);
+  insightsSetText('insightKpiLowQuality', insightNumber(insightsLowQualityCount(publicQuality)));
+  insightsSetText('insightKpiNoOwner', insightNumber(insightsIssueCount(governance.issue_counts, 'no_representative')));
+
+  renderInsightQueue(queue.by_type || []);
+  renderInsightReview(review);
+  renderInsightQuality(publicQuality, governance);
+}
+
+function renderInsightQueue(rows) {
+  const body = document.getElementById('insightQueueBody');
+  if (!body) return;
+  const labels = { club: '同好会申请', event: '活动申请', publication: '企划申请', membership: '成员绑定', feedback: '反馈建议' };
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="8" class="insights-empty">暂无待办数据</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(row => `<tr>
+    <td>${escapeHtml(labels[row.type] || row.type || '其他')}</td>
+    <td>${insightNumber(row.pending)}</td><td>${insightNumber(row.overdue_24h)}</td><td>${insightNumber(row.overdue_72h)}</td>
+    <td>${escapeHtml(insightHours(row.oldest_wait_hours))}</td><td>${insightNumber(row.incoming)}</td><td>${insightNumber(row.processed)}</td>
+    <td><button class="insight-link" type="button" data-insight-queue-type="${escapeHtml(row.type || '')}">查看</button></td>
+  </tr>`).join('');
+  body.querySelectorAll('[data-insight-queue-type]').forEach(button => {
+    button.addEventListener('click', () => insightsOpenIssueFilter('queue', button.dataset.insightQueueType ? 'all' : 'all'));
+  });
+}
+
+function renderInsightReview(review) {
+  const trend = Array.isArray(review.trend) ? review.trend : [];
+  const chart = document.getElementById('insightReviewChart');
+  if (chart) {
+    if (!trend.length || trend.every(row => Number(row.incoming || 0) === 0 && Number(row.processed || 0) === 0 && Number(row.backlog || 0) === 0)) {
+      chart.innerHTML = '<div class="insights-empty">暂无可用审核趋势数据</div>';
+    } else {
+      const W = Math.max(280, Math.round(chart.clientWidth || 360));
+      const H = 154, left = 28, right = 8, top = 12, bottom = 20;
+      const chartW = W - left - right, chartH = H - top - bottom;
+      const max = Math.max(...trend.map(row => Math.max(Number(row.incoming || 0), Number(row.processed || 0), Number(row.backlog || 0))), 1);
+      const step = trend.length > 1 ? chartW / (trend.length - 1) : chartW;
+      const point = (i, value) => `${left + i * step},${top + chartH - Number(value || 0) / max * chartH}`;
+      const paths = [
+        { key: 'incoming', color: 'var(--chart-blue)', label: '进入' },
+        { key: 'processed', color: 'var(--chart-pv)', label: '处理' },
+        { key: 'backlog', color: 'var(--color-warning)', label: '积压' }
+      ].map(item => `<polyline points="${trend.map((row, i) => point(i, row[item.key])).join(' ')}" fill="none" stroke="${item.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+      let grid = '';
+      for (let i = 0; i <= 2; i += 1) {
+        const y = top + chartH * i / 2;
+        const value = Math.round(max - max * i / 2);
+        grid += `<line x1="${left}" y1="${y}" x2="${W - right}" y2="${y}" stroke="var(--color-grid-line)" stroke-width=".7"/><text x="${left - 5}" y="${y + 3}" text-anchor="end" font-size="9" fill="var(--color-chart-label)">${value}</text>`;
+      }
+      const labelStep = Math.max(1, Math.ceil(trend.length / 5));
+      const labels = trend.map((row, i) => i % labelStep === 0 ? `<text x="${left + i * step}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--color-chart-label)">${escapeHtml(String(row.date || '').slice(5))}</text>` : '').join('');
+      const points = trend.map((row, i) => `<circle tabindex="0" cx="${left + i * step}" cy="${top + chartH - Number(row.processed || 0) / max * chartH}" r="2.5" fill="var(--chart-pv)"><title>${escapeHtml(`${row.date || '—'}：进入 ${row.incoming || 0}，处理 ${row.processed || 0}，积压 ${row.backlog || 0}`)}</title></circle>`).join('');
+      chart.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="审核效率趋势，显示每日进入、处理和积压数量"><title>审核效率趋势</title>${grid}${paths}${points}${labels}</svg>`;
+    }
+  }
+  const summary = document.getElementById('insightReviewSummary');
+  if (summary) summary.innerHTML = [
+    ['通过率', review.pass_rate_pct === null || review.pass_rate_pct === undefined ? '—' : `${Number(review.pass_rate_pct).toFixed(1)}%`],
+    ['中位数', insightHours(review.median_hours)],
+    ['P90', insightHours(review.p90_hours)]
+  ].map(([label, value]) => `<div class="insight-review-stat"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  const byTypeBody = document.getElementById('insightReviewByTypeBody');
+  if (byTypeBody) {
+    const labels = { club: '同好会', event: '活动', publication: '企划', membership: '成员绑定', feedback: '反馈' };
+    const rows = Array.isArray(review.by_type) ? review.by_type : [];
+    byTypeBody.innerHTML = rows.length
+      ? rows.map(row => `<tr><td>${escapeHtml(labels[row.type] || row.type || '其他')}</td><td>${insightNumber(row.processed)}</td><td>${row.pass_rate_pct === null || row.pass_rate_pct === undefined ? '—' : `${Number(row.pass_rate_pct).toFixed(1)}%`}</td><td>${escapeHtml(insightHours(row.median_hours))}</td><td>${escapeHtml(insightHours(row.p90_hours))}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="insights-empty">暂无可计算的类型数据</td></tr>';
+  }
+}
+
+function renderInsightQuality(publicQuality, governance) {
+  insightsSetText('insightPublicAverage', publicQuality.average_score === null || publicQuality.average_score === undefined ? '—' : `${Number(publicQuality.average_score).toFixed(1)}`);
+  insightsSetText('insightPublicEvaluated', publicQuality.evaluated ? `评估 ${insightNumber(publicQuality.evaluated)} 个` : '暂无数据');
+  insightsSetText('insightGovernanceAverage', governance.average_score === null || governance.average_score === undefined ? '—' : `${Number(governance.average_score).toFixed(1)}`);
+  insightsSetText('insightGovernanceEvaluated', governance.evaluated ? `评估 ${insightNumber(governance.evaluated)} 个` : '暂无数据');
+  renderInsightBuckets('insightPublicBuckets', publicQuality.buckets || []);
+  renderInsightBuckets('insightGovernanceBuckets', governance.buckets || []);
+  const publicLabels = { logo: 'Logo', intro: '简介', public_contact: '联系方式策略', external_links: '外部链接', wiki: 'Wiki', events: '活动', publications: '刊物/企划' };
+  const governanceLabels = { no_representative: '无有效负责人', no_management: '无管理组', overdue_membership: '成员绑定超时', visibility_conflict: '联系方式策略冲突', stale_update: '长期未更新', unknown_freshness: '更新时间未知' };
+  renderInsightCountList('insightPublicMissing', publicQuality.missing_dimensions || [], item => publicLabels[item.dimension] || item.dimension);
+  renderInsightCountList('insightGovernanceIssues', governance.issue_counts || [], item => governanceLabels[item.issue_code] || item.issue_code);
+  const lowList = document.getElementById('insightPublicLowList');
+  if (lowList) {
+    const clubs = Array.isArray(publicQuality.low_score_clubs) ? publicQuality.low_score_clubs.slice(0, 6) : [];
+    lowList.innerHTML = clubs.length
+      ? '<div class="insight-low-list-label">低分样本 · 点击定位</div>' + clubs.map(item => `<div class="insight-low-row"><button class="insight-link" type="button" data-insight-action-url="${escapeHtml(item.action_url || '')}" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '未命名同好会')}</button><strong>${insightNumber(item.score)}</strong></div>`).join('')
+      : '<div class="insights-empty">暂无低完整度样本</div>';
+    lowList.querySelectorAll('[data-insight-action-url]').forEach(button => {
+      button.addEventListener('click', () => insightsNavigate(button.dataset.insightActionUrl || ''));
+    });
+  }
+}
+
+function renderInsightBuckets(id, buckets) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const rows = Array.isArray(buckets) ? buckets : [];
+  const max = Math.max(...rows.map(row => Number(row.count || 0)), 1);
+  element.innerHTML = rows.map(row => `<div class="insight-score-row"><span>${escapeHtml(row.label || '—')}</span><span class="insight-score-track"><span class="insight-score-fill" style="width:${Math.min(100, Number(row.count || 0) / max * 100)}%"></span></span><strong>${insightNumber(row.count)}</strong></div>`).join('') || '<div class="insights-empty">暂无可评估数据</div>';
+}
+
+function renderInsightCountList(id, rows, labeler) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const sorted = (Array.isArray(rows) ? rows : []).slice().sort((a, b) => Number(b.count || 0) - Number(a.count || 0)).slice(0, 6);
+  element.innerHTML = sorted.length ? sorted.map(row => `<div class="insight-missing-row"><span>${escapeHtml(labeler(row))}</span><strong>${insightNumber(row.count)}</strong></div>`).join('') : '<div class="insights-empty">暂无问题</div>';
+}
+
+async function loadInsightIssues(severity = insightIssueFilter, type = insightIssueType, resetPage = true) {
+  if (!isSuperAdmin) return;
+  if (resetPage) insightIssuePage = 1;
+  insightIssueFilter = ['all', 'urgent', 'warning', 'info'].includes(severity) ? severity : 'all';
+  insightIssueType = ['all', 'queue', 'public_quality', 'governance'].includes(type) ? type : 'all';
+  document.querySelectorAll('[data-insight-issue-filter]').forEach(button => button.classList.toggle('active', button.dataset.insightIssueFilter === insightIssueFilter));
+  const body = document.getElementById('insightIssuesBody');
+  if (body) body.innerHTML = '<tr><td colspan="6" class="insights-empty">加载中...</td></tr>';
+  try {
+    const response = await fetch(`../api/admin_insights.php?action=issues&type=${encodeURIComponent(insightIssueType)}&severity=${encodeURIComponent(insightIssueFilter)}&country=${encodeURIComponent(insightsCurrentCountry())}&page=${insightIssuePage}&per_page=50`, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data || data.success !== true) throw new Error(data?.message || '问题清单返回无效数据');
+    insightIssueTotal = Number(data.total || 0);
+    renderInsightIssues(data.issues || []);
+    const pages = Math.max(1, Math.ceil(insightIssueTotal / Number(data.per_page || 50)));
+    insightsSetText('insightIssuePageInfo', insightIssueTotal ? `第 ${data.page} / ${pages} 页 · 共 ${insightNumber(insightIssueTotal)} 条` : '暂无问题');
+    const prev = document.getElementById('insightIssuePrev');
+    const next = document.getElementById('insightIssueNext');
+    if (prev) prev.disabled = insightIssuePage <= 1;
+    if (next) next.disabled = insightIssuePage >= pages;
+  } catch (error) {
+    if (body) body.innerHTML = `<tr><td colspan="6" class="insights-empty">问题清单加载失败：${escapeHtml(error?.message || '网络错误')}</td></tr>`;
+    showToast('问题清单加载失败：' + (error?.message || '网络错误'), 'error');
+  }
+}
+
+function renderInsightIssues(issues) {
+  const body = document.getElementById('insightIssuesBody');
+  if (!body) return;
+  const labels = { queue: '待办', public_quality: '公开资料', governance: '治理' };
+  const severityLabels = { urgent: '紧急', warning: '警告', info: '提示' };
+  if (!issues.length) {
+    body.innerHTML = '<tr><td colspan="6" class="insights-empty">当前筛选下暂无问题</td></tr>';
+    return;
+  }
+  body.innerHTML = issues.map(item => {
+    const time = item.age_hours !== undefined ? insightHours(item.age_hours) : (item.score !== null && item.score !== undefined ? `评分 ${item.score}` : insightDate(item.updated_at));
+    return `<tr><td><span class="priority-severity ${escapeHtml(item.severity || 'info')}">${escapeHtml(severityLabels[item.severity] || '提示')}</span></td><td>${escapeHtml(labels[item.type] || item.type || '其他')}</td><td class="priority-title" title="${escapeHtml(item.title || '')}">${escapeHtml(item.title || '未命名')}</td><td title="${escapeHtml(item.message || '')}">${escapeHtml(item.message || '—')}</td><td>${escapeHtml(time)}</td><td><button class="insight-link" type="button" data-insight-action-url="${escapeHtml(item.action_url || '')}">查看</button></td></tr>`;
+  }).join('');
+  body.querySelectorAll('[data-insight-action-url]').forEach(button => {
+    button.addEventListener('click', () => insightsNavigate(button.dataset.insightActionUrl || ''));
+  });
+}
+
+function insightsOpenIssueFilter(type = 'all', severity = 'all') {
+  insightIssueType = type;
+  insightIssueFilter = severity;
+  if (currentModule !== 'insights') {
+    switchModule('insights');
+  } else {
+    loadInsightIssues(severity, type);
+    document.getElementById('insightIssuesBody')?.closest('.panel-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function changeInsightIssuePage(delta) {
+  const pages = Math.max(1, Math.ceil(insightIssueTotal / 50));
+  insightIssuePage = Math.min(pages, Math.max(1, insightIssuePage + Number(delta || 0)));
+  loadInsightIssues(insightIssueFilter, insightIssueType, false);
+}
+
+function insightsNavigate(url) {
+  if (!url) return;
+  history.pushState({}, '', url);
+  applyAdminDeepLink();
+}
+
+async function applyAdminDeepLink() {
+  const params = new URLSearchParams(location.search);
+  const requested = params.get('module') || '';
+  const allowed = ['dashboard', 'analytics', 'insights', 'review', 'clubs', 'users', 'announcements', 'logs', 'export'];
+  const module = allowed.includes(requested) ? requested : '';
+  if (!module) {
+    if (currentModule !== 'dashboard') await switchModule('dashboard', { updateUrl: false });
+    return;
+  }
+  if ((module === 'analytics' || module === 'insights' || module === 'users' || module === 'logs') && !isSuperAdmin) {
+    showToast('该管理模块仅限超级管理员', 'error');
+    if (window.history?.replaceState) {
+      const fallbackUrl = new URL(window.location.href);
+      fallbackUrl.searchParams.set('module', 'dashboard');
+      window.history.replaceState({ module: 'dashboard' }, '', fallbackUrl.pathname + fallbackUrl.search + fallbackUrl.hash);
+    }
+    if (currentModule !== 'dashboard') await switchModule('dashboard', { updateUrl: false });
+    else await loadDashboard();
+    return;
+  }
+  if (module === 'review') {
+    const tabs = ['club', 'event', 'publication', 'membership', 'feedback'];
+    const filters = ['all', 'pending', 'approved', 'rejected'];
+    if (tabs.includes(params.get('tab'))) currentReviewTab = params.get('tab');
+    if (filters.includes(params.get('status'))) currentFilter = params.get('status');
+  }
+  if (currentModule !== module) await switchModule(module, { updateUrl: false });
+  else if (module === 'dashboard') await loadDashboard();
+  if (module === 'review') {
+    document.querySelectorAll('#reviewTabBar .chip').forEach(button => button.classList.toggle('active', button.dataset.tab === currentReviewTab));
+    document.querySelectorAll('#filterChips .chip').forEach(button => button.classList.toggle('active', button.dataset.filter === currentFilter));
+    await loadReviewData();
+    const id = Number(params.get('id') || 0);
+    if (id > 0) {
+      const card = document.querySelector(`.review-card[data-type="${currentReviewTab}"][data-id="${id}"]`);
+      if (card) { card.classList.add('insight-focused-row'); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      else showToast('已应用筛选，但未找到目标记录', 'error');
+    }
+  } else if (module === 'clubs') {
+    const search = params.get('search') || '';
+    const country = ['all', 'china', 'japan'].includes(params.get('country')) ? params.get('country') : 'all';
+    if (typeof switchClubCountry === 'function') switchClubCountry(country);
+    const searchEl = document.getElementById('clubSearch');
+    if (searchEl) searchEl.value = search.slice(0, 120);
+    if (typeof filterClubs === 'function') filterClubs();
+    const id = Number(params.get('club_id') || 0);
+    if (id > 0) {
+      const row = document.querySelector(`[data-club-id="${id}"]`);
+      if (row) { row.classList.add('insight-focused-row'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }
+  }
+}
+
+window.addEventListener('popstate', () => {
+  applyAdminDeepLink().catch(error => showToast('恢复页面状态失败：' + (error?.message || '未知错误'), 'error'));
+});
+
+/* ================================================================
+   TRAFFIC ANALYTICS
+   ================================================================ */
+function analyticsLocalDateKey(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function analyticsTodayKey() { return analyticsLocalDateKey(new Date()); }
+
+function analyticsInitializeRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - 29);
+  const fromEl = document.getElementById('analyticsFrom');
+  const toEl = document.getElementById('analyticsTo');
+  if (fromEl && !fromEl.value) fromEl.value = analyticsLocalDateKey(from);
+  if (toEl && !toEl.value) toEl.value = analyticsLocalDateKey(to);
+}
+
+function analyticsSetPreset(days) {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - Number(days) + 1);
+  const fromEl = document.getElementById('analyticsFrom');
+  const toEl = document.getElementById('analyticsTo');
+  if (fromEl) fromEl.value = analyticsLocalDateKey(from);
+  if (toEl) toEl.value = analyticsLocalDateKey(to);
+  document.querySelectorAll('[data-analytics-preset]').forEach(button => {
+    button.classList.toggle('active', button.dataset.analyticsPreset === String(days));
+  });
+  loadAnalytics();
+}
+
+function analyticsSetCustomRange() {
+  document.querySelectorAll('[data-analytics-preset]').forEach(button => button.classList.remove('active'));
+  loadAnalytics();
+}
+
+function analyticsRangeParams() {
+  const from = document.getElementById('analyticsFrom')?.value || '';
+  const to = document.getElementById('analyticsTo')?.value || '';
+  return from && to ? `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
+}
+
+function analyticsNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString('zh-CN') : '—';
+}
+
+function analyticsDisplayNumber(value, hasData, uvAvailable = true) {
+  return hasData && uvAvailable ? analyticsNumber(value) : '—';
+}
+
+function analyticsDeltaText(value) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return '暂无可比较周期';
+  const number = Number(value);
+  return `${number > 0 ? '↑' : number < 0 ? '↓' : '→'} ${Math.abs(number).toFixed(1)}% 对比上周期`;
+}
+
+async function loadAnalytics() {
+  if (!isSuperAdmin) return;
+  const token = ++analyticsLoadToken;
+  const chart = document.getElementById('analyticsTrendChart');
+  if (chart) chart.innerHTML = '<div class="analytics-empty">加载中...</div>';
+  try {
+    const response = await fetch('../api/analytics.php?action=summary' + analyticsRangeParams(), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data || data.success !== true) throw new Error(data?.message || '统计接口返回无效数据');
+    if (token !== analyticsLoadToken) return;
+    analyticsData = data;
+    renderAnalytics(data);
+  } catch (error) {
+    if (token !== analyticsLoadToken) return;
+    analyticsData = null;
+    const message = error && error.message ? error.message : '网络错误';
+    if (chart) chart.innerHTML = `<div class="analytics-empty">统计数据加载失败：${escapeHtml(message)}<br><span class="text-sm">请检查权限、数据库迁移和接口状态后重试。</span></div>`;
+    [['analyticsPagesBody', 5], ['analyticsSourcesBody', 4]].forEach(([id, colspan]) => {
+      const body = document.getElementById(id);
+      if (body) body.innerHTML = `<tr><td colspan="${colspan}" class="analytics-empty">统计数据加载失败</td></tr>`;
+    });
+    ['analyticsDevicesBody', 'analyticsBrowsersBody'].forEach(id => {
+      const body = document.getElementById(id);
+      if (body) body.innerHTML = '<div class="analytics-empty">统计数据加载失败</div>';
+    });
+    showToast('访问统计加载失败：' + message, 'error');
+  }
+}
+
+function renderAnalytics(data) {
+  const range = data.meta?.range || {};
+  const rangeLabel = document.getElementById('analyticsRangeLabel');
+  if (rangeLabel) rangeLabel.textContent = `当前范围：${range.from || '—'} 至 ${range.to || '—'} · Asia/Shanghai`;
+  const notice = document.getElementById('analyticsTrackingNotice');
+  if (notice) notice.textContent = `统计时区：${data.meta?.timezone || 'Asia/Shanghai'}。统计数据自 ${data.meta?.tracking_started_at || '上线日期'} 开始累计；页面、来源和设备中的 UV 均为“维度内 UV”。`;
+
+  const periods = data.periods || {};
+  const lifetime = periods.lifetime || {};
+  const hasData = Number(lifetime.pv || 0) > 0;
+  const cards = [
+    ['analyticsLifetimeUv', lifetime.uv, 'analyticsLifetimePv', lifetime.pv, lifetime.uv_available, null],
+    ['analyticsTodayUv', periods.today?.uv, 'analyticsTodayPv', periods.today?.pv, periods.today?.uv_available, ['analyticsTodayDelta', periods.today?.uv_delta_pct]],
+    ['analyticsWeekUv', periods.week?.uv, 'analyticsWeekPv', periods.week?.pv, periods.week?.uv_available, ['analyticsWeekDelta', periods.week?.uv_delta_pct]],
+    ['analyticsMonthUv', periods.month?.uv, 'analyticsMonthPv', periods.month?.pv, periods.month?.uv_available, ['analyticsMonthDelta', periods.month?.uv_delta_pct]]
+  ];
+  cards.forEach(([uvId, uv, pvId, pv, uvAvailable, delta]) => {
+    const uvEl = document.getElementById(uvId);
+    const pvEl = document.getElementById(pvId);
+    if (uvEl) uvEl.textContent = analyticsDisplayNumber(uv, hasData, uvAvailable !== false);
+    if (pvEl) pvEl.textContent = `PV ${analyticsDisplayNumber(pv, hasData)}`;
+    if (delta) {
+      const deltaEl = document.getElementById(delta[0]);
+      if (deltaEl) deltaEl.textContent = analyticsDeltaText(delta[1]);
+    }
+  });
+
+  renderAnalyticsTrend(data.trend || []);
+  renderAnalyticsTables(data.breakdowns || {});
+  renderAnalyticsAuth(data.selected || {});
+}
+
+function renderAnalyticsTrend(trend) {
+  const container = document.getElementById('analyticsTrendChart');
+  if (!container) return;
+  if (!trend.length || trend.every(row => Number(row.uv || 0) === 0 && Number(row.pv || 0) === 0)) {
+    container.innerHTML = '<div class="analytics-empty">暂无统计数据</div>';
+    return;
+  }
+  const W = Math.max(320, Math.round(container.clientWidth || 720));
+  const H = 236, padL = 42, padR = 18, padT = 18, padB = 30;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const maxValue = Math.max(...trend.map(row => Math.max(Number(row.uv || 0), Number(row.pv || 0))), 1);
+  const xStep = trend.length > 1 ? chartW / (trend.length - 1) : chartW;
+  const point = (index, value) => `${padL + index * xStep},${padT + chartH - (Number(value || 0) / maxValue) * chartH}`;
+  const uvPoints = trend.map((row, index) => point(index, row.uv)).join(' ');
+  const pvPoints = trend.map((row, index) => point(index, row.pv)).join(' ');
+  const pvAreaPath = 'M ' + padL + ' ' + (padT + chartH) + ' L ' +
+    trend.map((row, index) => point(index, row.pv)).join(' L ') +
+    ' L ' + (padL + (trend.length - 1) * xStep) + ' ' + (padT + chartH) + ' Z';
+  let grid = '';
+  for (let index = 0; index <= 4; index += 1) {
+    const y = padT + chartH * index / 4;
+    const value = Math.round(maxValue - maxValue * index / 4);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--color-grid-line)" stroke-width="0.8"/><text x="${padL - 9}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--color-chart-label)">${value}</text>`;
+  }
+  const labelStep = Math.max(1, Math.ceil(trend.length / 7));
+  let labels = '';
+  for (let index = 0; index < trend.length; index += labelStep) {
+    labels += `<text x="${padL + index * xStep}" y="${H - 11}" text-anchor="middle" font-size="11" fill="var(--color-chart-label)">${escapeHtml(String(trend[index].date || '').slice(5))}</text>`;
+  }
+  const dots = trend.map((row, index) => {
+    const x = padL + index * xStep;
+    const uvY = padT + chartH - (Number(row.uv || 0) / maxValue) * chartH;
+    const pvY = padT + chartH - (Number(row.pv || 0) / maxValue) * chartH;
+    const historical = Number(row.historical_pv || 0);
+    const title = `${row.date || '—'}：UV ${row.uv_available === false ? '不可还原' : analyticsNumber(row.uv)}，PV ${analyticsNumber(row.pv)}，其中历史日志 PV ${analyticsNumber(historical)}，登录 PV ${analyticsNumber(row.authenticated_pv)}，匿名 PV ${analyticsNumber(row.anonymous_pv)}`;
+    return `<circle tabindex="0" cx="${x}" cy="${uvY}" r="3.5" fill="var(--chart-uv)"><title>${escapeHtml(title)}</title></circle><circle tabindex="0" cx="${x}" cy="${pvY}" r="3.5" fill="var(--chart-pv)"><title>${escapeHtml(title)}</title></circle>`;
+  }).join('');
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="访问趋势图，显示每日 UV、PV、登录 PV 和匿名 PV"><title>访问趋势</title>${grid}<path d="${pvAreaPath}" fill="var(--chart-pv-area)"/><polyline points="${uvPoints}" fill="none" stroke="var(--chart-uv)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${pvPoints}" fill="none" stroke="var(--chart-pv)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}</svg>`;
+}
+
+function renderAnalyticsTables(breakdowns) {
+  const pages = Array.isArray(breakdowns.pages) ? breakdowns.pages : [];
+  const sources = Array.isArray(breakdowns.sources) ? breakdowns.sources : [];
+  const renderRows = (items, columns, emptyColspan) => items.length
+    ? items.map(item => `<tr>${columns(item)}</tr>`).join('')
+    : `<tr><td colspan="${emptyColspan}" class="analytics-empty">暂无统计数据</td></tr>`;
+  const pagesBody = document.getElementById('analyticsPagesBody');
+  if (pagesBody) pagesBody.innerHTML = renderRows(pages, item => {
+    const uv = Number(item.uv || 0), pv = Number(item.pv || 0);
+    const uvText = item.uv_available === false ? '—' : analyticsNumber(uv);
+    return `<td class="analytics-page-title" title="${escapeHtml(item.page_title || item.page_path || '未命名页面')}">${escapeHtml(item.page_title || '未命名页面')}</td><td class="text-muted">${escapeHtml(item.page_path || '—')}</td><td>${uvText}</td><td>${analyticsNumber(pv)}</td><td>${item.uv_available === false || !uv ? '—' : (pv / uv).toFixed(2)}</td>`;
+  }, 5);
+  const sourceLabels = { direct: '直接访问', internal: '站内跳转', search: '搜索引擎', social: '社交平台', external: '其他外链' };
+  const sourcesBody = document.getElementById('analyticsSourcesBody');
+  if (sourcesBody) sourcesBody.innerHTML = renderRows(sources, item => `<td>${escapeHtml(sourceLabels[item.source_category] || item.source_category || '其他外链')}</td><td class="text-muted">${escapeHtml(item.referrer_host || '—')}</td><td>${analyticsNumber(item.uv)}</td><td>${analyticsNumber(item.pv)}</td>`, 4);
+
+  const deviceLabels = { desktop: '桌面端', mobile: '移动端', tablet: '平板', unknown: '未知' };
+  const browserLabels = { chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox', safari: 'Safari', other: '其他' };
+  renderAnalyticsBars('analyticsDevicesBody', breakdowns.devices, deviceLabels, ['desktop', 'mobile', 'tablet', 'unknown']);
+  renderAnalyticsBars('analyticsBrowsersBody', breakdowns.browsers, browserLabels, ['chrome', 'edge', 'firefox', 'safari', 'other']);
+}
+
+function renderAnalyticsBars(id, input, labels, order) {
+  const container = document.getElementById(id);
+  if (!container) return;
+  const rows = Array.isArray(input) ? input : [];
+  if (!rows.length || rows.every(row => Number(row.pv || 0) === 0 && Number(row.uv || 0) === 0)) {
+    container.innerHTML = '<div class="analytics-empty">暂无统计数据</div>';
+    return;
+  }
+  const byKey = Object.fromEntries(rows.map(row => [row.device_type || row.browser_name, row]));
+  const all = order.map(key => ({ key, ...(byKey[key] || {}) }));
+  const maxPv = Math.max(...all.map(row => Number(row.pv || 0)), 1);
+  container.innerHTML = all.map(row => {
+    const pv = Number(row.pv || 0), uv = Number(row.uv || 0);
+    const uvText = row.uv_available === false ? '—' : analyticsNumber(uv);
+    return `<div class="analytics-bar-row"><span class="analytics-bar-label">${escapeHtml(labels[row.key] || row.key)}</span><div class="analytics-bar-track"><div class="analytics-bar-fill" style="width:${Math.min(100, pv / maxPv * 100)}%"></div></div><span class="analytics-bar-value">PV ${analyticsNumber(pv)} · UV ${uvText}</span></div>`;
+  }).join('');
+}
+
+function renderAnalyticsAuth(selected) {
+  const auth = Number(selected.authenticated_pv || 0);
+  const anonymous = Number(selected.anonymous_pv || 0);
+  const historical = Number(selected.historical_unknown_pv || 0);
+  const knownTotal = auth + anonymous;
+  const total = knownTotal + historical;
+  const authPct = knownTotal ? auth / knownTotal * 100 : 0;
+  const anonPct = knownTotal ? anonymous / knownTotal * 100 : 0;
+  const historicalPct = total ? historical / total * 100 : 0;
+  const authBar = document.getElementById('analyticsAuthBar');
+  const anonBar = document.getElementById('analyticsAnonBar');
+  const historicalBar = document.getElementById('analyticsHistoricalBar');
+  const authLabel = document.getElementById('analyticsAuthLabel');
+  const anonLabel = document.getElementById('analyticsAnonLabel');
+  const historicalLabel = document.getElementById('analyticsHistoricalLabel');
+  if (authBar) authBar.style.width = `${authPct}%`;
+  if (anonBar) anonBar.style.width = `${anonPct}%`;
+  if (historicalBar) historicalBar.style.width = `${historicalPct}%`;
+  if (authLabel) authLabel.textContent = knownTotal ? `${analyticsNumber(auth)} · ${authPct.toFixed(1)}%` : '—';
+  if (anonLabel) anonLabel.textContent = knownTotal ? `${analyticsNumber(anonymous)} · ${anonPct.toFixed(1)}%` : '—';
+  if (historicalLabel) historicalLabel.textContent = historical ? `${analyticsNumber(historical)} · 未分类` : '—';
+}
+
+async function exportAnalytics(dataset, format) {
+  if (!isSuperAdmin) return;
+  try {
+    const response = await fetch(`../api/analytics.php?action=export&dataset=${encodeURIComponent(dataset)}&format=${encodeURIComponent(format)}${analyticsRangeParams()}`, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    if (!blob.size) throw new Error('导出内容为空');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const from = document.getElementById('analyticsFrom')?.value || analyticsTodayKey();
+    const to = document.getElementById('analyticsTo')?.value || analyticsTodayKey();
+    link.href = url;
+    link.download = `vnfest_analytics_${dataset}_${from}_${to}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast(`已导出访问统计 ${dataset.toUpperCase()} (${format.toUpperCase()})`, 'success');
+  } catch (error) {
+    showToast('访问统计导出失败：' + (error?.message || '网络错误'), 'error');
+  }
+}
+
 function renderRegionDistChart() {
   const container = document.getElementById('regionDistChart');
   if (!container) return;
@@ -1535,26 +2737,21 @@ function renderRegionDistChart() {
   }
 
   const maxVal = Math.max(...sorted.map(s => s[1]), 1);
-  const W = 600, barH = 14, gap = 2, padL = 100, padR = 32, padT = 4;
-  const H = padT + sorted.length * (barH + gap) + 6;
-  const chartW = W - padL - padR;
-
-  let bars = '';
-  sorted.forEach(([name, count], i) => {
-    const y = padT + i * (barH + gap);
-    const w = (count / maxVal) * chartW;
+  const totalRegions = Object.keys(regionCounts).length;
+  const listItems = sorted.map(([name, count], index) => {
     const isChina = name.startsWith('中国');
-    const color = isChina ? 'var(--chart-red)' : 'var(--chart-blue)';
-    bars += `<text x="${padL - 6}" y="${y + barH / 2 + 3}" text-anchor="end" font-size="10" fill="var(--color-text-secondary)">${escapeHtml(name)}</text>`;
-    bars += `<rect x="${padL}" y="${y}" width="${w}" height="${barH}" rx="2" fill="${color}" opacity="0.75"/>`;
-    bars += `<text x="${padL + w + 5}" y="${y + barH / 2 + 3}" font-size="10" font-weight="600" fill="var(--color-text)">${count}</text>`;
-  });
+    const width = Math.max(2, count / maxVal * 100);
+    const rank = String(index + 1).padStart(2, '0');
+    return '<li class="region-ranking-row ' + (isChina ? 'cn' : 'jp') + '">' +
+      '<span class="region-rank">' + rank + '</span>' +
+      '<span class="region-name" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>' +
+      '<span class="region-track" aria-hidden="true"><span class="region-track-fill" style="width:' + width.toFixed(2) + '%"></span></span>' +
+      '<span class="region-value">' + count + '</span>' +
+      '</li>';
+  }).join('');
 
-  container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="同好会地区分布：共${sorted.length}个地区">
-      <title>同好会地区分布 Top 12</title>
-      ${bars}
-    </svg>`;
+  container.innerHTML = '<div class="region-chart-meta"><span>按同好会数量排序</span><span>共 ' + totalRegions + ' 个地区</span></div>' +
+    '<ol class="region-ranking" aria-label="同好会地区分布 Top 12">' + listItems + '</ol>';
 }
 
 /* ================================================================
@@ -2560,7 +3757,7 @@ function renderClubsTable() {
     const type = c.type === 'school' ? '校内' : c.type === 'region' ? '地区' : 'VNFest';
     const region = c.country === 'japan' ? (c.prefecture || '') : (c.province || '');
     const clubName = escapeHtml(c.name || c.display_name || '');
-    return `<tr>
+    return `<tr data-club-id="${Number(c.id) || 0}" data-club-country="${escapeHtml(c.country || 'china')}">
       <td><strong>${clubName}</strong></td>
       <td>${escapeHtml(c.school || region || '')}</td>
       <td>${flag}</td>
@@ -2830,136 +4027,328 @@ function resetAnnounceForm() {
 /* ================================================================
    OPERATION LOGS (needs api/admin_logs.php)
    ================================================================ */
+let currentLogs = [];
+let logPage = 1;
+const LOG_PAGE_SIZE = 50;
+let logSearchTimer = null;
+
 function loadLogs() {
   const tbody = document.getElementById('logsTableBody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>';
   const type = document.getElementById('logTypeFilter')?.value || 'all';
   const dateFrom = document.getElementById('logDateFrom')?.value || '';
   const dateTo = document.getElementById('logDateTo')?.value || '';
-  const qs = 'action=list&page=1&per_page=100&type=' + encodeURIComponent(type) +
-    '&date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo);
+  const search = document.getElementById('logSearch')?.value.trim() || '';
+  const qs = 'action=list&page=' + logPage + '&per_page=' + LOG_PAGE_SIZE + '&type=' + encodeURIComponent(type) +
+    '&date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo) + '&search=' + encodeURIComponent(search);
   fetch('../api/admin_logs.php?' + qs, { credentials: 'same-origin' })
     .then(r => r.json())
     .then(function(data) {
       if (!data.success) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">' + escapeHtml(data.message || '加载日志失败') + '</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">' + escapeHtml(data.message || '加载日志失败') + '</td></tr>';
         return;
       }
-      const logs = data.logs || [];
-      if (!logs.length) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">暂无操作日志</td></tr>';
+      currentLogs = (data.logs || []).map(normalizeLogEntry);
+      const total = Number(data.total || 0);
+      if (!currentLogs.length && total > 0 && logPage > 1) {
+        logPage--;
+        loadLogs();
         return;
       }
-      tbody.innerHTML = logs.map(function(l) {
-        const operator = l.nickname || l.username || ('用户#' + (l.user_id != null ? l.user_id : '?'));
+      updateLogSummary(total);
+      if (!currentLogs.length) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">没有找到符合条件的操作日志</td></tr>';
+        return;
+      }
+      tbody.innerHTML = currentLogs.map(function(l) {
+        const operator = l.nickname || l.username || (l.user_id != null ? '用户 #' + l.user_id : '系统 / 未登录');
+        const actorRole = l.context.actor_role || l.current_role || '';
+        const source = [l.ip_address || '未记录 IP', l.client.short].filter(Boolean);
         return '<tr>' +
           '<td>' + escapeHtml(l.created_at || '—') + '</td>' +
-          '<td>' + escapeHtml(operator) + '</td>' +
-          '<td>' + escapeHtml(logTypeLabel(l.action)) + '</td>' +
-          '<td>' + translateLogAction(l.action, l.details) + '</td>' +
-          '<td>' + escapeHtml(l.action) + '</td>' +
-          '<td>' + formatLogDetail(l) + '</td>' +
+          '<td><div>' + escapeHtml(operator) + '</div><div class="log-operator-meta">' +
+            escapeHtml([actorRole ? roleText(actorRole) : '', l.user_id != null ? 'ID ' + l.user_id : ''].filter(Boolean).join(' · ') || '—') + '</div></td>' +
+          '<td><div class="log-event-title">' + escapeHtml(l.definition.label) + '</div><div class="log-event-code">' +
+            escapeHtml(logTypeLabel(l.action) + ' · ' + l.action) + '</div></td>' +
+          '<td><div class="log-result-stack"><span class="log-pill ' + escapeHtml(l.outcome.tone) + '">' + escapeHtml(l.outcome.label) +
+            '</span><span class="log-pill ' + escapeHtml(l.definition.severity) + '">' + escapeHtml(severityText(l.definition.severity)) + '</span></div></td>' +
+          '<td>' + formatLogTarget(l) + '</td>' +
+          '<td><div>' + escapeHtml(source[0] || '—') + '</div><div class="log-source-meta">' + escapeHtml(source.slice(1).join(' · ') || '旧日志无请求环境') + '</div></td>' +
+          '<td><button class="btn btn-ghost btn-sm log-detail-button" type="button" aria-label="' +
+            escapeHtml('查看日志 #' + l.id + '：' + l.definition.label + ' 的解释') + '" onclick="showLogDetail(' + Number(l.id) + ')">解释</button></td>' +
         '</tr>';
       }).join('');
     })
     .catch(function() {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载操作日志失败</td></tr>';
+      currentLogs = [];
+      updateLogSummary(0);
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:40px;">加载操作日志失败，请检查网络或稍后重试</td></tr>';
     });
 }
 
-function filterLogs() { loadLogs(); }
+function filterLogs() { logPage = 1; loadLogs(); }
+function scheduleLogFilter() {
+  clearTimeout(logSearchTimer);
+  logSearchTimer = setTimeout(filterLogs, 320);
+}
+function resetLogFilters() {
+  document.getElementById('logSearch').value = '';
+  document.getElementById('logTypeFilter').value = 'all';
+  document.getElementById('logDateFrom').value = '';
+  document.getElementById('logDateTo').value = '';
+  filterLogs();
+}
+function changeLogPage(delta) {
+  const next = logPage + delta;
+  if (next < 1) return;
+  logPage = next;
+  loadLogs();
+}
+
+function updateLogSummary(total) {
+  const highRisk = currentLogs.filter(l => l.definition.severity === 'high').length;
+  const operators = new Set(currentLogs.map(l => l.user_id == null ? 'system' : String(l.user_id))).size;
+  const contexts = currentLogs.filter(l => l.context && (l.context.path || l.context.user_agent || l.context.method)).length;
+  document.getElementById('logTotalCount').textContent = '共 ' + total + ' 条';
+  document.getElementById('logVisibleCount').textContent = String(currentLogs.length);
+  document.getElementById('logHighRiskCount').textContent = String(highRisk);
+  document.getElementById('logOperatorCount').textContent = String(currentLogs.length ? operators : 0);
+  document.getElementById('logContextCount').textContent = String(contexts);
+  const pageCount = Math.max(1, Math.ceil(total / LOG_PAGE_SIZE));
+  const start = total && currentLogs.length ? (logPage - 1) * LOG_PAGE_SIZE + 1 : 0;
+  const end = total && currentLogs.length ? start + currentLogs.length - 1 : 0;
+  document.getElementById('logPageInfo').textContent = '第 ' + logPage + ' / ' + pageCount + ' 页 · 显示 ' + start + '–' + end + ' 条';
+  document.getElementById('logPrevPage').disabled = logPage <= 1;
+  document.getElementById('logNextPage').disabled = logPage >= pageCount;
+}
 
 function logTypeLabel(action) {
   const a = String(action || '');
-  if (/^(galonly|review)\./.test(a)) return '审核操作';
+  if (/^user\.(register|login|logout|send_|reset_password|change_password|bind_email|unbind_email|bind_qq|unbind_qq|bind_discord|unbind_discord)/.test(a)) return '账号与安全';
+  if (/^(galonly|galonly_staff|review)[._]/.test(a)) return '申请与审核';
   if (/^(user|users)\./.test(a)) return '用户管理';
   if (/^(membership|club|club_moe_king|star_union)\./.test(a) ||
-      ['generate_club_code', 'revoke_club_code', 'redeem_club_code', 'delete_club_comment', 'add_recommendation'].indexOf(a) !== -1) {
-    return '同好会操作';
+      ['generate_club_code', 'revoke_club_code', 'redeem_club_code', 'delete_club_comment', 'add_recommendation', 'remove_recommendation', 'reorder_recommendations'].indexOf(a) !== -1) {
+    return '同好会与成员';
   }
+  if (/^vote[._]/.test(a)) return '投票活动';
+  if (/^recog[._]/.test(a)) return '认证与题库';
+  if (/^column[._]/.test(a)) return '专栏内容';
+  if (/^forum[._]/.test(a)) return '论坛归档';
   if (/^announce/.test(a)) return '公告管理';
-  return '系统操作';
+  if (/^bot[._]/.test(a)) return 'Bot 与接入';
+  return '其他系统操作';
 }
 
-const LOG_ACTION_LABELS = [
-  [/^user\.register/, '新用户注册'],
-  [/^user\.change_avatar/, '修改头像'],
-  [/^user\.bind_discord/, '绑定 Discord'],
-  [/^user\.bind_qq/, '绑定 QQ'],
-  [/^users\.ban/, '封禁用户'],
-  [/^users\.update/, '修改用户信息'],
-  [/^membership\.application_email_notification/, '发送审批通知邮件'],
-  [/^membership\.update_application_email_recipient/, '修改申请邮件接收人'],
-  [/^membership\.reapply/, '重新提交同好会绑定申请'],
-  [/^membership\.apply$/, '提交同好会绑定申请'],
-  [/^membership\.approve/, '批准同好会绑定申请'],
-  [/^membership\.reject/, '拒绝同好会绑定申请'],
-  [/^membership\.leave/, '退出同好会'],
-  [/^membership\.kick/, '移出同好会成员'],
-  [/^membership\.change_role/, '修改同好会成员角色'],
-  [/^membership\.transfer/, '转移同好会负责人'],
-  [/^membership\.grant_from_submission/, '同好会提交审核自动绑定身份'],
-  [/^membership\./, '同好会成员操作'],
-  [/^galonly\.submit_staff/, '提交 Staff 申请'],
-  [/^galonly\.update_staff$/, '修改 Staff 申请'],
-  [/^galonly\.delete_staff_application/, '删除 Staff 申请'],
-  [/^galonly\.vote_staff/, 'Staff 审核投票'],
-  [/^galonly\.withdraw_staff_vote/, '撤回 Staff 审核投票'],
-  [/^galonly\.finalize_staff_roster/, '确认 Staff 名单'],
-  [/^galonly\.unlock_staff_roster/, '解锁 Staff 名单'],
-  [/^galonly\.update_staff_event_config/, '修改 Staff 活动配置'],
-  [/^galonly\.submit$/, '提交摊位申请'],
-  [/^galonly\.update_application/, '修改摊位申请'],
-  [/^galonly\.delete_application/, '删除摊位申请'],
-  [/^galonly\.add_event/, '新增 GalOnly 活动'],
-  [/^galonly\.delete_event/, '删除 GalOnly 活动'],
-  [/^galonly\.update_event/, '修改 GalOnly 活动'],
-  [/^galonly\./, 'GalOnly 活动操作'],
-  [/^generate_club_code/, '生成同好会绑定码'],
-  [/^revoke_club_code/, '作废同好会绑定码'],
-  [/^redeem_club_code/, '使用绑定码加入同好会'],
-  [/^delete_club_comment/, '删除同好会评论'],
-  [/^club_moe_king\./, '设置同好会萌王'],
-  [/^add_recommendation/, '添加同好会推荐'],
-  [/^club\.toggle_visibility/, '切换同好会显示状态'],
-  [/^star_union\./, '高校联合操作'],
-  [/^vote_/, '投票活动操作'],
-  [/^announce/, '公告管理操作'],
-  [/^review\./, '审核操作'],
-  [/^bot\./, 'Bot 接入操作']
+const LOG_ACTION_DEFINITIONS = [
+  [/^user\.send_register_code$/, '发送注册验证码', '向待注册邮箱发送了一次验证码，可结合邮件发送结果判断是否成功。', 'info'],
+  [/^user\.send_password_reset_code$/, '发送密码重置码', '发起了密码找回流程；日志不会保存验证码本身。', 'attention'],
+  [/^user\.send_code$/, '发送账号验证码', '向当前用户的邮箱发送了一次身份验证码，日志不会保存验证码本身。', 'info'],
+  [/^user\.reset_password$/, '重置账号密码', '完成密码重置，原密码将不再可用，属于高影响账号操作。', 'high'],
+  [/^user\.change_password$/, '修改账号密码', '已登录用户更换了密码，属于高影响账号操作。', 'high'],
+  [/^user\.register$/, '创建新用户', '一个新账号已通过本地注册或第三方登录创建。', 'info'],
+  [/^user\.login$/, '用户登录', '用户通过日志中标记的登录方式进入系统。', 'info'],
+  [/^user\.logout$/, '用户退出', '用户主动结束了当前登录会话。', 'info'],
+  [/^user\.(bind|unbind)_(email|qq|discord)$/, '变更账号绑定', '用户绑定或解除了邮箱 / QQ / Discord 登录标识，可能影响后续登录方式。', 'attention'],
+  [/^user\.change_avatar$/, '修改头像', '用户更换了公开展示的头像图片。', 'info'],
+  [/^user\.update_/, '修改用户设置', '用户更新了个人资料、展示同好会、语言或通知偏好。', 'info'],
+  [/^users\.ban$/, '变更用户封禁状态', '管理员封禁或解封了用户，会直接影响该账号的访问能力。', 'high'],
+  [/^users\.revoke_audit_reviewer$/, '撤销审核员身份', '用户的审核员权限及相关审核角色已被移除。', 'high'],
+  [/^users\.update$/, '管理员修改用户', '管理员更改了该用户的角色、审核身份或其他资料。', 'attention'],
+  [/^membership\.application_email_notification$/, '发送入会审批通知', '同好会入会申请的通知邮件已尝试发送给审批人。', 'info'],
+  [/^membership\.(apply|reapply)$/, '提交同好会入会申请', '用户新建或重新提交了同好会成员身份申请。', 'info'],
+  [/^membership\.approve$/, '批准同好会入会申请', '申请人已获得相应同好会的成员身份。', 'attention'],
+  [/^membership\.reject$/, '拒绝同好会入会申请', '本次入会申请未通过，用户不会获得申请的成员身份。', 'attention'],
+  [/^membership\.(leave|kick)$/, '移除同好会成员关系', '用户主动退出或被管理员移出同好会，相关成员权限已变更。', 'high'],
+  [/^membership\.change_role$/, '修改同好会成员角色', '调整了成员在同好会内的权限级别。', 'attention'],
+  [/^membership\.transfer$/, '转移同好会负责权', '同好会最高管理身份已转移给其他成员，属于高影响权限操作。', 'high'],
+  [/^membership\./, '变更同好会成员信息', '记录了一次同好会成员申请、通知或权限操作。', 'attention'],
+  [/^galonly[._].*(delete|unlock)/, '删除或解锁 GalOnly 数据', '审核申请或名单的稳定状态被改变，请结合目标 ID 确认范围。', 'high'],
+  [/^galonly[._].*(resolve|finalize|update_status)/, '确认 GalOnly 审核结果', '审核者对摊位、制品或 Staff 申请设置了最终状态。', 'attention'],
+  [/^galonly[._].*(vote|withdraw_vote)/, 'GalOnly 审核投票', '审核员提交或撤回了一次审核意见，可在详情中查看阶段与票型。', 'info'],
+  [/^galonly[._].*(submit|update)/, '提交或修改 GalOnly 申请', '摊位、制品或 Staff 申请的内容发生了提交或修改。', 'info'],
+  [/^galonly[._]/, 'GalOnly 管理操作', '记录了 GalOnly 活动配置、申请或审核流程的变更。', 'attention'],
+  [/^(generate|revoke|redeem)_club_code$/, '变更同好会绑定码', '绑定码被生成、作废或使用，可能改变用户的同好会归属。', 'high'],
+  [/^(add_recommendation|remove_recommendation|reorder_recommendations)$/, '管理同好会推荐', '同好会的推荐内容或排序已发生变更。', 'attention'],
+  [/^delete_club_comment$/, '删除同好会评论', '一条同好会评论已被管理员或有权成员删除。', 'high'],
+  [/^(club|club_moe_king|star_union)[._]/, '修改同好会展示或联合信息', '同好会可见性、萌王或高校联合配置已发生变更。', 'attention'],
+  [/^vote[._].*delete/, '删除投票数据', '投票企划或相关配置被删除，属于高影响操作。', 'high'],
+  [/^vote[._].*(settle|advance|resolve|reseed|rebuild)/, '推进或重算投票赛程', '投票阶段的入选、结算、平票或种子结果发生变更。', 'high'],
+  [/^vote[._].*(cast|submit)/, '提交投票或提名', '用户提交了选票或项目提名，详情中可查看项目、阶段与条目数。', 'info'],
+  [/^vote[._]/, '修改投票活动', '投票企划、阶段、候选项或匹配配置已发生变更。', 'attention'],
+  [/^recog[._].*(revoke|expired)/, '撤销或过期认证凭证', '一个或多个认证凭证已失效，不再应被视为有效资格。', 'high'],
+  [/^recog[._].*(issued|generated|imported)/, '发放认证或导入名单', '系统创建了可领取凭证或批量导入了参与者。', 'attention'],
+  [/^recog[._].*submission_(approve|reject)/, '处理认证提交', '审核员对一条认证申请作出了通过或拒绝决定。', 'attention'],
+  [/^recog[._]/, '修改认证、徽章或题库', '认证企划、徽章、题库、连接器或展示设置发生了变更。', 'attention'],
+  [/^column[._].*article\.(create|update|publish)/, '发布或更新专栏文章', '专栏文章被创建、发布或更新，正文版本和文章状态可结合目标 ID 追溯。', 'attention'],
+  [/^column[._].*article\.(withdraw|delete|moderate)/, '处理专栏文章状态', '专栏文章被撤回、删除、隐藏或恢复公开。', 'high'],
+  [/^column[._].*comment\.(create|update)/, '更新专栏评论', '文章上下文中的评论被创建或编辑。', 'info'],
+  [/^column[._].*comment\.(delete|moderate)/, '处理专栏评论', '专栏评论被删除、隐藏或恢复显示。', 'high'],
+  [/^forum[._].*delete/, '处理论坛归档内容', '历史论坛内容被内部操作处理，可结合范围和目标 ID 追溯。', 'high'],
+  [/^forum[._].*moderate/, '处理论坛归档状态', '历史论坛内容治理记录仍保留，但公开 Forum API 已关闭。', 'high'],
+  [/^bot[._].*revoke/, '撤销 Bot 接入令牌', '已发放的 Bot 访问权限被撤销，该令牌应立即停止工作。', 'high'],
+  [/^bot[._].*create/, '创建 Bot 接入令牌', '为同好会创建了新的 Bot 访问权限，详情仅展示权限范围，不显示令牌原文。', 'high'],
+  [/^announce/, '变更系统公告', '公告被创建、修改、发布或删除，可能影响全站用户可见内容。', 'attention'],
+  [/^review[._]/, '执行内容审核', '管理员对一条待处理内容更新了审核状态。', 'attention']
 ];
 
-function translateLogAction(action, details) {
+function getLogActionDefinition(action) {
   const a = String(action || '');
-  let label = '—';
-  for (const pair of LOG_ACTION_LABELS) {
-    if (pair[0].test(a)) { label = pair[1]; break; }
+  for (const item of LOG_ACTION_DEFINITIONS) {
+    if (item[0].test(a)) return { label: item[1], explanation: item[2], severity: item[3] };
   }
-  let extra = '';
-  if (details) {
-    try {
-      const d = JSON.parse(details);
-      if (a === 'membership.change_role' && d.old_role && d.new_role) {
-        extra = '（' + roleText(d.old_role) + ' → ' + roleText(d.new_role) + '）';
-      } else if (a === 'galonly.vote_staff' && d.vote) {
-        extra = '（' + (d.vote === 'approve' ? '通过' : '拒绝') + '）';
-      } else if (a === 'users.update' && Array.isArray(d.updated_fields) && d.updated_fields.length) {
-        extra = '（' + d.updated_fields.join('、') + '）';
-      }
-    } catch (e) { /* 保持原始说明 */ }
-  }
-  return escapeHtml(label + extra);
+  return {
+    label: '未归类操作',
+    explanation: '这是系统已记录但还没有专用中文解释的动作。请结合操作代码、目标对象和原始参数判断具体影响。',
+    severity: inferSeverity(a)
+  };
 }
 
-function formatLogDetail(l) {
-  if (!l.details) return '<span class="text-muted">—</span>';
-  let text = l.details;
+function inferSeverity(action) {
+  if (/(delete|revoke|ban|reset_password|transfer|kick|settle|resolve_tie|unlock)/.test(action)) return 'high';
+  if (/(update|approve|reject|publish|create|remove|visibility|role|resolve)/.test(action)) return 'attention';
+  return 'info';
+}
+
+function parseLogDetails(l) {
+  if (l.details_decoded && typeof l.details_decoded === 'object') return l.details_decoded;
+  if (!l.details) return {};
   try {
-    const parsed = JSON.parse(text);
-    text = JSON.stringify(parsed);
-  } catch (e) { /* keep raw */ }
-  const shown = text.length > 120 ? text.slice(0, 120) + '…' : text;
-  return '<span title="' + escapeHtml(l.details) + '">' + escapeHtml(shown) + '</span>';
+    const parsed = JSON.parse(l.details);
+    return parsed && typeof parsed === 'object' ? parsed : { value: parsed };
+  } catch (e) {
+    return { raw: String(l.details) };
+  }
+}
+
+function detectLogOutcome(action, details) {
+  const value = details.result ?? details.status ?? details.decision ?? details.vote;
+  if (details.mail_sent === false || details.success === false) return { label: '失败 / 未发送', tone: 'high' };
+  if (details.mail_sent === true) return { label: '已发送', tone: 'success' };
+  if (value != null) {
+    const key = String(value).toLowerCase();
+    const labels = {
+      approve: '通过', approved: '已通过', accept: '接受', accepted: '已接受',
+      reject: '拒绝', rejected: '已拒绝', deny: '拒绝', denied: '已拒绝',
+      success: '成功', succeeded: '成功', failed: '失败', failure: '失败',
+      pending: '待处理', active: '已启用', inactive: '已停用'
+    };
+    const label = labels[key] || String(value);
+    const tone = /reject|deny|fail/.test(key) ? 'attention' : /approve|accept|success|active/.test(key) ? 'success' : 'neutral';
+    return { label: label, tone: tone };
+  }
+  if (/(reject|deny)/.test(action)) return { label: '已拒绝', tone: 'attention' };
+  if (/(approve|publish|issued|generated)/.test(action)) return { label: '已完成', tone: 'success' };
+  if (/(delete|revoke|ban|remove|kick|leave|unbind|withdraw)/.test(action)) return { label: '已执行', tone: 'attention' };
+  return { label: '已记录', tone: 'neutral' };
+}
+
+function detectClient(userAgent) {
+  const ua = String(userAgent || '');
+  if (!ua) return { browser: '', device: '', short: '' };
+  let browser = 'Web 客户端';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Chrome\//.test(ua)) browser = 'Chrome';
+  else if (/Safari\//.test(ua)) browser = 'Safari';
+  else if (/curl\//i.test(ua)) browser = 'curl';
+  let device = '未知设备';
+  if (/iPhone|iPad|iPod/.test(ua)) device = 'iOS';
+  else if (/Android/.test(ua)) device = 'Android';
+  else if (/Windows/.test(ua)) device = 'Windows';
+  else if (/Macintosh|Mac OS X/.test(ua)) device = 'macOS';
+  else if (/Linux/.test(ua)) device = 'Linux';
+  return { browser: browser, device: device, short: device + ' · ' + browser };
+}
+
+function normalizeLogEntry(l) {
+  const details = parseLogDetails(l);
+  const context = (l.request_context && typeof l.request_context === 'object') ? l.request_context :
+    ((details._context && typeof details._context === 'object') ? details._context : {});
+  return Object.assign({}, l, {
+    detailsObject: details,
+    context: context,
+    client: detectClient(context.user_agent),
+    definition: getLogActionDefinition(l.action),
+    outcome: detectLogOutcome(String(l.action || ''), details)
+  });
+}
+
+function severityText(severity) {
+  return severity === 'high' ? '高影响' : severity === 'attention' ? '需关注' : '常规';
+}
+
+function targetTypeText(type) {
+  const labels = {
+    user: '用户', club: '同好会', club_membership: '成员关系', galonly_application: 'GalOnly 摊位申请',
+    galonly_staff_application: 'GalOnly Staff 申请', galonly_event: 'GalOnly 活动', recognition_program: '认证企划',
+    recognition_credential: '认证凭证', recognition_badge: '认证徽章', recognition_submission: '认证提交',
+    vote_projects: '投票企划', vote_stages: '投票阶段', vote_entries: '投票条目', column_article: '专栏文章', column_comment: '专栏评论', forum_post: '论坛归档帖子', forum_reply: '论坛归档回复'
+  };
+  return labels[type] || type || '未指定目标';
+}
+
+function formatLogTarget(l) {
+  const label = targetTypeText(l.target_type);
+  const id = l.target_id != null ? 'ID ' + l.target_id : '';
+  return '<div>' + escapeHtml(label) + '</div><div class="log-source-meta">' + escapeHtml(id || '没有对象 ID') + '</div>';
+}
+
+function detailKeyText(key) {
+  const labels = {
+    provider: '登录方式', email: '邮箱', mail_sent: '邮件已发送', found: '找到账号', vote: '审核意见', phase: '审核阶段',
+    decision: '决定', result: '结果', status: '状态', old_role: '原角色', new_role: '新角色', updated_fields: '更改字段',
+    fields: '更改字段', club_id: '同好会 ID', club_name: '同好会', country: '地区', project_id: '企划 ID', pool_id: '分组 ID',
+    count: '数量', existing_count: '已有数量', match_id: '对局 ID', guest: '访客投票', public_visibility: '公开可见', duplicate: '重复提交',
+    name: '名称', title: '标题', permissions: '权限范围', scope: '内容范围', file: '文件'
+  };
+  return labels[key] || key;
+}
+
+function detailValueText(value) {
+  if (value === true) return '是';
+  if (value === false) return '否';
+  if (value == null) return '—';
+  if (Array.isArray(value)) return value.map(detailValueText).join('、');
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  const values = { approve: '通过', approved: '已通过', reject: '拒绝', rejected: '已拒绝', local: '本地账号' };
+  return values[String(value)] || String(value);
+}
+
+function showLogDetail(id) {
+  const l = currentLogs.find(item => Number(item.id) === Number(id));
+  if (!l) return;
+  const operator = l.nickname || l.username || (l.user_id != null ? '用户 #' + l.user_id : '系统 / 未登录');
+  const actorRole = l.context.actor_role || l.current_role || '';
+  const params = Object.entries(l.detailsObject || {}).filter(([key]) => key !== '_context');
+  const paramHtml = params.length ? params.map(([key, value]) =>
+    '<div class="info-row"><span class="label">' + escapeHtml(detailKeyText(key)) + '</span><span class="value">' + escapeHtml(detailValueText(value)) + '</span></div>'
+  ).join('') : '<div class="text-sm text-muted">这条日志没有额外业务参数。</div>';
+  const raw = l.details ? String(l.details) : '{}';
+  document.getElementById('infoModalTitle').textContent = '日志解释 #' + l.id;
+  document.getElementById('infoModalBody').innerHTML =
+    '<div class="log-explanation"><strong>' + escapeHtml(l.definition.label) + '</strong><br>' + escapeHtml(l.definition.explanation) + '</div>' +
+    '<div class="info-row"><span class="label">操作代码</span><span class="value">' + escapeHtml(l.action || '—') + '</span></div>' +
+    '<div class="info-row"><span class="label">结果判定</span><span class="value">' + escapeHtml(l.outcome.label + ' · ' + severityText(l.definition.severity)) + '</span></div>' +
+    '<div class="info-row"><span class="label">操作者</span><span class="value">' + escapeHtml(operator + (l.user_id != null ? ' (ID ' + l.user_id + ')' : '')) + '</span></div>' +
+    '<div class="info-row"><span class="label">操作时角色</span><span class="value">' + escapeHtml(actorRole ? roleText(actorRole) : '旧日志未记录') + '</span></div>' +
+    '<div class="info-row"><span class="label">目标对象</span><span class="value">' + escapeHtml(targetTypeText(l.target_type) + (l.target_id != null ? ' / ID ' + l.target_id : '')) + '</span></div>' +
+    '<div class="info-row"><span class="label">时间</span><span class="value">' + escapeHtml(l.created_at || '—') + '</span></div>' +
+    '<div class="info-row"><span class="label">IP 地址</span><span class="value">' + escapeHtml(l.ip_address || '旧日志未记录') + '</span></div>' +
+    '<div class="info-row"><span class="label">请求</span><span class="value">' + escapeHtml([l.context.method, l.context.path].filter(Boolean).join(' ') || '旧日志未记录') + '</span></div>' +
+    '<div class="info-row"><span class="label">客户端</span><span class="value">' + escapeHtml(l.client.short || '旧日志未记录') + '</span></div>' +
+    '<div class="info-row"><span class="label">User-Agent</span><span class="value">' + escapeHtml(l.context.user_agent || '旧日志未记录') + '</span></div>' +
+    '<div style="font-size:11px;font-weight:700;color:var(--color-text-secondary);margin-top:4px;">业务参数</div>' + paramHtml +
+    '<div style="font-size:11px;font-weight:700;color:var(--color-text-secondary);margin-top:4px;">原始 JSON</div><pre class="log-detail-json">' + escapeHtml(raw) + '</pre>';
+  const footer = document.getElementById('infoModalFooter');
+  footer.dataset.copy = JSON.stringify({
+    id: l.id, time: l.created_at, actor: operator, action: l.action,
+    target_type: l.target_type, target_id: l.target_id, ip_address: l.ip_address,
+    details: l.detailsObject
+  }, null, 2);
+  footer.innerHTML = '<button class="btn btn-primary" onclick="copyInfoModalText()">复制日志</button>' +
+    '<button class="btn btn-ghost" onclick="closeInfoModal()">关闭</button>';
+  document.getElementById('infoModal').style.display = 'flex';
 }
 
 /* ================================================================
@@ -3053,7 +4442,9 @@ document.getElementById('sidebarOverlay').addEventListener('click', function() {
    ================================================================ */
 (async () => {
   if (await checkAuth()) {
-    loadDashboard();
+    const requestedModule = new URLSearchParams(location.search).get('module');
+    if (requestedModule) await applyAdminDeepLink();
+    else await loadDashboard();
   }
 })();
 </script>

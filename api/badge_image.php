@@ -49,10 +49,8 @@ switch ($action) {
         }
 
         $file = $_FILES['image'];
-        if ($file['size'] > 2 * 1024 * 1024) {
-            echo json_encode(['success' => false, 'message' => '图片大小不能超过 2MB'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
+        // 不设文件大小上限：前端已强制裁剪为 512×512 再上传，体积可控；
+        // 实际极限仍受 PHP upload_max_filesize / post_max_size 环境配置约束。
 
         $detectedType = null;
         if (function_exists('exif_imagetype')) {

@@ -6,6 +6,46 @@
   var VALID_PREFERENCES = { light: true, dark: true, system: true };
   var subscribers = [];
   var mediaQuery = null;
+  var themeTransitionInProgress = false;
+
+  function installThemeTransitionStyles() {
+    if (!document || document.getElementById('vn-theme-transition-styles')) return;
+    var style = document.createElement('style');
+    style.id = 'vn-theme-transition-styles';
+    style.textContent = [
+      '::view-transition-old(root),',
+      '::view-transition-new(root) {',
+      '  animation: none;',
+      '  mix-blend-mode: normal;',
+      '}',
+      '::view-transition-old(root) {',
+      '  z-index: 1;',
+      '}',
+      '::view-transition-new(root) {',
+      '  z-index: 999;',
+      '  clip-path: circle(0 at var(--vn-theme-transition-x, 50vw) var(--vn-theme-transition-y, 50vh));',
+      '  animation: vn-theme-reveal 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;',
+      '}',
+      '@keyframes vn-theme-reveal {',
+      '  to { clip-path: circle(var(--vn-theme-transition-radius, 150vmax) at var(--vn-theme-transition-x, 50vw) var(--vn-theme-transition-y, 50vh)); }',
+      '}',
+      '@media (prefers-reduced-motion: reduce) {',
+      '  ::view-transition-new(root) { animation-duration: 1ms; }',
+      '}'
+    ].join('\n');
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function getTransitionOrigin(origin) {
+    var element = origin && typeof origin.getBoundingClientRect === 'function'
+      ? origin
+      : document.querySelector('[data-theme-toggle], #themeToggle');
+    var rect = element && element.getBoundingClientRect ? element.getBoundingClientRect() : null;
+    var x = rect ? rect.left + rect.width / 2 : global.innerWidth / 2;
+    var y = rect ? rect.top + rect.height / 2 : global.innerHeight / 2;
+    var radius = Math.hypot(Math.max(x, global.innerWidth - x), Math.max(y, global.innerHeight - y));
+    return { x: x, y: y, radius: radius };
+  }
 
   function safeLocalStorage(method, key, value) {
     try {
@@ -80,7 +120,31 @@
   function setPreference(preference) {
     var pref = normalizePreference(preference) || 'system';
     safeLocalStorage('set', STORAGE_KEY, pref);
-    return applyTheme(pref);
+    var origin = arguments.length > 1 && arguments[1] && arguments[1].origin;
+    var startViewTransition = document && document.startViewTransition;
+    var reducedMotion = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (typeof startViewTransition !== 'function' || reducedMotion || themeTransitionInProgress) {
+      return applyTheme(pref);
+    }
+
+    installThemeTransitionStyles();
+    var transitionOrigin = getTransitionOrigin(origin);
+    var root = document.documentElement;
+    root.style.setProperty('--vn-theme-transition-x', transitionOrigin.x + 'px');
+    root.style.setProperty('--vn-theme-transition-y', transitionOrigin.y + 'px');
+    root.style.setProperty('--vn-theme-transition-radius', transitionOrigin.radius + 'px');
+    themeTransitionInProgress = true;
+    try {
+      var transition = startViewTransition(function () { applyTheme(pref); });
+      transition.finished.finally(function () {
+        themeTransitionInProgress = false;
+      });
+      return { preference: pref, theme: resolveTheme(pref) };
+    } catch (error) {
+      themeTransitionInProgress = false;
+      return applyTheme(pref);
+    }
   }
 
   function subscribe(callback) {
@@ -92,8 +156,11 @@
     };
   }
 
-  function toggle() {
-    return setPreference(resolveTheme(readPreference()) === 'dark' ? 'light' : 'dark');
+  function toggle(origin) {
+    return setPreference(
+      resolveTheme(readPreference()) === 'dark' ? 'light' : 'dark',
+      { origin: origin }
+    );
   }
 
   function handleSystemChange() {
@@ -111,6 +178,7 @@
   };
 
   global.VNFTheme = api;
+  installThemeTransitionStyles();
   applyTheme(readPreference());
 
   var mq = getMediaQuery();
