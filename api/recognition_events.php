@@ -189,9 +189,13 @@ switch ($action) {
         $sql = 'SELECT * FROM quiz_results WHERE vnfest_user_id > 0';
         $params = [];
         if ($since > 0) { $sql .= ' AND ended_at >= ?'; $params[] = $since; }
-        $sql .= ' ORDER BY ended_at ASC LIMIT ' . $limit;
+        $sql .= ' ORDER BY ended_at ASC LIMIT ?';
+        $params[] = $limit;
         $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        foreach ($params as $i => $p) {
+            $stmt->bindValue($i + 1, $p, PDO::PARAM_INT);
+        }
+        $stmt->execute();
         $rows = $stmt->fetchAll();
 
         $synced = 0; $awarded = 0; $skipped = 0;
