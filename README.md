@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_在线访问-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-2ecc71?style=flat-square">
   <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-777bb4?style=flat-square&logo=php&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
@@ -286,7 +286,7 @@ bash scripts/deploy.sh
 
 | 版本 | 核心主题 |
 |------|---------|
-| **v2.2.0** | 同好会动态 React 化、独立搜索、互关私信、管理员 React 工作台、OAuth 凭证升级、GalgameTool Tier/MEME 与后端迁移 |
+| **[v2.2.0](RELEASE_NOTES_2.2.0.md)** | 同好会动态 React 化、独立搜索、互关私信、管理员 React 工作台、OAuth 凭证升级、GalgameTool Tier/MEME 与后端迁移 |
 | **v2.1.0** | 独立专栏、超级管理控制台、北京 GalOnly、MakoQuiz 连携、偏好集中化、Wiki 使用文档 |
 | **v2.0.0** | 用户中心 SPA 化、Staff 招募、资料公开库、淘汰赛可视化、设计系统统一 |
 | v1.7.x | 企划枢纽、十二器、萌战引擎、投票活动、同好会广场、Docker CI/CD |

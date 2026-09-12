@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_Visit-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.1.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-2ecc71?style=flat-square">
   <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-777bb4?style=flat-square&logo=php&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
@@ -284,6 +284,7 @@ For detailed deployment configuration, environment variable documentation, and o
 
 | Version | Key Theme |
 |---------|-----------|
+| **[v2.2.0](RELEASE_NOTES_2.2.0.md)** | React circle feed, standalone search, mutual-follow messaging, React admin workspace, OAuth credential upgrades, and GalgameTool Tier/MEME tools |
 | **v2.1.0** | Editorial column, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |
 | **v2.0.0** | User Center SPA, Staff recruitment, Public Archives, bracket visualization, unified design system |
 | v1.7.x | Project Hub, Twelve, Moe Contest engine, voting events, Circle Square, Docker CI/CD |
