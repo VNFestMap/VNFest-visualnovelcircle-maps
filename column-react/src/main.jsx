@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -679,7 +680,7 @@ function PostCard({ post, user, onChanged, onOpen, onQuote, lightbox, onOpenUser
 function Lightbox({ state }) {
   if (!state) return null;
   const { images, index, onClose } = state;
-  return (
+  return createPortal((
     <div className="pt-lightbox" onClick={onClose} role="dialog" aria-modal="true">
       <button type="button" className="pt-lightbox-close" aria-label="关闭" onClick={onClose}><Icon path={PATHS.close} size={22} /></button>
       <img src={images[index]} alt="" onClick={(e) => e.stopPropagation()} />
@@ -687,7 +688,7 @@ function Lightbox({ state }) {
         <div className="pt-lightbox-count">{index + 1} / {images.length}</div>
       )}
     </div>
-  );
+  ), document.body);
 }
 
 // ---------------------------------------------------------------- feed hook
@@ -1637,7 +1638,7 @@ function MessagesPage({ viewer, navigate, onOpenUser, refreshKey }) {
   );
 }
 
-function ThreadPage({ userId, viewer, navigate, refreshKey }) {
+function ThreadPage({ userId, viewer, navigate, refreshKey, lightbox }) {
   const [messages, setMessages] = useState(null);
   const [other, setOther] = useState(null);
   const [conversationId, setConversationId] = useState(null);
@@ -1646,7 +1647,6 @@ function ThreadPage({ userId, viewer, navigate, refreshKey }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [pendingImages, setPendingImages] = useState([]);
   const [uploadToken, setUploadToken] = useState(() => makeUploadToken());
-  const [lightbox, setLightbox] = useState(null);
   const bottomRef = useRef(null);
   const lastIdRef = useRef(0);
   const imgFileRef = useRef(null);
@@ -1808,7 +1808,7 @@ function ThreadPage({ userId, viewer, navigate, refreshKey }) {
                   {m.images && m.images.length > 0 && (
                     <div className={`pt-dm-imgs pt-dm-imgs-${Math.min(m.images.length, 4)}`}>
                       {m.images.map((src, i) => (
-                        <img key={src} src={src} alt="" loading="lazy" onClick={() => setLightbox({ images: m.images, index: i })} />
+                        <img key={src} src={src} alt="" loading="lazy" onClick={() => lightbox(m.images, i)} />
                       ))}
                     </div>
                   )}
@@ -1863,11 +1863,6 @@ function ThreadPage({ userId, viewer, navigate, refreshKey }) {
           </button>
         </div>
       </form>
-      {lightbox && (
-        <div className="pt-lightbox" onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
-          <img src={lightbox.images[lightbox.index]} alt="" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
     </div>
   );
 }
@@ -2051,7 +2046,7 @@ function App() {
               <MessagesPage viewer={user} navigate={navigate} onOpenUser={openUser} refreshKey={refreshKey} />
             )}
             {effectiveRoute.name === 'thread' && (
-              <ThreadPage userId={effectiveRoute.userId} viewer={user} navigate={navigate} refreshKey={refreshKey} />
+              <ThreadPage userId={effectiveRoute.userId} viewer={user} navigate={navigate} refreshKey={refreshKey} lightbox={openLightbox} />
             )}
           </>
         )}

@@ -23,6 +23,7 @@
     "column:build": "npm --prefix column-react run build && node scripts/column/sync-column-build.mjs",
     "column:test": "node scripts/column/test-column-contract.mjs",
     "column:browser": "electron scripts/column/test-column-browser.cjs",
+    "column:lightbox:browser": "electron scripts/column/test-column-lightbox-browser.cjs",
     "club-manager:build": "npm --prefix club-manager-react run build",
     "club-manager:test": "node scripts/test-club-manager-react-contract.mjs && node scripts/test-club-manager-density-contract.mjs && node scripts/test-club-manager-members-contract.mjs && node scripts/test-club-manager-projects-contract.mjs && node scripts/test-club-manager-recognition-contract.mjs",
     "club-manager:approved:browser": "electron scripts/test-club-manager-approved-freeze.cjs",
