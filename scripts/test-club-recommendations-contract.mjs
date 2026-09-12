@@ -3,21 +3,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const manager = fs.readFileSync(path.join(root, 'admin', 'club_manager.html'), 'utf8');
+const manager = fs.readFileSync(path.join(root, 'club-manager-react', 'src', 'tabs', 'RecommendationsTab.jsx'), 'utf8');
 const api = fs.readFileSync(path.join(root, 'api', 'club_recommendations.php'), 'utf8');
 
 assert.match(manager, /const REC_SLOT_COUNT = 12/, 'recommendation board should define twelve fixed slots');
-assert.match(manager, /function buildRecommendationSlots\(\)/, 'manager should map sort_order into fixed slots');
-assert.match(manager, /Number\(rec\.sort_order\)/, 'manager should use the server sort_order as the slot position');
+assert.match(manager, /function buildRecommendationSlots\(rows\)/, 'manager should map sort_order into fixed slots');
+assert.match(manager, /Number\(row\.sort_order\)/, 'manager should use the server sort_order as the slot position');
 assert.match(manager, /data-rec-slot=/, 'recommendation cards should expose their slot index');
-assert.match(manager, /draggable="true"/, 'occupied recommendation cards should be draggable');
-assert.match(manager, /function moveRecommendationSlot\(/, 'manager should provide click and drag movement');
-assert.match(manager, /slots: recommendationSlotsPayload\(nextSlots\)/, 'manager should persist the complete twelve-slot payload');
-assert.match(manager, /position: targetSlot \+ 1/, 'new recommendations should include a one-based target position');
+assert.match(manager, /draggable/, 'occupied recommendation cards should be draggable');
+assert.match(manager, /const move = \(from, to\)/, 'manager should provide click and drag movement');
+assert.match(manager, /slots: nextSlots\.map/, 'manager should persist the complete twelve-slot payload');
+assert.match(manager, /position: destination \+ 1/, 'new recommendations should include a one-based target position');
 assert.match(manager, /rec-card-empty/, 'manager should render empty slots instead of compacting the list');
-assert.match(manager, /手机端点击条目，再点击目标位置/, 'manager should explain the mobile click-to-move fallback');
+assert.match(manager, /手机端点击条目后再点击目标位置/, 'manager should explain the mobile click-to-move fallback');
 assert.doesNotMatch(manager, /for \(let i = filledCount; i < 12; i\+\+\)/, 'manager must not append empty placeholders after the filled list');
-assert.match(manager, /removeRecommendation\(\$\{rec\.id\}\)/, 'existing remove handler should remain available');
+assert.match(manager, /remove\(item\.id\)/, 'remove handler should remain available');
 
 assert.match(api, /const CLUB_RECOMMENDATION_SLOT_COUNT = 12/, 'API should share the twelve-slot limit');
 assert.match(api, /\$input\['position'\]/, 'add API should accept a requested position');

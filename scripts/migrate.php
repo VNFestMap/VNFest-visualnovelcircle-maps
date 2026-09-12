@@ -9,7 +9,7 @@ require_once __DIR__ . '/../includes/moe.php';
 require_once __DIR__ . '/../includes/twelve.php';
 require_once __DIR__ . '/../includes/spy_schema.php';
 require_once __DIR__ . '/../Forum/includes/forum_schema.php';
-require_once __DIR__ . '/../includes/column/schema.php';
+require_once __DIR__ . '/../includes/posts/schema.php';
 require_once __DIR__ . '/../includes/galonly_application_numbers.php';
 require_once __DIR__ . '/../includes/galonly_merchandise.php';
 
@@ -17,6 +17,28 @@ echo "开始创建数据库表... (驱动: " . (defined('DB_DRIVER') ? DB_DRIVER
 
 $db = getDB();
 $isMysql = defined('DB_DRIVER') && DB_DRIVER === 'mysql';
+
+$normalizeUserEmails = function () use ($db): void {
+    $duplicates = $db->query(
+        "SELECT LOWER(TRIM(email)) AS normalized_email, COUNT(*) AS duplicate_count
+         FROM users
+         WHERE email IS NOT NULL AND TRIM(email) <> ''
+         GROUP BY LOWER(TRIM(email))
+         HAVING COUNT(*) > 1"
+    )->fetchAll();
+    if ($duplicates) {
+        $items = array_map(static function (array $row): string {
+            return (string)$row['normalized_email'] . ' (' . (int)$row['duplicate_count'] . ')';
+        }, $duplicates);
+        throw new RuntimeException(
+            "检测到规范化后的重复邮箱，已停止迁移，请先人工处理（不自动合并账号）：\n" . implode("\n", $items)
+        );
+    }
+
+    // 社交老账号历史上可能留下空字符串；统一为空值后，唯一索引可以安全复用。
+    $db->exec("UPDATE users SET email = NULL WHERE email IS NULL OR TRIM(email) = ''");
+    $db->exec("UPDATE users SET email = LOWER(TRIM(email)) WHERE email IS NOT NULL");
+};
 
 if ($isMysql) {
     // ==================== MySQL 建表 ====================
@@ -33,6 +55,7 @@ if ($isMysql) {
             discord_id    VARCHAR(255) UNIQUE,
             qq_unionid    VARCHAR(255),
             password_hash VARCHAR(255),
+            credentials_completed_at DATETIME NULL,
             username      VARCHAR(255) NOT NULL UNIQUE,
             avatar_url    VARCHAR(500) DEFAULT '',
             role          VARCHAR(50) NOT NULL DEFAULT 'visitor',
@@ -51,12 +74,21 @@ if ($isMysql) {
     };
     $tryAlter("ALTER TABLE users ADD COLUMN email VARCHAR(255) UNIQUE");
     $tryAlter("ALTER TABLE users ADD COLUMN email_verified_at DATETIME");
+    $tryAlter("ALTER TABLE users ADD COLUMN credentials_completed_at DATETIME NULL");
     $tryAlter("ALTER TABLE users ADD COLUMN avatar_updated_at DATETIME");
     $tryAlter("ALTER TABLE users ADD COLUMN nickname VARCHAR(255) DEFAULT '' AFTER username");
     $tryAlter("ALTER TABLE users ADD COLUMN profile_bio VARCHAR(300) DEFAULT ''");
     $tryAlter("ALTER TABLE users ADD COLUMN membership_application_email_enabled TINYINT(1) NOT NULL DEFAULT 1");
     $tryAlter("ALTER TABLE users ADD COLUMN display_membership_id INT NULL");
     $tryAlter("ALTER TABLE users ADD COLUMN language_preference VARCHAR(5) NULL DEFAULT NULL");
+    $normalizeUserEmails();
+    $tryIndex("CREATE UNIQUE INDEX uq_users_email ON users(email)");
+    $db->exec(
+        "UPDATE users SET credentials_completed_at = COALESCE(credentials_completed_at, email_verified_at)
+         WHERE credentials_completed_at IS NULL
+           AND COALESCE(TRIM(password_hash), '') <> ''
+           AND email_verified_at IS NOT NULL"
+    );
     $tryIndex("CREATE INDEX idx_users_display_membership ON users(display_membership_id)");
 
     $db->exec("
@@ -98,6 +130,18 @@ if ($isMysql) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
     echo "[OK] galgame_memes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_tiers (
+            user_id        INT PRIMARY KEY,
+            payload        LONGTEXT NOT NULL,
+            schema_version VARCHAR(20) NOT NULL DEFAULT '1',
+            created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "[OK] galgame_tiers 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS bangumi_bindings (
@@ -358,6 +402,34 @@ if ($isMysql) {
     ");
     $tryIndex("CREATE INDEX idx_email_verify_user ON email_verifications(user_id)");
     echo "[OK] email_verifications 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS oauth_account_challenges (
+            id                       INT AUTO_INCREMENT PRIMARY KEY,
+            session_id_hash         CHAR(64) NOT NULL,
+            challenge_hash           CHAR(64) NOT NULL,
+            provider                 VARCHAR(16) NOT NULL,
+            flow                     VARCHAR(32) NOT NULL,
+            target_user_id           INT NULL,
+            email                    VARCHAR(255) NULL,
+            code_hash                CHAR(64) NULL,
+            code_expires_at          DATETIME NULL,
+            verified_at              DATETIME NULL,
+            attempt_count            INT NOT NULL DEFAULT 0,
+            code_sent_at             DATETIME NULL,
+            send_count               INT NOT NULL DEFAULT 0,
+            send_window_started_at   DATETIME NULL,
+            expires_at               DATETIME NOT NULL,
+            consumed_at              DATETIME NULL,
+            created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_oauth_challenge_hash (challenge_hash),
+            FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    $tryIndex("CREATE INDEX idx_oauth_challenge_session ON oauth_account_challenges(session_id_hash)");
+    $tryIndex("CREATE INDEX idx_oauth_challenge_expiry ON oauth_account_challenges(expires_at, consumed_at)");
+    $tryIndex("CREATE INDEX idx_oauth_challenge_target ON oauth_account_challenges(target_user_id)");
+    echo "[OK] oauth_account_challenges 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS galonly_events (
@@ -953,6 +1025,7 @@ if ($isMysql) {
             discord_id    TEXT UNIQUE,
             qq_unionid    TEXT,
             password_hash TEXT,
+            credentials_completed_at TEXT NULL,
             username      TEXT NOT NULL UNIQUE,
             avatar_url    TEXT DEFAULT '',
             role          TEXT NOT NULL DEFAULT 'visitor'
@@ -974,12 +1047,22 @@ if ($isMysql) {
     $tryAlter("ALTER TABLE users ADD COLUMN password_hash TEXT");
     $tryAlter("ALTER TABLE users ADD COLUMN email TEXT");
     $tryAlter("ALTER TABLE users ADD COLUMN email_verified_at TEXT");
+    $tryAlter("ALTER TABLE users ADD COLUMN credentials_completed_at TEXT NULL");
     $tryAlter("ALTER TABLE users ADD COLUMN avatar_updated_at TEXT");
     $tryAlter("ALTER TABLE users ADD COLUMN nickname TEXT DEFAULT ''");
     $tryAlter("ALTER TABLE users ADD COLUMN profile_bio TEXT DEFAULT ''");
     $tryAlter("ALTER TABLE users ADD COLUMN membership_application_email_enabled INTEGER NOT NULL DEFAULT 1");
     $tryAlter("ALTER TABLE users ADD COLUMN display_membership_id INTEGER");
     $tryAlter("ALTER TABLE users ADD COLUMN language_preference TEXT NULL");
+
+    $normalizeUserEmails();
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users(email)");
+    $db->exec(
+        "UPDATE users SET credentials_completed_at = COALESCE(credentials_completed_at, email_verified_at)
+         WHERE credentials_completed_at IS NULL
+           AND COALESCE(TRIM(password_hash), '') <> ''
+           AND email_verified_at IS NOT NULL"
+    );
 
     $db->exec("CREATE INDEX IF NOT EXISTS idx_users_qq ON users(qq_openid)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id)");
@@ -1022,6 +1105,17 @@ if ($isMysql) {
         )
     ");
     echo "[OK] galgame_memes 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS galgame_tiers (
+            user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            payload        TEXT NOT NULL,
+            schema_version TEXT NOT NULL DEFAULT '1',
+            created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    echo "[OK] galgame_tiers 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS bangumi_bindings (
@@ -1288,6 +1382,32 @@ if ($isMysql) {
     ");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_email_verify_user ON email_verifications(user_id)");
     echo "[OK] email_verifications 表已创建\n";
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS oauth_account_challenges (
+            id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id_hash         TEXT NOT NULL,
+            challenge_hash           TEXT NOT NULL UNIQUE,
+            provider                 TEXT NOT NULL CHECK(provider IN ('qq', 'discord')),
+            flow                     TEXT NOT NULL CHECK(flow IN ('new_login', 'provider_transfer')),
+            target_user_id           INTEGER NULL REFERENCES users(id) ON DELETE CASCADE,
+            email                    TEXT NULL,
+            code_hash                TEXT NULL,
+            code_expires_at          TEXT NULL,
+            verified_at              TEXT NULL,
+            attempt_count            INTEGER NOT NULL DEFAULT 0,
+            code_sent_at             TEXT NULL,
+            send_count               INTEGER NOT NULL DEFAULT 0,
+            send_window_started_at   TEXT NULL,
+            expires_at               TEXT NOT NULL,
+            consumed_at             TEXT NULL,
+            created_at               TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_oauth_challenge_session ON oauth_account_challenges(session_id_hash)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_oauth_challenge_expiry ON oauth_account_challenges(expires_at, consumed_at)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_oauth_challenge_target ON oauth_account_challenges(target_user_id)");
+    echo "[OK] oauth_account_challenges 表已创建\n";
 
     $db->exec("
         CREATE TABLE IF NOT EXISTS galonly_events (
@@ -1847,8 +1967,8 @@ echo "[OK] spy game tables ready\n";
 forumEnsureSchema($db);
 echo "[OK] forum tables and search indexes ready\n";
 
-columnMigrateSchema($db);
-echo "[OK] column document tables and indexes ready\n";
+postsMigrateSchema($db);
+echo "[OK] posts tables and indexes ready\n";
 
 // ===== 北京视觉小说Only 第二届（摊位与 Staff 并行项目种子）=====
 $stmt = $db->prepare("SELECT id, location, staff_deadline, date, event_code, staff_only FROM galonly_events WHERE name = ?");

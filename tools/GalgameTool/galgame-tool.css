@@ -3656,3 +3656,22 @@ body.avatar-crop-open {
     font-size: 10px;
   }
 }
+
+.export-part-share {
+  color: var(--vn-primary, #e74c3c);
+  border-color: var(--vn-primary, #e74c3c);
+  margin-top: 8px;
+}
+
+.export-part-share:hover {
+  background: color-mix(in srgb, var(--vn-primary, #e74c3c) 10%, transparent);
+}
+
+/* ===== 按钮即时反馈动画 ===== */
+.btn, .tier-button, .meme-button {
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.btn:active, .tier-button:active, .meme-button:active { transform: scale(0.95); }
+.btn.is-busy, .tier-button.is-busy, .meme-button.is-busy { opacity: 0.65; pointer-events: none; }
+.btn.is-busy svg, .tier-button.is-busy svg, .meme-button.is-busy svg { animation: vnf-busy-spin 0.9s linear infinite; }
+@keyframes vnf-busy-spin { to { transform: rotate(360deg); } }

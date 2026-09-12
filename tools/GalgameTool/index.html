@@ -15,9 +15,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="./galgame-tool.css?v=20260903-mobile-shell3">
     <link rel="stylesheet" href="./meme-tool.css?v=20260903-meme-v6">
+    <link rel="stylesheet" href="./tier-tool.css?v=20260912-tier-v3">
 <script defer src="../../js/analytics.js?v=20260905-analytics"></script>
 </head>
-<body class="meme-page" data-page-name="自助工具">
+<body class="meme-page tier-page" data-page-name="自助工具">
 
 <a class="skip-link" href="#main">跳到主要内容</a>
 
@@ -58,6 +59,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 15 2.5-3 2 2 2.5-3 2.5 4"/><circle cx="9" cy="8.5" r="1"/></svg>
         <span>MEME</span>
       </button>
+      <button class="tool-nav-item" type="button" data-tool-view="tier" onclick="window.switchToolView(this.dataset.toolView, true); document.getElementById('memeToolSidebar')?.classList.remove('is-open');">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h5.2v4H4zM4 13h5.2v4H4z"/><path d="M12 5.5h8M12 13h8M12 9.5h8M12 17h8" stroke-linecap="round"/></svg>
+        <span>Tier 表</span>
+      </button>
       <button class="tool-nav-item mobile-tool-action" id="mobileBangumiImportAction" type="button" onclick="handleMobileBangumiImport()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
         <span>从 Bangumi 导入</span>
@@ -97,7 +102,7 @@
     </button>
     <div class="toolbar-spacer"></div>
     <button class="btn btn-primary" title="保存图片（长履历自动分割）" aria-label="保存图片，长履历自动分割" onclick="exportImage()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> 保存图片</button>
-    <button class="btn btn-secondary" onclick="shareX()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> 分享</button>
+    <button class="btn btn-secondary" title="转发到同好会动态" onclick="shareResumeToPosts(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.2 0-2.4-.25-3.4-.7L4 21l1.7-4.3A8.5 8.5 0 1 1 21 11.5Z"/></svg> 转发到动态</button>
     <button class="btn btn-danger" title="重置" onclick="resetAll()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
   </div>
 
@@ -156,6 +161,7 @@
         <button class="meme-button meme-button-secondary meme-compact-action" id="memeFileExport" type="button" title="导入看板文件" aria-label="导入看板文件">文件</button>
         <button class="meme-button meme-button-secondary meme-compact-action" id="memeCopyUrl" type="button" title="复制看板链接" aria-label="复制看板链接">链接</button>
         <button class="meme-button meme-button-secondary meme-compact-action" id="memeShareX" type="button" title="分享到 X" aria-label="分享到 X">X</button>
+        <button class="meme-button meme-button-secondary" id="memeSharePosts" type="button" title="转发到同好会动态">转发到动态</button>
         <button class="meme-button meme-button-primary" id="memeSaveImage" type="button">保存图片</button>
         <button class="meme-button meme-button-danger meme-compact-action" id="memeReset" type="button" title="重置看板" aria-label="重置看板">删</button>
       </div>
@@ -217,6 +223,99 @@
       </div>
     </section>
   </section>
+
+  <section class="tool-view tier-workspace" id="tierView" data-tool-panel="tier" aria-labelledby="tierPageTitle" hidden>
+    <header class="page-header tier-page-header">
+      <div>
+        <p class="tier-eyebrow">TIER · 排列、保存、分享</p>
+        <h1 class="page-title" id="tierPageTitle">Galgame Tier 表</h1>
+        <p class="page-subtitle">把作品和角色分到 S/A/B/C/D 梯队，拖拽整理后保存成一张完整图片。双击表内卡片可退回未分类。</p>
+      </div>
+      <span class="resume-sync-status tier-sync-status" id="tierSyncStatus" data-state="loading" role="status">正在加载 Tier 表</span>
+    </header>
+
+    <section class="tier-toolbar" aria-label="Tier 表工具栏">
+      <div class="tier-toolbar-group tier-size-group" role="group" aria-label="卡片尺寸">
+        <span class="tier-toolbar-label">卡片</span>
+        <button class="tier-segment is-active" data-card-size="sm" type="button" aria-pressed="true">小</button>
+        <button class="tier-segment" data-card-size="md" type="button" aria-pressed="false">中</button>
+        <button class="tier-segment" data-card-size="lg" type="button" aria-pressed="false">大</button>
+      </div>
+      <div class="tier-toolbar-group tier-switch-group">
+        <button class="tier-switch is-active" id="tierShowTitles" type="button" aria-pressed="true">作品名</button>
+      </div>
+      <div class="tier-toolbar-actions">
+        <button class="tier-button tier-button-secondary" id="tierAddCard" type="button">添加卡片</button>
+        <button class="tier-button tier-button-secondary" id="tierAddImage" type="button">添加本地图片</button>
+        <button class="tier-button tier-button-secondary tier-compact-action" id="tierFileExport" type="button" title="导入/导出表文件" aria-label="导入表文件">文件</button>
+        <button class="tier-button tier-button-secondary tier-compact-action" id="tierCopyUrl" type="button" title="复制表链接" aria-label="复制表链接">链接</button>
+        <button class="tier-button tier-button-secondary tier-compact-action" id="tierShareX" type="button" title="分享到 X" aria-label="分享到 X">X</button>
+        <button class="tier-button tier-button-secondary" id="tierSharePosts" type="button" title="转发到同好会动态">转发到动态</button>
+        <button class="tier-button tier-button-primary" id="tierSaveImage" type="button">保存图片</button>
+        <button class="tier-button tier-button-danger tier-compact-action" id="tierReset" type="button" title="重置 Tier 表" aria-label="重置 Tier 表">删</button>
+      </div>
+    </section>
+
+    <section class="tier-board-frame" aria-label="Galgame Tier 表区域">
+      <article class="tier-board" id="tierBoard" aria-label="Galgame Tier 表">
+        <div class="tier-board-heading">
+          <button class="tier-board-title" id="tierBoardTitle" type="button" title="点击编辑标题">Galgame Tier 表</button>
+          <span class="tier-board-caption">双击行标签改名 · 点击色块换色 · 拖拽卡片调整梯队</span>
+        </div>
+        <div class="tier-rows" id="tierRows"></div>
+        <footer class="tier-export-footer">
+          <span>VNFest · GalgameTool</span>
+          <span>vnfest.top</span>
+        </footer>
+      </article>
+    </section>
+
+    <section class="tier-pool-row" aria-labelledby="tierPoolTitle">
+      <div class="tier-pool-header">
+        <div>
+          <p class="tier-eyebrow">卡片追加</p>
+          <h2 id="tierPoolTitle">未分类素材</h2>
+        </div>
+        <div class="tier-pool-actions">
+          <button class="tier-button tier-button-secondary" id="tierPoolImage" type="button">+ 画像卡片追加</button>
+          <button class="tier-button tier-button-secondary" id="tierBangumiImport" type="button">从 Bangumi 导入</button>
+        </div>
+      </div>
+      <div class="tier-pool-tabs" role="tablist" aria-label="素材来源">
+        <button class="tier-pool-tab is-active" data-pool-tab="unranked" type="button" role="tab" aria-selected="true">未分类卡片 <span id="tierUnrankedCount">0</span></button>
+        <button class="tier-pool-tab" data-pool-tab="search" type="button" role="tab" aria-selected="false">搜索作品 / 角色</button>
+      </div>
+      <div class="tier-unranked-panel" id="tierUnrankedPanel">
+        <p class="tier-pool-note">把卡片拖到上方表中配置；搜索结果也会先进入这里。</p>
+        <div class="tier-unranked-grid" id="tierUnrankedGrid"></div>
+      </div>
+      <div class="tier-search-panel" id="tierSearchPanel" hidden>
+        <div class="tier-search-row">
+          <label class="tier-search-input-wrap" for="tierSearchInput">
+            <span aria-hidden="true">⌕</span>
+            <input id="tierSearchInput" type="search" placeholder="作品 / 厂商名、title: で絞り込み…" autocomplete="off">
+          </label>
+          <select id="tierSearchKind" aria-label="搜索类型">
+            <option value="work">作品搜索</option>
+            <option value="character">角色搜索</option>
+          </select>
+          <select id="tierSearchYear" aria-label="发售年份">
+            <option value="">发售年</option>
+          </select>
+        </div>
+        <div class="tier-source-chips" role="group" aria-label="搜索来源">
+          <span class="tier-source-label">检索来源</span>
+          <button class="tier-source-chip is-active" data-source="bangumi" type="button" aria-pressed="true">Bangumi</button>
+          <button class="tier-source-chip is-active" data-source="vndb" type="button" aria-pressed="true">VNDB</button>
+          <button class="tier-source-chip is-active" data-source="cngal" type="button" aria-pressed="true">CnGal</button>
+        </div>
+        <p class="tier-search-note" id="tierSearchNote">搜索结果会加入未分类素材池，不会直接修改 Tier 表。</p>
+        <div class="tier-pool-results" id="tierSearchResults" aria-live="polite">
+          <div class="tier-empty-state">输入关键词开始搜索，或选择发售年份。</div>
+        </div>
+      </div>
+    </section>
+  </section>
     </div>
   </div>
 </main>
@@ -258,6 +357,46 @@
   <div class="meme-export-progress-track"><div class="meme-export-progress-bar" id="memeExportProgressBar"></div></div>
 </div>
 <input id="memeJsonInput" type="file" accept="application/json,.json" hidden>
+
+<!-- Tier dialogs live in the same document so switching tools never reloads the page. -->
+<div class="tier-modal-overlay" id="tierImportModal" hidden>
+  <section class="tier-modal tier-import-modal" role="dialog" aria-modal="true" aria-labelledby="tierImportTitle">
+    <header class="tier-modal-header">
+      <div><p class="tier-eyebrow">BANGUMI COLLECTION</p><h2 id="tierImportTitle">导入已看过的游戏</h2><p>只读取当前账号标记为“看过”的游戏，勾选后加入未分类素材池。</p></div>
+      <button class="tier-modal-close" data-tier-close-modal="tierImportModal" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="tier-import-actions"><span id="tierImportStatus">准备加载</span><div><button class="tier-button tier-button-secondary" id="tierImportSelectAll" type="button">全选</button><button class="tier-button tier-button-secondary" id="tierImportClear" type="button">清空</button></div></div>
+    <div class="tier-import-results" id="tierImportResults"></div>
+    <button class="tier-load-more" id="tierImportMore" type="button" hidden>加载更多</button>
+    <footer class="tier-modal-footer"><span>已选择 <strong id="tierImportCount">0</strong> 项</span><div><button class="tier-button tier-button-secondary" data-tier-close-modal="tierImportModal" type="button">取消</button><button class="tier-button tier-button-primary" id="tierImportConfirm" type="button" disabled>导入选中</button></div></footer>
+  </section>
+</div>
+
+<div class="tier-modal-overlay" id="tierImageModal" hidden>
+  <section class="tier-modal tier-image-modal" role="dialog" aria-modal="true" aria-labelledby="tierImageTitle">
+    <header class="tier-modal-header"><div><p class="tier-eyebrow">CUSTOM CARD</p><h2 id="tierImageTitle">添加本地图片</h2><p>图片会按完整显示、留白填充的规则进入 Tier 卡片。</p></div><button class="tier-modal-close" data-tier-close-modal="tierImageModal" type="button" aria-label="关闭">×</button></header>
+    <label class="tier-file-drop" for="tierImageInput"><span class="tier-file-drop-icon">＋</span><strong>选择图片</strong><small>PNG / JPEG / GIF / WebP，单张不超过 8 MiB</small></label>
+    <input id="tierImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    <label class="tier-field-label" for="tierCustomTitle">卡片标题</label><input class="tier-text-input" id="tierCustomTitle" type="text" maxlength="80" placeholder="例如：我的年度最佳">
+    <footer class="tier-modal-footer"><button class="tier-button tier-button-secondary" data-tier-close-modal="tierImageModal" type="button">取消</button><button class="tier-button tier-button-primary" id="tierImageConfirm" type="button" disabled>添加到素材池</button></footer>
+  </section>
+</div>
+
+<div class="tier-modal-overlay" id="tierCardPreviewModal" hidden>
+  <section class="tier-modal tier-card-preview-modal" role="dialog" aria-modal="true" aria-labelledby="tierCardPreviewTitle">
+    <header class="tier-modal-header"><div><p class="tier-eyebrow">CARD PREVIEW</p><h2 id="tierCardPreviewTitle">卡片预览</h2></div><button class="tier-modal-close" data-tier-close-modal="tierCardPreviewModal" type="button" aria-label="关闭">×</button></header>
+    <div id="tierCardPreviewBody" class="tier-card-preview-body"></div>
+    <footer class="tier-modal-footer"><button class="tier-button tier-button-secondary" id="tierPreviewUnrank" type="button" hidden>退回未分类</button><button class="tier-button tier-button-primary" id="tierPreviewLink" type="button" hidden>打开条目页</button></footer>
+  </section>
+</div>
+
+<div class="tier-toast" id="tierToast" role="status" aria-live="polite"></div>
+<div class="tier-export-progress" id="tierExportProgress" aria-hidden="true">
+  <div class="tier-export-progress-head"><span id="tierExportProgressLabel">准备保存</span><strong id="tierExportProgressValue">0%</strong></div>
+  <div class="tier-export-progress-track"><div class="tier-export-progress-bar" id="tierExportProgressBar"></div></div>
+</div>
+<div class="tier-color-pop" id="tierColorPop" hidden></div>
+<input id="tierJsonInput" type="file" accept="application/json,.json" hidden>
 
 <!-- Search Modal -->
 <div class="modal-overlay" id="searchModal">
@@ -436,8 +575,15 @@
     (function () {
       const viewButtons = [...document.querySelectorAll('[data-tool-view]')];
       const panels = [...document.querySelectorAll('[data-tool-panel]')];
+      const KNOWN_VIEWS = ['resume', 'meme', 'tier'];
 
       let hasInitializedToolView = false;
+
+      function hashToView(hash) {
+        if (hash === '#meme' || hash.startsWith('#meme=')) return 'meme';
+        if (hash === '#tier' || hash.startsWith('#tier=')) return 'tier';
+        return 'resume';
+      }
 
       function applyToolView(active, updateHash) {
         panels.forEach(panel => { panel.hidden = panel.dataset.toolPanel !== active; });
@@ -450,7 +596,7 @@
         document.body.dataset.toolView = active;
         if (updateHash) {
           const url = new URL(window.location.href);
-          url.hash = active === 'meme' ? 'meme' : '';
+          url.hash = active === 'resume' ? '' : active;
           window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
         }
         window.dispatchEvent(new CustomEvent('vnfest-tool-viewchange', { detail: active }));
@@ -465,7 +611,7 @@
       }
 
       function setToolView(view, updateHash) {
-        const active = view === 'meme' ? 'meme' : 'resume';
+        const active = KNOWN_VIEWS.includes(view) ? view : 'resume';
         const animate = hasInitializedToolView;
         let applied = false;
         const update = () => {
@@ -495,16 +641,19 @@
         hasInitializedToolView = true;
       }
 
-      window.addEventListener('hashchange', () => setToolView(window.location.hash === '#meme' ? 'meme' : 'resume', false));
-      setToolView(window.location.hash === '#meme' ? 'meme' : 'resume', false);
+      window.addEventListener('hashchange', () => setToolView(hashToView(window.location.hash), false));
+      setToolView(hashToView(window.location.hash), false);
       window.switchToolView = setToolView;
       window.handleMobileBangumiImport = function () {
         if (document.body.dataset.toolView === 'meme') document.getElementById('memeBangumiImport')?.click();
+        else if (document.body.dataset.toolView === 'tier') document.getElementById('tierAddCard')?.click();
         else if (typeof window.openBangumiImportModal === 'function') window.openBangumiImportModal();
       };
     }());
   </script>
-  <script src="./galgame-tool.js?v=20260903-bangumi-import2"></script>
+  <script src="./share-to-posts.js?v=20260912-share-v1"></script>
+  <script src="./galgame-tool.js?v=20260913-share-v1"></script>
   <script src="./meme-tool.js?v=20260903-meme-v6"></script>
+  <script src="./tier-tool.js?v=20260912-tier-v5"></script>
 </body>
 </html>

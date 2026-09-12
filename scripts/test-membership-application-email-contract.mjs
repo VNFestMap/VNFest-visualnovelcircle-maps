@@ -5,7 +5,7 @@ import path from 'node:path';
 const source = readFileSync(path.join(process.cwd(), 'api', 'membership.php'), 'utf8');
 const authSource = readFileSync(path.join(process.cwd(), 'api', 'auth.php'), 'utf8');
 const authInclude = readFileSync(path.join(process.cwd(), 'includes', 'auth.php'), 'utf8');
-const managerSource = readFileSync(path.join(process.cwd(), 'admin', 'club_manager.html'), 'utf8');
+const managerSource = readFileSync(path.join(process.cwd(), 'club-manager-react', 'src', 'tabs', 'MembersTab.jsx'), 'utf8');
 const userSource = readFileSync(path.join(process.cwd(), 'user-v2-react', 'src', 'App.jsx'), 'utf8');
 const migrateSource = readFileSync(path.join(process.cwd(), 'scripts', 'migrate.php'), 'utf8');
 
@@ -33,8 +33,8 @@ assert.match(authSource, /membership_application_email_enabled.*enabled/s, 'pers
 assert.match(authInclude, /membership_application_email_enabled/, 'authenticated user data should load the personal preference');
 assert.match(authSource, /'membership_application_email_enabled'/, 'auth responses should expose the personal preference to the user center');
 
-assert.match(managerSource, /canConfigureEmailRecipients = isSuperAdmin \|\| myClubRole === 'representative'/, 'only representatives and super admins should see club recipient controls');
-assert.match(managerSource, /setMembershipApplicationEmailRecipient\(/, 'club manager should submit a recipient preference change');
+assert.match(managerSource, /canEmail = \(superAdmin \|\| myRole === 'representative'\)/, 'only representatives and super admins should see club recipient controls');
+assert.match(managerSource, /membership\.php\?action=set_application_email_recipient/, 'club manager should submit a recipient preference change');
 assert.match(managerSource, /接收申请邮件/, 'club manager should label the recipient preference clearly');
 assert.match(userSource, /setMembershipApplicationEmailPreference/, 'user center should save the personal preference');
 assert.match(userSource, /同好会申请邮件提醒/, 'user center should expose the personal preference');

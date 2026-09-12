@@ -21,7 +21,8 @@ function discord_get_authorization_url(): string {
 
 function discord_handle_callback(string $code, string $state): ?array {
     // 验证 state 防止 CSRF
-    if (!isset($_SESSION['discord_state']) || $state !== $_SESSION['discord_state']) {
+    $expectedState = (string)($_SESSION['discord_state'] ?? '');
+    if ($expectedState === '' || !hash_equals($expectedState, $state)) {
         return null;
     }
     unset($_SESSION['discord_state']);
@@ -65,13 +66,12 @@ function discord_handle_callback(string $code, string $state): ?array {
     $userData = json_decode($userResp, true);
     if (!isset($userData['id'])) return null;
 
-    $discriminator = $userData['discriminator'] ?? '0';
     $username = $userData['global_name'] ?? $userData['username'] ?? '';
 
     return [
         'discord_id' => $userData['id'],
         'username' => $username,
-        'avatar_url' => $userData['avatar']
+        'avatar_url' => !empty($userData['avatar'])
             ? 'https://cdn.discordapp.com/avatars/' . $userData['id'] . '/' . $userData['avatar'] . '.png'
             : '',
     ];

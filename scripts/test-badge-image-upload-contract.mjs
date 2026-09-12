@@ -21,9 +21,11 @@ assert.ok(programs.includes("case 'badge_update'"), 'recognition programs API sh
 assert.ok(programs.includes('image_url'), 'recognition programs API should persist badge image_url');
 assert.ok(programs.includes("case 'caps_reference'"), 'recognition programs API should expose the three-tier capability reference');
 
-const recogTab = read('admin/club_manager_recognition.js');
+const recogTab = read('club-manager-react/src/tabs/RecognitionTab.jsx');
+const cropModal = read('club-manager-react/src/recognition/ImageCropModal.jsx');
 assert.ok(recogTab.includes('badge_image.php?action=upload'), 'recognition tab should upload badge images through badge_image.php');
-assert.ok(recogTab.includes('recogOpenCropModal'), 'badge image upload must go through the client-side crop modal');
-assert.ok(!recogTab.includes("file.size > 2 * 1024 * 1024"), 'recognition tab must not reject images by a 2MB client-side cap');
+assert.ok(recogTab.includes('<ImageCropModal'), 'badge image upload must go through the client-side crop modal');
+assert.ok(cropModal.includes('toBlob') && cropModal.includes('drawImage'), 'crop modal should rasterise the cropped square before upload');
+assert.ok(!recogTab.includes('2 * 1024 * 1024'), 'recognition tab must not reject images by a 2MB client-side cap');
 
 console.log('badge image upload contract tests passed');

@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const currentId = 'updates/2026-08-13-display-language-preferences';
+const currentId = 'updates/2-2-0';
 const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const externalBaseUrl = String(process.env.GUIDE_BASE_URL || '').replace(/\/$/, '');
 const viewports = [
@@ -144,7 +144,7 @@ async function inspectViewport(cdp, baseUrl, viewport) {
       const summary = details && details.querySelector('summary');
       return { title: document.querySelector('#guideArticle h1')?.textContent || '', open: Boolean(details?.open), linkCount: details?.querySelectorAll('a[data-guide-id]').length || 0, summaryHeight: summary?.getBoundingClientRect().height || 0, overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth };
     })()`);
-    if (initial.open || initial.linkCount !== 7 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
+    if (initial.open || initial.linkCount !== 8 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
 
     await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"] > summary').click()`);
     if (!await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"]').open`)) throw new Error(`${viewport.name} click did not open release history`);
@@ -172,7 +172,7 @@ async function inspectViewport(cdp, baseUrl, viewport) {
 
     await navigate(cdp, sessionId, `${baseUrl}/wiki/guide/?lang=ja#/${currentId}`, `document.querySelector('a[data-guide-id="${currentId}"].active') && document.documentElement.lang === 'ja'`, 'Japanese release note');
     const japanese = await evaluate(cdp, sessionId, `(() => ({ title: document.querySelector('#guideArticle h1')?.textContent || '', groupTitle: document.querySelector('details[data-guide-group="release-history"] > summary span')?.textContent || '', open: document.querySelector('details[data-guide-group="release-history"]')?.open || false, overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth }))()`);
-    if (!japanese.title.includes('表示・言語設定') || japanese.groupTitle !== '更新履歴' || !japanese.open || japanese.overflow > 1) throw new Error(`${viewport.name} Japanese state invalid: ${JSON.stringify(japanese)}`);
+    if (!japanese.title.includes('2.2.0') || japanese.groupTitle !== '更新履歴' || !japanese.open || japanese.overflow > 1) throw new Error(`${viewport.name} Japanese state invalid: ${JSON.stringify(japanese)}`);
     if (errors.length) throw new Error(`${viewport.name} console errors: ${errors.join(' | ')}`);
 
     const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, sessionId);

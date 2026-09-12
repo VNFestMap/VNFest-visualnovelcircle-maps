@@ -811,11 +811,11 @@ async function updateNickname() {
 
 // ====== OAuth 绑定/解绑 ======
 function initiateQQBind() {
-    window.location.href = './api/auth.php?action=qq_auth&mode=bind';
+    window.location.href = './api/auth.php?action=qq_auth&mode=bind&return_to=' + encodeURIComponent('index.html');
 }
 
 function initiateDiscordBind() {
-    window.location.href = './api/auth.php?action=discord_auth&mode=bind';
+    window.location.href = './api/auth.php?action=discord_auth&mode=bind&return_to=' + encodeURIComponent('index.html');
 }
 
 function initiateBangumiBind() {
@@ -1022,7 +1022,19 @@ async function checkOAuthConfig() {
 // ====== OAuth 回调消息处理 ======
 function handleOAuthCallback() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('oauth') === 'success') {
+    if (params.get('oauth') === 'pending') {
+        // 回调入口通常会直接跳到 login.html；保留这个兜底，避免旧缓存脚本
+        // 把待完成挑战留在首页而没有进入凭证设置视图。
+        if (!window.location.pathname.endsWith('/login.html')) {
+            window.location.replace('./login.html?oauth=pending');
+        }
+    } else if (params.get('oauth') === 'provider-conflict') {
+        // 兼容需要确认主账号的旧回调状态；provider 身份仍只由服务端
+        // Session 保存，首页不解析或转发任何第三方身份标识。
+        if (!window.location.pathname.endsWith('/login.html')) {
+            window.location.replace('./login.html?oauth=pending');
+        }
+    } else if (params.get('oauth') === 'success') {
         const msg = params.get('message') || '操作成功';
         const toast = document.createElement('div');
         toast.className = 'oauth-toast success';
@@ -1240,12 +1252,12 @@ document.addEventListener('click', (e) => {
 // ====== QQ / Discord 登录 ======
 document.addEventListener('click', (e) => {
     if (e.target.id === 'qqLoginBtn') {
-        window.location.href = './api/auth.php?action=qq_auth&mode=login';
+        window.location.href = './api/auth.php?action=qq_auth&mode=login&return_to=' + encodeURIComponent('index.html');
     }
 });
 document.addEventListener('click', (e) => {
     if (e.target.id === 'discordLoginBtn') {
-        window.location.href = './api/auth.php?action=discord_auth&mode=login';
+        window.location.href = './api/auth.php?action=discord_auth&mode=login&return_to=' + encodeURIComponent('index.html');
     }
 });
 

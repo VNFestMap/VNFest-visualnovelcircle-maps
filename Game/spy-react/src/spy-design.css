@@ -1,0 +1,116 @@
+/* ==========================================================================
+   club_square.html 入口卡 —— 可直接落地的站点片段
+   [HERE] react-vite/src/spy-design.css（交接用，不被原型运行时引入）
+
+   粘贴位置
+   ------------------------------------------------------------------
+   1) 令牌：把下面两个 [data-theme] 支里的 --ac-spy / --ac-spy-ctn
+      追加到 club_square.html 内联 <style> 中同名选择器的末尾。
+   2) 卡片规则：把「卡片规则」小节追加到 .card-sim 相关规则之后。
+   3) 标记：见文件末尾注释，粘进 <div class="bento"> 内，
+      建议放在 .card-quiz（答题互动）之后、.card-radar 之前。
+
+   全部色值只出现在令牌声明里，卡片规则一律走 var() 与 color-mix()。
+   ========================================================================== */
+
+/* ---- 1. 令牌追加 ---- */
+
+:root[data-theme='dark'] {
+  --ac-spy: #f1be99; /* = 海报「偶像应援」蜜桃橙，暗色身份色 */
+  --ac-spy-ctn: #3a2a1c; /* = 蜜桃橙的深容器 */
+}
+
+:root[data-theme='light'] {
+  --ac-spy: #8e4978; /* = 该主题下的 --primary，与品牌主色同值 */
+  --ac-spy-ctn: #ffd7f0; /* = 该主题下的 --primary-ctn */
+}
+
+/* ---- 2. 卡片规则 ---- */
+
+/*
+   设计说明：活动一览已有六个强调色相（moe 粉 320°、twelve 蓝 215°、
+   radar 青 170°、sim 橙 25°、quiz 紫 265°、exam 金 45°）。再补第七个色相
+   会让整页色板失去秩序，也把「谁是卧底」抬成高于其他活动的视觉权重。
+   因此新卡直接复用品牌主色，靠图标母题（两张错位对话卡 + 星标）与 meta
+   文案区分身份，而不是靠新增色相。span 12 独占一行，是因为它是本页唯一
+   需要「先选房再开局」的实时玩法，说明文字比其他卡更长。
+*/
+
+.card-spy {
+  --ac: var(--ac-spy);
+  grid-column: span 12;
+}
+
+.card-spy .bento-chip {
+  color: var(--ac);
+  background: color-mix(in srgb, var(--ac) 14%, var(--surface-1));
+}
+
+.card-spy .bento-title {
+  color: var(--on-surface);
+  font-size: 20px;
+}
+
+.card-spy .bento-meta {
+  color: var(--ac);
+  font-weight: 600;
+}
+
+.card-spy .bento-go {
+  color: var(--ac);
+  background: color-mix(in srgb, var(--ac) 14%, var(--surface-1));
+}
+
+.card-spy:hover {
+  background: var(--surface-2);
+  border-color: var(--outline);
+  box-shadow: var(--shadow-1);
+}
+
+.card-spy:hover .bento-go {
+  background: color-mix(in srgb, var(--ac) 22%, var(--surface-1));
+}
+
+/* 与相邻卡保持同一 hover 层级，不额外提投影 */
+.card-spy:hover .bento-chip {
+  background: color-mix(in srgb, var(--ac) 20%, var(--surface-2));
+}
+
+/* 窄屏下站点本就把所有卡收成一列，此处不覆盖 */
+@media (min-width: 641px) {
+  .card-spy {
+    grid-column: span 12;
+  }
+}
+
+/* ---- 3. HTML 片段（粘进 <div class="bento"> 内） ------------------------
+
+<a class="bento-card card-spy" href="./spy/index.html"
+   aria-label="谁是卧底 — 4-12 人实时语言推理对战，需主持人开局">
+  <span class="bento-chip">
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path d="M8 22a8 8 0 0 1 8-8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M40 22a8 8 0 0 0-8-8h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <rect x="7" y="21" width="15" height="12" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+      <rect x="26" y="25" width="15" height="12" rx="3" stroke="currentColor" stroke-width="2" fill="none"/>
+      <circle cx="12.5" cy="27" r="1.4" fill="currentColor"/>
+      <circle cx="19" cy="27" r="1.4" fill="currentColor"/>
+      <path d="M31.5 31h6" stroke="currentColor" stroke-width="1.4" opacity="0.5" stroke-linecap="round"/>
+      <path d="M24 6l1.8 4.2L30 12l-4.2 1.8L24 18l-1.8-4.2L18 12l4.2-1.8z"
+            stroke="currentColor" stroke-width="1" fill="none" opacity="0.45"/>
+    </svg>
+  </span>
+  <h2 class="bento-title">谁是卧底</h2>
+  <p class="bento-desc">
+    4-12 人语言推理对战 — 主持人给出两个相近的词，每人用一句话描述自己拿到的词，
+    白天讨论投票、夜晚申请刀人，找出潜伏者与白板。白板猜出两个词可以单独翻盘。
+  </p>
+  <div class="bento-meta">实时对战 · 4-12 人 · 需主持人开局 · 开放观战</div>
+  <span class="bento-go">进入大厅
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+      <path d="M9 6l6 6-6 6"/>
+    </svg>
+  </span>
+</a>
+
+---------------------------------------------------------------------------- */

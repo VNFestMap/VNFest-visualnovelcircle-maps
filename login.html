@@ -464,6 +464,37 @@ body.ready .shell-enter {
 .auth-theme-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .auth-theme-toggle::after { content: "☀"; }
 :root[data-theme="light"] .auth-theme-toggle::after { content: "☾"; }
+.oauth-provider-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--auth-border-strong);
+  border-radius: var(--auth-radius-md);
+  background: var(--auth-input-bg);
+}
+.oauth-provider-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--auth-surface-muted);
+}
+.oauth-provider-avatar.is-empty { display: none; }
+.oauth-provider-card strong { display: block; color: var(--auth-text); }
+.oauth-provider-card span { display: block; margin-top: 3px; color: var(--auth-text-muted); font-size: 12px; }
+.oauth-note {
+  padding: 10px 12px;
+  border-radius: var(--auth-radius-sm);
+  color: var(--auth-text-muted);
+  background: color-mix(in srgb, var(--auth-primary) 8%, transparent);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.oauth-choice-grid { display: grid; gap: 8px; }
+.oauth-choice-grid .auth-btn { width: 100%; }
+.oauth-secondary-btn { background: transparent; }
 /* ── Responsive ── */
 @media (max-width: 960px) {
   .login-shell {
@@ -765,6 +796,69 @@ body.ready .shell-enter {
           </div>
         </div>
       </div>
+
+      <!-- OAuth Credential Setup / Provider Transfer -->
+      <div class="auth-view inactive" id="oauthSetupForm" aria-live="polite">
+        <div class="auth-title">
+          <h2 id="oauthSetupTitle">完善第三方登录</h2>
+          <p id="oauthSetupSubtitle">验证邮箱并设置密码后，账号才会完成创建。</p>
+        </div>
+        <div class="auth-stack">
+          <div class="oauth-provider-card">
+            <img id="oauthProviderAvatar" class="oauth-provider-avatar is-empty" alt="">
+            <div>
+              <strong id="oauthProviderName">第三方账号</strong>
+              <span id="oauthProviderIdentity">授权已完成，正在等待下一步</span>
+            </div>
+          </div>
+
+          <div id="oauthNewAccountFlow">
+            <div class="oauth-note" id="oauthNewAccountNote">请使用你能收取邮件的邮箱。邮箱已存在时，可以选择绑定到已有账号。</div>
+            <div class="auth-field" style="margin-top: 14px;">
+              <label for="oauthEmailInput">邮箱</label>
+              <div class="auth-input-row">
+                <input class="auth-input" type="email" id="oauthEmailInput" placeholder="用于接收验证码" autocomplete="email">
+                <button class="auth-btn auth-code-btn" id="oauthSendCodeBtn" type="button">发送验证码</button>
+              </div>
+            </div>
+            <div class="auth-field">
+              <label for="oauthCodeInput">验证码</label>
+              <input class="auth-input" type="text" id="oauthCodeInput" placeholder="6位验证码" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            </div>
+            <button class="auth-btn auth-btn-primary" id="oauthVerifyCodeBtn" type="button">验证邮箱</button>
+            <div id="oauthExistingChoice" class="oauth-choice-grid" style="display:none; margin-top: 12px;">
+              <div class="oauth-note">这个邮箱已经绑定了一个账号。你可以把本次第三方登录绑定到这个账号，或换一个邮箱创建新账号。</div>
+              <button class="auth-btn auth-btn-primary" id="oauthLinkExistingBtn" type="button">绑定到已有账号</button>
+              <button class="auth-btn oauth-secondary-btn" id="oauthUseAnotherEmailBtn" type="button">换一个邮箱</button>
+            </div>
+            <div id="oauthPasswordFields" style="display:none; margin-top: 12px;">
+              <div class="auth-field">
+                <label for="oauthPasswordInput">登录密码</label>
+                <input class="auth-input" type="password" id="oauthPasswordInput" placeholder="至少6位" autocomplete="new-password">
+              </div>
+              <div class="auth-field">
+                <label for="oauthPasswordConfirmInput">确认密码</label>
+                <input class="auth-input" type="password" id="oauthPasswordConfirmInput" placeholder="再次输入密码" autocomplete="new-password">
+              </div>
+              <button class="auth-btn auth-btn-primary" id="oauthCompleteBtn" type="button">完成账号设置</button>
+            </div>
+          </div>
+
+          <div id="oauthTransferFlow" style="display:none;">
+            <div class="oauth-note">这个第三方账号已经绑定到其他账号。确认后，本次授权身份会转移到当前账号；原账号的资料和业务数据不会合并或删除。</div>
+            <button class="auth-btn auth-btn-primary" id="oauthTransferSendCodeBtn" type="button">向当前账号邮箱发送验证码</button>
+            <div class="auth-field" style="margin-top: 12px;">
+              <label for="oauthTransferCodeInput">当前账号邮箱验证码</label>
+              <input class="auth-input" type="text" id="oauthTransferCodeInput" placeholder="6位验证码" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+            </div>
+            <button class="auth-btn" id="oauthTransferVerifyBtn" type="button">验证当前账号邮箱</button>
+            <button class="auth-btn auth-btn-primary" id="oauthTransferBtn" type="button" style="display:none;">确认转移到当前账号</button>
+          </div>
+
+          <div class="auth-msg" id="oauthSetupMsg" style="display:none"></div>
+          <button class="auth-btn oauth-secondary-btn" id="oauthCancelBtn" type="button">取消并返回</button>
+        </div>
+      </div>
     </div>
   </section>
 </div>
@@ -868,6 +962,10 @@ function getSafeRedirectTarget() {
 }
 
 async function checkAuth() {
+  var oauthStatus = new URLSearchParams(window.location.search).get('oauth');
+  // provider_transfer 需要在“仍然登录”的当前账号下完成，不能被普通的
+  // 已登录重定向提前带离登录页。
+  if (oauthStatus === 'pending' || oauthStatus === 'provider-conflict') return false;
   try {
     var resp = await fetch('api/auth.php?action=me', { credentials: 'same-origin' });
     var data = await resp.json();
@@ -983,10 +1081,23 @@ function tick() {
 var loginForm = document.getElementById('loginForm');
 var registerForm = document.getElementById('registerForm');
 var forgotForm = document.getElementById('forgotForm');
+var oauthSetupForm = document.getElementById('oauthSetupForm');
+var oauthSetupState = {
+  flow: '',
+  provider: '',
+  providerLabel: '',
+  returnTo: 'index.html',
+  email: '',
+  verified: false,
+  emailExists: false
+};
+var oauthCodeCooldown = 0;
+var oauthCodeCooldownTimer = null;
 
 function showLoginForm() {
   registerForm.classList.add('inactive');
   forgotForm.classList.add('inactive');
+  oauthSetupForm.classList.add('inactive');
   loginForm.classList.remove('inactive');
   hideMsg('loginMsg');
   hideMsg('regMsg');
@@ -998,6 +1109,7 @@ function showLoginForm() {
 function showRegisterForm() {
   loginForm.classList.add('inactive');
   forgotForm.classList.add('inactive');
+  oauthSetupForm.classList.add('inactive');
   registerForm.classList.remove('inactive');
   hideMsg('loginMsg');
   hideMsg('regMsg');
@@ -1009,6 +1121,7 @@ function showRegisterForm() {
 function showForgotForm() {
   loginForm.classList.add('inactive');
   registerForm.classList.add('inactive');
+  oauthSetupForm.classList.add('inactive');
   forgotForm.classList.remove('inactive');
   hideMsg('loginMsg');
   hideMsg('regMsg');
@@ -1019,6 +1132,17 @@ function showForgotForm() {
     forgotEmail.value = loginUsername.value.trim();
   }
   clearFormInputs('loginPassword');
+}
+
+function showOAuthSetupForm() {
+  loginForm.classList.add('inactive');
+  registerForm.classList.add('inactive');
+  forgotForm.classList.add('inactive');
+  oauthSetupForm.classList.remove('inactive');
+  hideMsg('loginMsg');
+  hideMsg('regMsg');
+  hideMsg('forgotMsg');
+  hideMsg('oauthSetupMsg');
 }
 
 document.getElementById('goRegister').addEventListener('click', showRegisterForm);
@@ -1105,13 +1229,422 @@ async function handleLogin() {
   }
 }
 
+/* ── OAuth credential setup ── */
+function safeOAuthReturnTo(candidate, fallback) {
+  var value = String(candidate || '').trim();
+  var safeFallback = String(fallback || 'index.html').trim() || 'index.html';
+  if (!value || /^https?:\/\//i.test(value) || value.indexOf('//') === 0 || value.charAt(0) === '/' || value.indexOf('..') !== -1 || value.indexOf('\\') !== -1 || value.indexOf('#') !== -1) {
+    return safeFallback;
+  }
+  if (!/^[a-zA-Z0-9_./?=&%#-]+$/.test(value)) return safeFallback;
+  var path = value.split(/[?#]/)[0];
+  if (['index.html', 'login.html', 'user.html'].indexOf(path) === -1) return safeFallback;
+  return value;
+}
+
+function oauthError(message, code, status, data) {
+  var error = new Error(message || '请求失败，请稍后重试');
+  error.code = code || 'OAUTH_REQUEST_FAILED';
+  error.status = status || 0;
+  error.data = data || null;
+  return error;
+}
+
+async function oauthApiRequest(action, method, payload) {
+  var options = {
+    method: method || 'GET',
+    credentials: 'same-origin',
+    headers: {}
+  };
+  if (options.method === 'POST') {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(payload || {});
+  }
+
+  var response;
+  try {
+    response = await fetch('api/auth.php?action=' + encodeURIComponent(action), options);
+  } catch (error) {
+    throw oauthError('网络错误，请检查连接', 'OAUTH_NETWORK_ERROR', 0, null);
+  }
+
+  var data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw oauthError('登录服务返回了无效响应，请稍后重试', 'OAUTH_INVALID_RESPONSE', response.status, null);
+  }
+  if (!data || typeof data !== 'object') {
+    throw oauthError('登录服务返回了无效响应，请稍后重试', 'OAUTH_INVALID_RESPONSE', response.status, data);
+  }
+  if (!response.ok || data.success === false) {
+    throw oauthError(data.message || '请求失败，请稍后重试', data.code || 'OAUTH_REQUEST_FAILED', response.status, data);
+  }
+  return data;
+}
+
+function showOAuthSetupError(error, fallback) {
+  var message = error && error.message ? error.message : (fallback || '操作失败，请稍后重试');
+  if (error && error.code === 'EMAIL_EXISTS' && oauthSetupState.flow === 'new_login') {
+    // 邮箱可能在验证码验证后被另一请求抢先注册；仍给用户明确的
+    // “绑定已有账号”选择，不要求重新走一次第三方授权。
+    oauthSetupState.emailExists = true;
+    oauthSetupState.verified = true;
+    document.getElementById('oauthExistingChoice').style.display = 'grid';
+    document.getElementById('oauthPasswordFields').style.display = 'none';
+  }
+  showMsg('oauthSetupMsg', message, 'error');
+  shakeCard();
+}
+
+function updateOAuthCooldownUI() {
+  var buttons = [
+    document.getElementById('oauthSendCodeBtn'),
+    document.getElementById('oauthTransferSendCodeBtn')
+  ];
+  for (var i = 0; i < buttons.length; i++) {
+    if (!buttons[i]) continue;
+    if (oauthCodeCooldown > 0) {
+      buttons[i].disabled = true;
+      buttons[i].textContent = oauthCodeCooldown + 's 后重发';
+    } else {
+      buttons[i].disabled = false;
+      buttons[i].textContent = '发送验证码';
+    }
+  }
+}
+
+function startOAuthCooldown() {
+  if (oauthCodeCooldownTimer) clearInterval(oauthCodeCooldownTimer);
+  oauthCodeCooldown = 60;
+  updateOAuthCooldownUI();
+  oauthCodeCooldownTimer = setInterval(function() {
+    oauthCodeCooldown--;
+    if (oauthCodeCooldown <= 0) {
+      oauthCodeCooldown = 0;
+      clearInterval(oauthCodeCooldownTimer);
+      oauthCodeCooldownTimer = null;
+    }
+    updateOAuthCooldownUI();
+  }, 1000);
+}
+
+function resetOAuthSetupFields() {
+  clearFormInputs(
+    'oauthEmailInput', 'oauthCodeInput', 'oauthPasswordInput',
+    'oauthPasswordConfirmInput', 'oauthTransferCodeInput'
+  );
+  document.getElementById('oauthExistingChoice').style.display = 'none';
+  document.getElementById('oauthPasswordFields').style.display = 'none';
+  document.getElementById('oauthTransferBtn').style.display = 'none';
+  document.getElementById('oauthNewAccountFlow').style.display = 'none';
+  document.getElementById('oauthTransferFlow').style.display = 'none';
+  oauthSetupState.email = '';
+  oauthSetupState.verified = false;
+  oauthSetupState.emailExists = false;
+  if (oauthCodeCooldownTimer) clearInterval(oauthCodeCooldownTimer);
+  oauthCodeCooldownTimer = null;
+  oauthCodeCooldown = 0;
+  updateOAuthCooldownUI();
+}
+
+function renderOAuthPending(data) {
+  var flow = data.flow === 'provider_transfer' ? 'provider_transfer' : data.flow;
+  if (flow !== 'new_login' && flow !== 'provider_transfer') {
+    throw oauthError('授权流程无效，请重新开始', 'OAUTH_PENDING_NOT_FOUND', 409, data);
+  }
+  if (data.provider !== 'qq' && data.provider !== 'discord') {
+    throw oauthError('授权 provider 无效，请重新开始', 'OAUTH_PENDING_NOT_FOUND', 409, data);
+  }
+
+  oauthSetupState.flow = flow;
+  oauthSetupState.provider = String(data.provider || '');
+  oauthSetupState.providerLabel = String(data.provider_label || data.provider || '第三方');
+  oauthSetupState.returnTo = safeOAuthReturnTo(data.return_to, 'index.html');
+  oauthSetupState.verified = false;
+  oauthSetupState.emailExists = false;
+
+  document.getElementById('oauthSetupTitle').textContent = flow === 'provider_transfer'
+    ? '确认转移' + oauthSetupState.providerLabel + '登录身份'
+    : '完善' + oauthSetupState.providerLabel + '登录账号';
+  document.getElementById('oauthSetupSubtitle').textContent = flow === 'provider_transfer'
+    ? '请验证当前账号邮箱，确认后仅转移第三方登录身份。'
+    : '验证邮箱并设置密码后，账号才会完成创建。';
+  document.getElementById('oauthProviderName').textContent = String(data.display_name || oauthSetupState.providerLabel + '账号');
+  document.getElementById('oauthProviderIdentity').textContent = oauthSetupState.providerLabel + '授权已完成';
+
+  var avatar = document.getElementById('oauthProviderAvatar');
+  var avatarUrl = String(data.avatar || '');
+  if (/^https:\/\//i.test(avatarUrl)) {
+    avatar.src = avatarUrl;
+    avatar.alt = oauthSetupState.providerLabel + '头像';
+    avatar.classList.remove('is-empty');
+  } else {
+    avatar.removeAttribute('src');
+    avatar.alt = '';
+    avatar.classList.add('is-empty');
+  }
+
+  resetOAuthSetupFields();
+  oauthSetupState.flow = flow;
+  oauthSetupState.provider = String(data.provider || '');
+  oauthSetupState.providerLabel = String(data.provider_label || data.provider || '第三方');
+  oauthSetupState.returnTo = safeOAuthReturnTo(data.return_to, 'index.html');
+  if (flow === 'provider_transfer') {
+    document.getElementById('oauthTransferFlow').style.display = 'block';
+  } else {
+    document.getElementById('oauthNewAccountFlow').style.display = 'block';
+  }
+  showOAuthSetupForm();
+}
+
+async function loadOAuthPending() {
+  try {
+    var response = await fetch('api/auth.php?action=oauth_pending', { credentials: 'same-origin' });
+    var data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw oauthError('登录服务返回了无效响应，请稍后重试', 'OAUTH_INVALID_RESPONSE', response.status, null);
+    }
+    if (!response.ok || !data || data.success === false) {
+      throw oauthError(data && data.message ? data.message : '授权状态已失效，请重新登录', data && data.code ? data.code : 'OAUTH_PENDING_NOT_FOUND', response.status, data);
+    }
+    renderOAuthPending(data);
+  } catch (error) {
+    showLoginForm();
+    showMsg('loginMsg', error.message || '授权状态已失效，请重新登录', 'error');
+    shakeCard();
+  }
+}
+
+async function handleOAuthSendCode() {
+  if (oauthCodeCooldown > 0) return;
+  var email = document.getElementById('oauthEmailInput').value.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('oauthSetupMsg', '请输入有效的邮箱地址', 'error');
+    return;
+  }
+
+  setLoading('oauthSendCodeBtn', true, '发送中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_send_code', 'POST', { email: email });
+    oauthSetupState.email = email;
+    oauthSetupState.verified = false;
+    oauthSetupState.emailExists = false;
+    document.getElementById('oauthExistingChoice').style.display = 'none';
+    document.getElementById('oauthPasswordFields').style.display = 'none';
+    showMsg('oauthSetupMsg', data.message || '验证码已发送，请检查邮箱', 'success');
+    startOAuthCooldown();
+  } catch (error) {
+    showOAuthSetupError(error, '验证码发送失败，请稍后重试');
+  } finally {
+    if (oauthCodeCooldown <= 0) setLoading('oauthSendCodeBtn', false, '发送验证码');
+  }
+}
+
+async function handleOAuthVerifyCode() {
+  var email = document.getElementById('oauthEmailInput').value.trim().toLowerCase();
+  var code = document.getElementById('oauthCodeInput').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('oauthSetupMsg', '请输入有效的邮箱地址', 'error');
+    return;
+  }
+  if (!/^\d{6}$/.test(code)) {
+    showMsg('oauthSetupMsg', '验证码为6位数字', 'error');
+    return;
+  }
+
+  setLoading('oauthVerifyCodeBtn', true, '验证中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_verify_code', 'POST', { email: email, code: code });
+    oauthSetupState.email = email;
+    oauthSetupState.verified = true;
+    oauthSetupState.emailExists = !!data.email_exists;
+    if (data.next === 'choose_existing') {
+      document.getElementById('oauthExistingChoice').style.display = 'grid';
+      document.getElementById('oauthPasswordFields').style.display = 'none';
+      showMsg('oauthSetupMsg', '邮箱验证成功，请选择要使用的账号', 'success');
+    } else {
+      document.getElementById('oauthExistingChoice').style.display = 'none';
+      document.getElementById('oauthPasswordFields').style.display = 'block';
+      showMsg('oauthSetupMsg', '邮箱验证成功，请设置登录密码', 'success');
+      document.getElementById('oauthPasswordInput').focus();
+    }
+  } catch (error) {
+    showOAuthSetupError(error, '验证码验证失败，请检查后重试');
+  } finally {
+    setLoading('oauthVerifyCodeBtn', false, '验证邮箱');
+  }
+}
+
+async function handleOAuthLinkExisting() {
+  if (!oauthSetupState.verified) {
+    showMsg('oauthSetupMsg', '请先验证邮箱验证码', 'error');
+    return;
+  }
+  var email = oauthSetupState.email || document.getElementById('oauthEmailInput').value.trim().toLowerCase();
+  setLoading('oauthLinkExistingBtn', true, '绑定中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_link_existing', 'POST', { email: email });
+    showMsg('oauthSetupMsg', data.message || '绑定成功，正在跳转...', 'success');
+    finishOAuthRedirect(data);
+  } catch (error) {
+    showOAuthSetupError(error, '绑定已有账号失败，请稍后重试');
+  } finally {
+    setLoading('oauthLinkExistingBtn', false, '绑定到已有账号');
+  }
+}
+
+function useAnotherOAuthEmail() {
+  oauthSetupState.email = '';
+  oauthSetupState.verified = false;
+  oauthSetupState.emailExists = false;
+  clearFormInputs('oauthEmailInput', 'oauthCodeInput', 'oauthPasswordInput', 'oauthPasswordConfirmInput');
+  document.getElementById('oauthExistingChoice').style.display = 'none';
+  document.getElementById('oauthPasswordFields').style.display = 'none';
+  hideMsg('oauthSetupMsg');
+  document.getElementById('oauthEmailInput').focus();
+}
+
+async function handleOAuthCompleteAccount() {
+  if (!oauthSetupState.verified) {
+    showMsg('oauthSetupMsg', '请先验证邮箱验证码', 'error');
+    return;
+  }
+  var email = oauthSetupState.email || document.getElementById('oauthEmailInput').value.trim().toLowerCase();
+  var password = document.getElementById('oauthPasswordInput').value;
+  var confirmation = document.getElementById('oauthPasswordConfirmInput').value;
+  if (password.length < 6 || password.length > 128) {
+    showMsg('oauthSetupMsg', '密码需为6-128位', 'error');
+    return;
+  }
+  if (password !== confirmation) {
+    showMsg('oauthSetupMsg', '两次输入的密码不一致', 'error');
+    return;
+  }
+
+  setLoading('oauthCompleteBtn', true, '创建中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_complete_account', 'POST', {
+      email: email,
+      password: password,
+      password_confirmation: confirmation
+    });
+    showMsg('oauthSetupMsg', data.message || '账号创建成功，正在跳转...', 'success');
+    finishOAuthRedirect(data);
+  } catch (error) {
+    showOAuthSetupError(error, '账号创建失败，请稍后重试');
+  } finally {
+    setLoading('oauthCompleteBtn', false, '完成账号设置');
+  }
+}
+
+async function handleOAuthTransferSendCode() {
+  if (oauthCodeCooldown > 0) return;
+  setLoading('oauthTransferSendCodeBtn', true, '发送中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_send_code', 'POST', {});
+    showMsg('oauthSetupMsg', data.message || '验证码已发送，请检查当前账号邮箱', 'success');
+    startOAuthCooldown();
+  } catch (error) {
+    showOAuthSetupError(error, '验证码发送失败，请稍后重试');
+  } finally {
+    if (oauthCodeCooldown <= 0) setLoading('oauthTransferSendCodeBtn', false, '发送验证码');
+  }
+}
+
+async function handleOAuthTransferVerify() {
+  var code = document.getElementById('oauthTransferCodeInput').value.trim();
+  if (!/^\d{6}$/.test(code)) {
+    showMsg('oauthSetupMsg', '验证码为6位数字', 'error');
+    return;
+  }
+  setLoading('oauthTransferVerifyBtn', true, '验证中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    await oauthApiRequest('oauth_verify_code', 'POST', { code: code });
+    oauthSetupState.verified = true;
+    document.getElementById('oauthTransferBtn').style.display = 'block';
+    showMsg('oauthSetupMsg', '当前账号邮箱验证成功，请确认身份转移', 'success');
+  } catch (error) {
+    showOAuthSetupError(error, '验证码验证失败，请检查后重试');
+  } finally {
+    setLoading('oauthTransferVerifyBtn', false, '验证当前账号邮箱');
+  }
+}
+
+async function handleOAuthTransfer() {
+  if (!oauthSetupState.verified) {
+    showMsg('oauthSetupMsg', '请先验证当前账号邮箱', 'error');
+    return;
+  }
+  setLoading('oauthTransferBtn', true, '转移中...');
+  hideMsg('oauthSetupMsg');
+  try {
+    var data = await oauthApiRequest('oauth_transfer_provider', 'POST', {});
+    showMsg('oauthSetupMsg', data.message || '身份转移成功，正在跳转...', 'success');
+    finishOAuthRedirect(data);
+  } catch (error) {
+    showOAuthSetupError(error, '第三方身份转移失败，请重新绑定');
+  } finally {
+    setLoading('oauthTransferBtn', false, '确认转移到当前账号');
+  }
+}
+
+async function handleOAuthCancel() {
+  var target = safeOAuthReturnTo(oauthSetupState.returnTo, 'index.html');
+  try {
+    await oauthApiRequest('oauth_cancel', 'POST', {});
+  } catch (error) {
+    // 即使服务端挑战已过期，也要把用户带回安全的业务页面。
+  }
+  window.location.replace(target);
+}
+
+function finishOAuthRedirect(data) {
+  var target = safeOAuthReturnTo(data && data.redirect_to, safeOAuthReturnTo(oauthSetupState.returnTo, getSafeRedirectTarget()));
+  setTimeout(function() { window.location.replace(target); }, 600);
+}
+
 /* ── Social Login ── */
 document.getElementById('qqLoginBtn').addEventListener('click', function() {
-  window.location.href = 'api/auth.php?action=qq_auth&mode=login';
+  var returnTo = encodeURIComponent(getSafeRedirectTarget());
+  window.location.href = 'api/auth.php?action=qq_auth&mode=login&return_to=' + returnTo;
 });
 document.getElementById('discordLoginBtn').addEventListener('click', function() {
-  window.location.href = 'api/auth.php?action=discord_auth&mode=login';
+  var returnTo = encodeURIComponent(getSafeRedirectTarget());
+  window.location.href = 'api/auth.php?action=discord_auth&mode=login&return_to=' + returnTo;
 });
+
+document.getElementById('oauthSendCodeBtn').addEventListener('click', handleOAuthSendCode);
+document.getElementById('oauthVerifyCodeBtn').addEventListener('click', handleOAuthVerifyCode);
+document.getElementById('oauthLinkExistingBtn').addEventListener('click', handleOAuthLinkExisting);
+document.getElementById('oauthUseAnotherEmailBtn').addEventListener('click', useAnotherOAuthEmail);
+document.getElementById('oauthCompleteBtn').addEventListener('click', handleOAuthCompleteAccount);
+document.getElementById('oauthTransferSendCodeBtn').addEventListener('click', handleOAuthTransferSendCode);
+document.getElementById('oauthTransferVerifyBtn').addEventListener('click', handleOAuthTransferVerify);
+document.getElementById('oauthTransferBtn').addEventListener('click', handleOAuthTransfer);
+document.getElementById('oauthCancelBtn').addEventListener('click', handleOAuthCancel);
+
+var oauthInputs = ['oauthEmailInput', 'oauthCodeInput', 'oauthPasswordInput', 'oauthPasswordConfirmInput', 'oauthTransferCodeInput'];
+for (var oi = 0; oi < oauthInputs.length; oi++) {
+  document.getElementById(oauthInputs[oi]).addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    if (oauthSetupState.flow === 'provider_transfer') {
+      handleOAuthTransferVerify();
+    } else if (oauthSetupState.verified) {
+      handleOAuthCompleteAccount();
+    } else {
+      handleOAuthVerifyCode();
+    }
+  });
+}
 
 /* ── Send Code (with 60s cooldown) ── */
 var codeCooldown = 0;
@@ -1363,6 +1896,10 @@ async function init() {
   initParticles();
   checkOAuthConfig();
   document.body.classList.add('ready');
+  var oauthStatus = new URLSearchParams(window.location.search).get('oauth');
+  if (oauthStatus === 'pending' || oauthStatus === 'provider-conflict') {
+    await loadOAuthPending();
+  }
 }
 
 init();

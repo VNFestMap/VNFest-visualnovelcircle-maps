@@ -1,798 +1,2080 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import ReactMarkdown from 'react-markdown';
-import '@waline/client/waline.css';
 import './styles.css';
 
-const API_URL = '/api/column.php';
-const TYPE_LABELS = {
-  essay: '论',
-  review: '评',
-  translation: '译',
-  interview: '访',
-  community: '社',
-};
-const STATUS_LABELS = {
-  draft: '草稿',
-  published: '已发布',
-  hidden: '已隐藏',
-  deleted: '已删除',
-};
-const READER_DEFAULTS = { font: 'medium', width: 'standard', leading: 'standard', theme: 'light' };
-const READER_OPTIONS = {
-  font: ['small', 'medium', 'large'],
-  width: ['narrow', 'standard', 'wide'],
-  leading: ['compact', 'standard', 'loose'],
-  theme: ['light', 'paper', 'dark'],
-};
+const POSTS_API = '/api/posts.php';
+const IMAGES_API = '/api/post_images.php';
+const CONTENT_MAX = 280;
+const IMAGES_MAX = 4;
 
-async function apiRequest(action, { query = {}, method = 'GET', body, signal } = {}) {
-  const url = new URL(API_URL, window.location.origin);
-  url.searchParams.set('action', action);
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== '' && value !== null && value !== undefined) url.searchParams.set(key, String(value));
-  });
-  const options = { method, credentials: 'same-origin', signal, headers: {} };
-  if (body !== undefined) {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(body);
-  }
-  const response = await fetch(url, options);
-  let payload = {};
-  try { payload = await response.json(); } catch { throw new Error('服务器返回了无法读取的响应'); }
-  if (!response.ok || payload.success === false) {
-    const error = new Error(payload.error?.message || payload.message || (response.status === 401 ? '请先登录' : '请求失败，请稍后重试'));
-    error.status = response.status;
-    error.payload = payload;
+// ---------------------------------------------------------------- utilities
+
+async function apiGet(action, params = {}) {
+  const query = new URLSearchParams({ action, ...Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')) });
+  const res = await fetch(`${POSTS_API}?${query}`, { credentials: 'same-origin' });
+  const payload = await res.json().catch(() => null);
+  if (!payload) throw new Error('响应解析失败');
+  if (!payload.success) {
+    const message = payload.error && payload.error.message ? payload.error.message : '请求失败';
+    const error = new Error(message);
+    error.code = payload.error && payload.error.code;
     throw error;
   }
-  return payload.data ?? payload;
+  return payload.data;
 }
 
-function navigate(path, replace = false) {
-  if (replace) window.history.replaceState({}, '', path);
-  else window.history.pushState({}, '', path);
-  window.dispatchEvent(new PopStateEvent('popstate'));
-  window.scrollTo({ top: 0, behavior: 'auto' });
-}
-
-function hrefFor(path) {
-  return path.startsWith('/') ? path : `/${path}`;
-}
-
-function Link({ to, children, className = '', onClick, ...props }) {
-  const href = hrefFor(to);
-  return (
-    <a
-      href={href}
-      className={className}
-      onClick={(event) => {
-        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        onClick?.(event);
-        if (event.defaultPrevented) return;
-        event.preventDefault();
-        navigate(href);
-      }}
-      {...props}
-    >
-      {children}
-    </a>
-  );
-}
-
-function useRoute() {
-  const read = () => {
-    const path = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
-    if (path === '/column' || path === '/') return { name: 'home' };
-    if (path === '/column/search') return { name: 'search' };
-    if (path === '/column/edit') return { name: 'edit', id: null };
-    if (path.startsWith('/column/edit/')) return { name: 'edit', id: decodeURIComponent(path.slice('/column/edit/'.length)) };
-    if (path === '/column/my') return { name: 'my' };
-    if (path === '/column/admin') return { name: 'admin' };
-    if (path.startsWith('/column/article/')) return { name: 'article', pathKey: decodeURIComponent(path.slice('/column/article/'.length).replace(/\/+$/, '')) };
-    return { name: 'home' };
-  };
-  const [route, setRoute] = useState(read);
-  useEffect(() => {
-    const update = () => setRoute(read());
-    window.addEventListener('popstate', update);
-    return () => window.removeEventListener('popstate', update);
-  }, []);
-  return { ...route, search: window.location.search };
-}
-
-function useBootstrap() {
-  const [state, setState] = useState({ loading: true, error: null, data: { user: null, types: [], clubs: [], waline: { server_url: '' } } });
-  useEffect(() => {
-    const controller = new AbortController();
-    apiRequest('bootstrap', { signal: controller.signal })
-      .then((data) => setState({ loading: false, error: null, data }))
-      .catch((error) => {
-        if (error.name !== 'AbortError') setState((current) => ({ ...current, loading: false, error }));
-      });
-    return () => controller.abort();
-  }, []);
-  return state;
-}
-
-function useDocumentTitle(title) {
-  useEffect(() => {
-    document.title = title ? `${title} · VNFest 专栏` : 'VNFest 专栏';
-  }, [title]);
-}
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(document.documentElement.dataset.theme === 'dark');
-  useEffect(() => {
-    if (window.VNFTheme?.subscribe) return window.VNFTheme.subscribe(({ theme }) => setDark(theme === 'dark'));
-    const observer = new MutationObserver(() => setDark(document.documentElement.dataset.theme === 'dark'));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <button
-      className="column-topbar-control"
-      type="button"
-      aria-label={dark ? '切换到亮色主题' : '切换到深色主题'}
-      onClick={(event) => window.VNFTheme?.toggle?.(event.currentTarget)}
-    >
-      {dark ? '亮色' : '深色'}
-    </button>
-  );
-}
-
-function Sidebar({ route, user, onClose }) {
-  const items = [
-    { name: 'home', label: '专栏首页', to: '/column/' },
-    { name: 'search', label: '最新文章', to: '/column/search/' },
-    { name: 'types', label: '按类型浏览', to: '/column/search/?type=essay' },
-  ];
-  if (user) items.push({ name: 'edit', label: '开始编辑', to: '/column/edit/' });
-  if (user) items.push({ name: 'my', label: '我的文章', to: '/column/my/' });
-  if (user?.can_manage) items.push({ name: 'admin', label: '管理文章', to: '/column/admin/' });
-  return (
-    <nav className="column-sidebar-nav" aria-label="专栏导航">
-      <div className="column-sidebar-heading">
-        <span className="column-sidebar-label">专栏</span>
-        <span className="column-sidebar-caption">VNFest</span>
-      </div>
-      <div className="column-sidebar-links">
-        {items.map((item) => {
-          const hasTypeFilter = new URLSearchParams(route.search || '').has('type');
-          const active = item.name === 'types' ? route.name === 'search' && hasTypeFilter : item.name === 'search' ? route.name === 'search' && !hasTypeFilter : route.name === item.name;
-          return (
-            <Link key={item.label} to={item.to} className={`column-sidebar-link${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={onClose}>
-              <span>{item.label}</span>
-              <span className="column-sidebar-arrow" aria-hidden="true">›</span>
-            </Link>
-          );
-        })}
-      </div>
-      <div className="column-sidebar-note">文章和评论都保留在各自的内容页面中。</div>
-    </nav>
-  );
-}
-
-function DocsShell({ route, bootstrap, children, title }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const menuRef = useRef(null);
-  const user = bootstrap.user;
-  useDocumentTitle(title);
-  useEffect(() => {
-    if (!mobileOpen) return undefined;
-    const close = (event) => {
-      if (event.key === 'Escape') setMobileOpen(false);
-    };
-    document.addEventListener('keydown', close);
-    return () => document.removeEventListener('keydown', close);
-  }, [mobileOpen]);
-  useEffect(() => {
-    const details = menuRef.current;
-    if (!details) return undefined;
-    const close = (event) => { if (!details.contains(event.target)) details.open = false; };
-    const escape = (event) => { if (event.key === 'Escape') details.open = false; };
-    document.addEventListener('click', close);
-    document.addEventListener('keydown', escape);
-    return () => {
-      document.removeEventListener('click', close);
-      document.removeEventListener('keydown', escape);
-    };
-  }, [user]);
-  const loginTarget = `${window.location.pathname}${window.location.search}`.replace(/^\//, '');
-  return (
-    <div className="column-app">
-      <header className="column-topbar" data-page-header>
-        <div className="column-topbar-leading">
-          <button className="column-mobile-menu" type="button" aria-label="打开专栏导航" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}>目录</button>
-          <Link to="/index.html?guest=1" className="column-brand" aria-label="返回 VNFest 地图">
-            <span className="column-brand-name">VNFest</span>
-            <span className="column-brand-divider" aria-hidden="true" />
-            <span className="column-brand-section">专栏</span>
-          </Link>
-        </div>
-        <nav className="column-topbar-actions" aria-label="顶部导航">
-          <Link to="/column/" className={`column-topbar-link${route.name === 'home' ? ' is-current' : ''}`} aria-current={route.name === 'home' ? 'page' : undefined}>专栏</Link>
-          <Link to="/column/search/" className={`column-topbar-link${route.name === 'search' ? ' is-current' : ''}`} aria-current={route.name === 'search' ? 'page' : undefined}>搜索</Link>
-          {user ? (
-            <details className="column-user-menu" ref={menuRef}>
-              <summary className="column-topbar-link"><span>{user.nickname || user.username || '我的专栏'}</span></summary>
-              <div className="column-user-menu-panel" role="menu">
-                <Link to="/column/edit/" role="menuitem">开始编辑</Link>
-                <Link to="/column/my/" role="menuitem">我的文章</Link>
-                {user.can_manage ? <Link to="/column/admin/" role="menuitem">管理文章</Link> : null}
-              </div>
-            </details>
-          ) : (
-            <a className="column-topbar-link" href={`/login.html?redirect=${encodeURIComponent(loginTarget)}`}>登录</a>
-          )}
-          <ThemeToggle />
-        </nav>
-      </header>
-      {mobileOpen ? (
-        <div className="column-mobile-drawer-backdrop" role="presentation" onMouseDown={() => setMobileOpen(false)}>
-          <aside className="column-mobile-drawer" aria-label="专栏导航" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="column-mobile-drawer-head"><strong>专栏导航</strong><button type="button" aria-label="关闭专栏导航" onClick={() => setMobileOpen(false)}>关闭</button></div>
-            <Sidebar route={route} user={user} onClose={() => setMobileOpen(false)} />
-          </aside>
-        </div>
-      ) : null}
-      <div className="column-layout">
-        <aside className="column-desktop-sidebar"><Sidebar route={route} user={user} /></aside>
-        <main className="column-main-content">
-          {bootstrap.error ? <div className="column-system-notice is-warning" role="status">专栏接口暂时不可用，页面仍可浏览已加载内容。</div> : null}
-          {children}
-        </main>
-      </div>
-      <footer className="column-footer">
-        <Link to="/column/">专栏首页</Link>
-        <Link to="/index.html?guest=1">返回地图</Link>
-        <span>VNFest 专栏</span>
-      </footer>
-    </div>
-  );
-}
-
-function PageState({ kind = 'empty', title, message, action }) {
-  return (
-    <div className={`column-page-state is-${kind}`} data-state={kind}>
-      <strong>{title}</strong>
-      {message ? <span>{message}</span> : null}
-      {action ? <div className="column-page-state-action">{action}</div> : null}
-    </div>
-  );
-}
-
-function formatDate(value) {
-  const raw = String(value || '').replace('T', ' ');
-  return raw ? raw.slice(0, 10) : '未发布';
-}
-
-function articleHref(article) {
-  if (article.path_key) return `/column/article/${encodeURIComponent(article.path_key)}/`;
-  return `/column/edit/${encodeURIComponent(article.id)}/`;
-}
-
-function Cover({ article, className = '' }) {
-  const [failed, setFailed] = useState(false);
-  const source = article.cover_url || '';
-  if (!source || failed) {
-    return <div className={`column-cover column-cover-placeholder ${className}`} aria-hidden="true"><span>{article.type_label || TYPE_LABELS[article.type] || '论'}</span></div>;
+async function apiPost(action, payload = {}) {
+  const res = await fetch(`${POSTS_API}?action=${encodeURIComponent(action)}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => null);
+  if (!data) throw new Error('响应解析失败');
+  if (!data.success) {
+    const message = data.error && data.error.message ? data.error.message : '请求失败';
+    const error = new Error(message);
+    error.code = data.error && data.error.code;
+    throw error;
   }
-  return <div className={`column-cover ${className}`}><img src={source} alt={`${article.title || '文章'}封面`} loading="lazy" decoding="async" onError={() => setFailed(true)} /></div>;
+  return data.data;
 }
 
-function ArticleMeta({ article, compact = false }) {
-  return (
-    <div className={`column-article-meta${compact ? ' is-compact' : ''}`}>
-      <span className="column-type-chip">{article.type_label || TYPE_LABELS[article.type] || '论'}</span>
-      <span>{article.author?.nickname || article.author?.username || 'VNFest 作者'}</span>
-      <span>{formatDate(article.published_at || article.updated_at)}</span>
-      <span>{article.read_minutes || 1} 分钟阅读</span>
-    </div>
-  );
+const MESSAGES_API = '/api/messages.php';
+
+async function messagesApi(action, params = {}) {
+  const query = new URLSearchParams({ action, ...Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')) });
+  const res = await fetch(`${MESSAGES_API}?${query}`, { credentials: 'same-origin' });
+  const payload = await res.json().catch(() => null);
+  if (!payload) throw new Error('响应解析失败');
+  if (!payload.success) {
+    const message = payload.message || (payload.error && payload.error.message) || '请求失败';
+    const error = new Error(message);
+    error.code = payload.error && payload.error.code;
+    throw error;
+  }
+  return payload.data;
 }
 
-function ArticleListItem({ article }) {
-  return (
-    <article className="column-article-list-item">
-      <div className="column-article-list-main">
-        <ArticleMeta article={article} compact />
-        <h3><Link to={articleHref(article)}>{article.title || '未命名文章'}</Link></h3>
-        <p>{article.summary || article.excerpt || '这篇文章还没有摘要。'}</p>
-      </div>
-      <Link to={articleHref(article)} className="column-article-list-more" aria-label={`阅读：${article.title || '未命名文章'}`}>阅读</Link>
-    </article>
-  );
+async function messagesPost(action, payload = {}) {
+  const res = await fetch(`${MESSAGES_API}?action=${encodeURIComponent(action)}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => null);
+  if (!data) throw new Error('响应解析失败');
+  if (!data.success) {
+    const message = data.message || (data.error && data.error.message) || '请求失败';
+    const error = new Error(message);
+    error.code = data.error && data.error.code;
+    throw error;
+  }
+  return data.data;
 }
 
-function FeaturedArticle({ article }) {
-  if (!article) return <PageState title="暂时没有精选文章" message="管理员选出文章后，会显示在这里。" />;
-  return (
-    <article className="column-featured-article">
-      <div className="column-featured-copy">
-        <div className="column-kicker"><span className="column-type-chip">{article.type_label || TYPE_LABELS[article.type] || '论'}</span><span>编辑推荐</span></div>
-        <h2><Link to={articleHref(article)}>{article.title}</Link></h2>
-        <p>{article.summary || article.excerpt || '打开文章阅读全文。'}</p>
-        <ArticleMeta article={article} compact />
-        <Link to={articleHref(article)} className="column-text-link">阅读文章 <span aria-hidden="true">→</span></Link>
-      </div>
-      <Cover article={article} className="is-featured" />
-    </article>
-  );
+function makeUploadToken() {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return 'post-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function TypeOptions({ types = [], includeAll = true }) {
-  const values = types.length ? types : Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
-  return <>{includeAll ? <option value="">全部类型</option> : null}{values.map((type) => <option key={type.value} value={type.value}>{type.label} · {type.value === 'essay' ? '论述' : type.value === 'review' ? '评论' : type.value === 'translation' ? '翻译' : type.value === 'interview' ? '访谈' : '社群记录'}</option>)}</>;
+function relTime(value) {
+  if (!value) return '';
+  const then = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(then.getTime())) return String(value);
+  const diff = Math.max(0, Date.now() - then.getTime());
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 365) return `${then.getMonth() + 1}月${then.getDate()}日`;
+  return `${then.getFullYear()}年${then.getMonth() + 1}月${then.getDate()}日`;
 }
 
-function SearchForm({ types, initialQuery = '', initialType = '', onSubmit, compact = false }) {
-  const [query, setQuery] = useState(initialQuery);
-  const [type, setType] = useState(initialType);
-  useEffect(() => { setQuery(initialQuery); setType(initialType); }, [initialQuery, initialType]);
-  return (
-    <form className={`column-search-form${compact ? ' is-compact' : ''}`} role="search" onSubmit={(event) => { event.preventDefault(); onSubmit({ query: query.trim(), type }); }}>
-      <label className="column-visually-hidden" htmlFor="column-search-input">搜索专栏文章</label>
-      <input id="column-search-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、摘要或正文" autoComplete="off" />
-      <label className="column-visually-hidden" htmlFor="column-search-type">文章类型</label>
-      <select id="column-search-type" value={type} onChange={(event) => setType(event.target.value)} aria-label="文章类型"><TypeOptions types={types} /></select>
-      <button className="column-button is-primary" type="submit">搜索</button>
-    </form>
-  );
+function fullTime(value) {
+  if (!value) return '';
+  const then = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(then.getTime())) return String(value);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${then.getFullYear()}年${then.getMonth() + 1}月${then.getDate()}日 ${pad(then.getHours())}:${pad(then.getMinutes())}`;
 }
 
-function HomePage({ bootstrap }) {
-  const [feed, setFeed] = useState(null);
-  const [error, setError] = useState(null);
-  useDocumentTitle('专栏');
+function linkify(text) {
+  const parts = [];
+  const regex = /(https?:\/\/[^\s<>"]+)/g;
+  let last = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push({ type: 'text', value: text.slice(last, match.index) });
+    parts.push({ type: 'link', value: match[0] });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push({ type: 'text', value: text.slice(last) });
+  return parts;
+}
+
+// ---------------------------------------------------------------- toast
+
+const toastListeners = new Set();
+function showToast(message, kind = 'info') {
+  toastListeners.forEach((fn) => fn({ id: Date.now() + Math.random(), message, kind }));
+}
+
+function ToastHost() {
+  const [items, setItems] = useState([]);
   useEffect(() => {
-    const controller = new AbortController();
-    apiRequest('feed', { query: { per_page: 12 }, signal: controller.signal }).then(setFeed).catch((reason) => { if (reason.name !== 'AbortError') setError(reason); });
-    return () => controller.abort();
+    const listener = (item) => {
+      setItems((prev) => [...prev.slice(-3), item]);
+      setTimeout(() => setItems((prev) => prev.filter((x) => x.id !== item.id)), 3200);
+    };
+    toastListeners.add(listener);
+    return () => toastListeners.delete(listener);
   }, []);
-  const articles = feed?.articles || [];
-  const featured = feed?.featured?.[0] || articles.find((article) => article.featured_rank !== null);
   return (
-    <div className="column-page column-home-page">
-      <section className="column-intro-block">
-        <div>
-          <p className="column-eyebrow">VNFEST / COLUMN</p>
-          <h1>专栏文章</h1>
-          <p className="column-intro-copy">这里记录作品、观点、翻译、访谈和同好会经验。</p>
-        </div>
-        <div className="column-intro-aside"><span>按类型阅读</span><span>持续更新</span></div>
-      </section>
-
-      <section className="column-section column-home-search" aria-labelledby="column-search-heading">
-        <div className="column-section-heading"><div><span className="column-section-index">01</span><h2 id="column-search-heading">搜索</h2></div><span>标题、摘要和正文</span></div>
-        <SearchForm types={bootstrap.types} onSubmit={({ query, type }) => navigate(`/column/search/?${new URLSearchParams({ ...(query ? { q: query } : {}), ...(type ? { type } : {}) }).toString()}`)} />
-      </section>
-
-      <section className="column-section" aria-labelledby="column-featured-heading">
-        <div className="column-section-heading"><div><span className="column-section-index">02</span><h2 id="column-featured-heading">精选文章</h2></div><span>编辑推荐</span></div>
-        {error ? <PageState kind="error" title="文章暂时无法加载" message="请稍后再试。" /> : feed ? <FeaturedArticle article={featured} /> : <div className="column-loading-line" aria-label="精选文章加载中" />}
-      </section>
-
-      <section className="column-section" aria-labelledby="column-latest-heading">
-        <div className="column-section-heading"><div><span className="column-section-index">03</span><h2 id="column-latest-heading">最新文章</h2></div><Link to="/column/search/" className="column-section-link">查看全部 <span aria-hidden="true">→</span></Link></div>
-        {feed ? (articles.length ? <div className="column-article-list">{articles.slice(0, 6).map((article) => <ArticleListItem key={article.id} article={article} />)}</div> : <PageState title="暂时没有文章" message="新的文章发布后，会显示在这里。" />) : <div className="column-loading-list"><span /><span /><span /></div>}
-      </section>
-    </div>
-  );
-}
-
-function SearchPage({ bootstrap }) {
-  const params = useMemo(() => new URLSearchParams(window.location.search), [window.location.search]);
-  const query = params.get('q') || '';
-  const type = params.get('type') || '';
-  const page = Math.max(1, Number(params.get('page') || 1));
-  const [feed, setFeed] = useState(null);
-  const [error, setError] = useState(null);
-  useDocumentTitle(query || type ? '搜索结果' : '最新文章');
-  useEffect(() => {
-    const controller = new AbortController();
-    setFeed(null);
-    setError(null);
-    apiRequest('feed', { query: { q: query, type, page, per_page: 12 }, signal: controller.signal }).then(setFeed).catch((reason) => { if (reason.name !== 'AbortError') setError(reason); });
-    return () => controller.abort();
-  }, [query, type, page]);
-  const updateSearch = ({ query: nextQuery, type: nextType }) => {
-    const next = new URLSearchParams();
-    if (nextQuery) next.set('q', nextQuery);
-    if (nextType) next.set('type', nextType);
-    navigate(`/column/search/${next.toString() ? `?${next}` : ''}`);
-  };
-  const goPage = (nextPage) => {
-    const next = new URLSearchParams(window.location.search);
-    next.set('page', String(nextPage));
-    navigate(`/column/search/?${next}`);
-  };
-  return (
-    <div className="column-page column-search-page">
-      <section className="column-page-heading"><p className="column-eyebrow">VNFEST / READ</p><h1>{query || type ? '搜索结果' : '最新文章'}</h1><p>{query ? `“${query}”的搜索结果` : '按发布时间阅读近期公开文章。'}</p></section>
-      <section className="column-search-panel"><SearchForm types={bootstrap.types} initialQuery={query} initialType={type} onSubmit={updateSearch} compact /></section>
-      <section className="column-section" aria-labelledby="column-results-heading">
-        <div className="column-section-heading"><div><span className="column-section-index">01</span><h2 id="column-results-heading">文章</h2></div><span>{feed ? `${feed.total || 0} 篇` : '正在加载'}</span></div>
-        {error ? <PageState kind="error" title="搜索暂时无法完成" message="请稍后再试。" /> : feed ? (feed.articles?.length ? <div className="column-article-list">{feed.articles.map((article) => <ArticleListItem key={article.id} article={article} />)}</div> : <PageState title="暂时没有文章" message="换个关键词，或先看看其他类型。" />) : <div className="column-loading-list"><span /><span /><span /></div>}
-        {feed?.pages > 1 ? <div className="column-pagination"><button type="button" disabled={page <= 1} onClick={() => goPage(page - 1)}>上一页</button><span>{page} / {feed.pages}</span><button type="button" disabled={page >= feed.pages} onClick={() => goPage(page + 1)}>下一页</button></div> : null}
-      </section>
-    </div>
-  );
-}
-
-function ReaderSettings({ appearance, onChange, mobile = false }) {
-  const groups = [
-    ['font', '字号', [['small', '小'], ['medium', '标准'], ['large', '大']]],
-    ['width', '正文宽度', [['narrow', '窄'], ['standard', '标准'], ['wide', '宽']]],
-    ['leading', '行距', [['compact', '紧凑'], ['standard', '标准'], ['loose', '宽松']]],
-    ['theme', '阅读主题', [['light', '明亮'], ['paper', '纸张'], ['dark', '深色']]],
-  ];
-  return (
-    <div className={`column-reader-settings${mobile ? ' is-mobile' : ''}`}>
-      <div className="column-reader-settings-title">阅读设置</div>
-      {groups.map(([key, label, values]) => (
-        <div className="column-reader-setting" key={key}>
-          <span>{label}</span>
-          <div className="column-reader-setting-options" role="group" aria-label={label}>
-            {values.map(([value, text]) => <button key={value} type="button" className={appearance[key] === value ? 'is-active' : ''} aria-pressed={appearance[key] === value} onClick={() => onChange(key, value)}>{text}</button>)}
-          </div>
-        </div>
+    <div className="pt-toasts" aria-live="polite">
+      {items.map((item) => (
+        <div key={item.id} className={`pt-toast pt-toast-${item.kind}`}>{item.message}</div>
       ))}
-      <button className="column-text-button" type="button" onClick={() => onChange(null, null)}>恢复默认</button>
     </div>
   );
 }
 
-function readReaderAppearance() {
-  try {
-    const stored = JSON.parse(localStorage.getItem('vnfestWikiAppearance') || '{}');
-    return Object.fromEntries(Object.entries(READER_DEFAULTS).map(([key, value]) => [key, READER_OPTIONS[key].includes(stored[key]) ? stored[key] : value]));
-  } catch {
-    return { ...READER_DEFAULTS };
+// ---------------------------------------------------------------- icons
+
+function Icon({ path, size = 20, filled = false, className = '' }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke={filled ? 'none' : 'currentColor'}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+const PATHS = {
+  home: 'M3 10.5 12 3l9 7.5M5.5 9.5V20a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9.5',
+  profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7.5 9c.7-3.6 3.8-6 7.5-6s6.8 2.4 7.5 6',
+  back: 'M20 12H4m0 0 6-6m-6 6 6 6',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
+  reply: 'M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.2 0-2.4-.25-3.4-.7L4 21l1.7-4.3A8.5 8.5 0 1 1 21 11.5Z',
+  repost: 'M4.5 9 7.5 6l3 3m-3-3v9m0 0a3 3 0 0 0 3 3h4m3-7 3 3-3 3m3-3V8m0 5a3 3 0 0 0-3-3h-4',
+  heart: 'M12 20.5s-7.8-4.6-9.3-9.2C1.6 8 3.4 4.9 6.6 4.9c2 0 3.7 1.1 4.6 2.7l.8 1.4.8-1.4c.9-1.6 2.6-2.7 4.6-2.7 3.2 0 5 3.1 3.9 6.4-1.5 4.6-9.3 9.2-9.3 9.2Z',
+  image: 'M4 5.5h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Zm2.5 9.5 3.5-4 2.5 3 2-2.5L19 16M9 10.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+  close: 'M6 6l12 12M18 6 6 18',
+  trash: 'M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7l-1.2 1.2M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7l1.2-1.2',
+  feather: 'M20 4c-5 0-11 2-13.5 7.5L4 20l8.5-2.5C18 15 20 9 20 4Zm-5 5-8 8',
+  users: 'M16 19c0-2.8-1.8-5-4-5s-4 2.2-4 5m4-8.5a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Zm6.5 8.5c-.2-2-1.2-3.7-2.7-4.4M16.5 5.3a3 3 0 0 1 0 5.9',
+  map: 'M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4Zm0 0v13m6-10.5v13',
+  club: 'M12 3 4 7.5v2.2l8-4.5 8 4.5V7.5L12 3ZM6 10.5V19m12-8.5V19M6 19h12M10.5 19v-4h3v4',
+  calendar: 'M8 2.5v3m8-3v3M3.5 9.5h17M5 5h14A1.5 1.5 0 0 1 20.5 6.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6.5A1.5 1.5 0 0 1 5 5Z',
+  check: 'M4.5 12.5l4.5 4.5L19.5 6.5',
+  message: 'M3.5 5.5h17a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Zm.5 1.5 8.2 6.4a1 1 0 0 0 1.23 0L20 7',
+  search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm9.5 3-4.9-4.9',
+};
+
+function Avatar({ src, name, size = 48 }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  if (!src || failed) {
+    return (
+      <span className="pt-avatar pt-avatar-fallback" style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
+        {initial}
+      </span>
+    );
   }
+  return (
+    <img
+      className="pt-avatar"
+      style={{ width: size, height: size }}
+      src={src}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
-function ArticleToc({ items, activeId, onSelect }) {
-  if (!items?.length) return <div className="column-toc-empty">本文暂无目录</div>;
-  return <ol className="column-toc">{items.map((item) => <li key={item.id} className={item.level === 3 ? 'is-child' : ''}><a href={`#${item.id}`} className={activeId === item.id ? 'is-active' : ''} aria-current={activeId === item.id ? 'location' : undefined} onClick={(event) => { event.preventDefault(); onSelect(item.id); }}>{item.text}</a></li>)}</ol>;
+function CharRing({ count, max }) {
+  const ratio = Math.min(1, count / max);
+  const radius = 9;
+  const circumference = 2 * Math.PI * radius;
+  const remaining = max - count;
+  const color = remaining < 0 ? 'var(--pt-danger)' : remaining <= 20 ? 'var(--pt-warning)' : 'var(--pt-accent)';
+  return (
+    <span className={`pt-char-ring ${remaining < 0 ? 'is-over' : ''}`}>
+      <svg width="22" height="22" viewBox="0 0 22 22">
+        <circle cx="11" cy="11" r={radius} fill="none" stroke="var(--pt-line-strong)" strokeWidth="2" />
+        {count > 0 && (
+          <circle
+            cx="11" cy="11" r={radius} fill="none"
+            stroke={color} strokeWidth="2" strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - ratio)}
+            transform="rotate(-90 11 11)"
+          />
+        )}
+      </svg>
+      {remaining <= 20 && <span className="pt-char-ring-num">{remaining}</span>}
+    </span>
+  );
 }
 
-function WalineComments({ config }) {
-  const elementRef = useRef(null);
-  const [state, setState] = useState({ loading: Boolean(config?.server_url), error: null });
+// ---------------------------------------------------------------- crop modal
+
+function CropModal({ src, aspectRatio = null, outputWidth = 1280, outputHeight = null, title = '裁剪图片', onCropped, onCancel }) {
+  const imgRef = useRef(null);
+  const cropperRef = useRef(null);
+
   useEffect(() => {
-    let alive = true;
-    let instance = null;
-    if (!config?.server_url) {
-      setState({ loading: false, error: '评论服务尚未配置' });
-      return undefined;
-    }
-    setState({ loading: true, error: null });
-    import('@waline/client').then(({ init }) => {
-      if (!alive || !elementRef.current) return;
-      instance = init({
-        el: elementRef.current,
-        serverURL: config.server_url,
-        path: config.path,
-        login: 'force',
-        commentSorting: 'latest',
-        imageUploader: false,
-        reaction: false,
-        emoji: false,
-        search: false,
-        dark: document.documentElement.dataset.theme === 'dark',
-      });
-      setState({ loading: false, error: null });
-    }).catch((error) => {
-      if (alive) setState({ loading: false, error: error.message || '评论服务暂时不可用' });
+    if (!src || typeof window.Cropper !== 'function' || !imgRef.current) return undefined;
+    cropperRef.current = new window.Cropper(imgRef.current, {
+      aspectRatio: aspectRatio || NaN,
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 1,
+      cropBoxMovable: !aspectRatio,
+      cropBoxResizable: !aspectRatio,
+      toggleDragModeOnDblclick: false,
+      background: false,
     });
     return () => {
-      alive = false;
-      if (instance?.destroy) instance.destroy();
-      if (elementRef.current) elementRef.current.innerHTML = '';
+      if (cropperRef.current) { cropperRef.current.destroy(); cropperRef.current = null; }
     };
-  }, [config?.server_url, config?.path]);
-  return (
-    <div className="column-waline-wrap">
-      <p className="column-waline-note">评论使用 VNFest 账号登录，内容按时间顺序显示。</p>
-      {state.error ? <PageState kind="muted" title={state.error} message="文章正文不受影响。" /> : null}
-      {state.loading ? <div className="column-loading-line" aria-label="评论加载中" /> : null}
-      <div ref={elementRef} className="column-waline" aria-label="文章评论" />
-    </div>
-  );
-}
+  }, [src, aspectRatio]);
 
-function ArticlePage({ pathKey, bootstrap }) {
-  const [article, setArticle] = useState(null);
-  const [related, setRelated] = useState([]);
-  const [waline, setWaline] = useState(null);
-  const [error, setError] = useState(null);
-  const [appearance, setAppearance] = useState(readReaderAppearance);
-  const [activeId, setActiveId] = useState('');
-  useDocumentTitle(article?.title || '文章');
-  useEffect(() => {
-    const controller = new AbortController();
-    setArticle(null);
-    setError(null);
-    apiRequest('article', { query: { path_key: pathKey }, signal: controller.signal }).then((data) => { setArticle(data.article); setRelated(data.related || []); setWaline(data.waline || null); }).catch((reason) => { if (reason.name !== 'AbortError') setError(reason); });
-    return () => controller.abort();
-  }, [pathKey]);
-  useEffect(() => {
-    try { localStorage.setItem('vnfestWikiAppearance', JSON.stringify(appearance)); } catch {}
-  }, [appearance]);
-  useEffect(() => {
-    if (!article?.toc?.length) return undefined;
-    const headings = Array.from(document.querySelectorAll('.column-reader-content h2[id], .column-reader-content h3[id]'));
-    if (!headings.length) return undefined;
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      if (visible) setActiveId(visible.target.id);
-    }, { rootMargin: '-96px 0px -65% 0px', threshold: [0, .2, .7] });
-    headings.forEach((heading) => observer.observe(heading));
-    setActiveId(article.toc[0].id);
-    return () => observer.disconnect();
-  }, [article]);
-  const updateAppearance = (key, value) => setAppearance(key ? { ...appearance, [key]: value } : { ...READER_DEFAULTS });
-  const selectHeading = (id) => {
-    const target = document.getElementById(id);
-    if (!target) return;
-    setActiveId(id);
-    target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-    window.history.replaceState({}, '', `#${id}`);
+  const confirm = () => {
+    const cropper = cropperRef.current;
+    if (!cropper) return;
+    const options = aspectRatio
+      ? { width: outputWidth, height: outputHeight || undefined, imageSmoothingQuality: 'high' }
+      : { maxWidth: 4096, maxHeight: 4096, imageSmoothingQuality: 'high' };
+    const canvas = cropper.getCroppedCanvas(options);
+    if (!canvas) { showToast('裁剪失败，请重试', 'warn'); return; }
+    canvas.toBlob((blob) => {
+      if (blob) onCropped(blob);
+      else showToast('裁剪失败，请重试', 'warn');
+    }, 'image/jpeg', 0.92);
   };
-  if (error) return <div className="column-page column-article-page"><PageState kind="error" title="文章不存在或暂不可见" message="请返回专栏首页继续阅读。" action={<Link to="/column/" className="column-button is-primary">返回专栏</Link>} /></div>;
-  if (!article) return <div className="column-page column-article-page"><div className="column-loading-article"><span /><span /><span /></div></div>;
+
   return (
-    <div className="column-page column-article-page">
-      <div className="column-breadcrumb"><Link to="/column/">专栏</Link><span aria-hidden="true">/</span><span>{article.type_label || TYPE_LABELS[article.type] || '文章'}</span></div>
-      <header className="column-article-header">
-        <div className="column-kicker"><span className="column-type-chip">{article.type_label || TYPE_LABELS[article.type] || '论'}</span><span>文章</span></div>
-        <h1>{article.title}</h1>
-        {article.summary ? <p className="column-article-summary">{article.summary}</p> : null}
-        <ArticleMeta article={article} />
-        {article.club ? <div className="column-article-club">同好会 · {article.club.name}</div> : null}
-        {article.cover_url ? <Cover article={article} className="is-article-cover" /> : null}
-      </header>
-      <details className="column-mobile-reader-panel"><summary>目录与阅读设置</summary><div className="column-mobile-reader-panel-body"><ArticleToc items={article.toc} activeId={activeId} onSelect={selectHeading} /><ReaderSettings appearance={appearance} onChange={updateAppearance} mobile /></div></details>
-      <div className="column-reader-layout">
-        <aside className="column-reader-aside column-reader-toc-aside" aria-label="文章目录"><div className="column-aside-block"><h2>目录</h2><ArticleToc items={article.toc} activeId={activeId} onSelect={selectHeading} /></div></aside>
-        <article className="column-reader-surface" data-reader-theme={appearance.theme} data-reader-font={appearance.font} data-reader-width={appearance.width} data-reader-leading={appearance.leading}>
-          <div className="column-reader-content" dangerouslySetInnerHTML={{ __html: article.body_html || '' }} />
-          <div className="column-reader-endnote">本文由作者发布于 VNFest 专栏，内容以页面当前版本为准。</div>
-          {article.capabilities?.edit ? <div className="column-article-actions"><Link to={`/column/edit/${article.id}/`} className="column-button">编辑文章</Link></div> : null}
-        </article>
-        <aside className="column-reader-aside column-reader-settings-aside" aria-label="阅读设置"><ReaderSettings appearance={appearance} onChange={updateAppearance} /></aside>
+    <div className="pt-modal pt-crop-modal" onClick={onCancel} role="dialog" aria-modal="true">
+      <div className="pt-modal-panel pt-crop-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-modal-head">
+          <span>{title}</span>
+          <button type="button" className="pt-icon-btn" onClick={onCancel} aria-label="关闭" style={{ marginLeft: 'auto' }}>
+            <Icon path={PATHS.close} size={18} />
+          </button>
+        </div>
+        <div className="pt-crop-container">
+          <img ref={imgRef} src={src} alt="" crossOrigin="anonymous" />
+        </div>
+        <p className="pt-crop-hint">拖动图片调整位置{aspectRatio ? '' : '，拖动裁剪框边角调整范围'}</p>
+        <div className="pt-edit-actions">
+          <button type="button" className="pt-follow-btn is-following" onClick={onCancel}>取消</button>
+          <button type="button" className="pt-btn pt-btn-primary" onClick={confirm}>确认裁剪</button>
+        </div>
       </div>
-      <section className="column-related-section" aria-labelledby="column-related-heading"><div className="column-section-heading"><div><span className="column-section-index">02</span><h2 id="column-related-heading">继续阅读</h2></div><span>同类型文章</span></div>{related.length ? <div className="column-related-list">{related.map((item) => <ArticleListItem key={item.id} article={item} />)}</div> : <PageState title="暂无相关文章" message="可以回到专栏首页看看最新文章。" action={<Link to="/column/" className="column-button">返回专栏</Link>} />}</section>
-      <section className="column-comments-section" aria-labelledby="column-comments-heading"><div className="column-section-heading"><div><span className="column-section-index">03</span><h2 id="column-comments-heading">评论</h2></div><span>文章下的交流</span></div><WalineComments config={waline || { server_url: bootstrap.waline?.server_url || '' }} /></section>
     </div>
   );
 }
 
-const PREVIEW_ALLOWED = ['p', 'h2', 'h3', 'strong', 'em', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'img', 'hr', 'br'];
+// ---------------------------------------------------------------- composer
 
-function MarkdownPreview({ value }) {
-  return (
-    <div className="column-markdown-preview">
-      {value.trim() ? (
-        <ReactMarkdown
-          skipHtml
-          allowedElements={PREVIEW_ALLOWED}
-          urlTransform={(url, key) => {
-            if (key === 'src') return /^\/?uploads\/column\/[a-zA-Z0-9/_\-.]+$/.test(url) ? (url.startsWith('/') ? url : `/${url}`) : '';
-            return /^https?:\/\/[^\s]+$/i.test(url) ? url : '';
-          }}
-          components={{
-            h1: ({ children }) => <h2>{children}</h2>,
-            a: ({ href, children }) => href ? <a href={href} target="_blank" rel="noreferrer">{children}</a> : <span>{children}</span>,
-            img: ({ src, alt }) => src ? <img src={src} alt={alt || '文章配图'} /> : null,
-            code: ({ className, children, ...props }) => <code className={className} {...props}>{children}</code>,
-          }}
-        >
-          {value}
-        </ReactMarkdown>
-      ) : <p className="column-preview-empty">预览会显示在这里。</p>}
-    </div>
-  );
-}
-
-function insertAtSelection(textarea, value) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const next = textarea.value.slice(0, start) + value + textarea.value.slice(end);
-  textarea.value = next;
-  textarea.focus();
-  const cursor = start + value.length;
-  textarea.setSelectionRange(cursor, cursor);
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-function EditorToolbar({ textareaRef, onImage }) {
-  const commands = [
-    ['H2', (area) => insertAtSelection(area, '## 小标题\n\n')],
-    ['H3', (area) => insertAtSelection(area, '### 小标题\n\n')],
-    ['粗体', (area) => wrapSelection(area, '**', '**')],
-    ['斜体', (area) => wrapSelection(area, '*', '*')],
-    ['列表', (area) => insertAtSelection(area, '- 列表项\n- 列表项\n\n')],
-    ['引用', (area) => insertAtSelection(area, '> 引用内容\n\n')],
-    ['代码', (area) => wrapSelection(area, '`', '`')],
-    ['代码块', (area) => insertAtSelection(area, '```text\n代码\n```\n\n')],
-    ['链接', (area) => insertAtSelection(area, '[链接文字](https://example.com)')],
-    ['分隔线', (area) => insertAtSelection(area, '\n---\n\n')],
-  ];
-  return <div className="column-editor-toolbar" role="toolbar" aria-label="Markdown 工具栏">{commands.map(([label, action]) => <button key={label} type="button" title={label} onClick={() => action(textareaRef.current)}>{label}</button>)}<button type="button" title="插入图片" onClick={onImage}>图片</button></div>;
-}
-
-function wrapSelection(area, before, after) {
-  const start = area.selectionStart;
-  const end = area.selectionEnd;
-  const selected = area.value.slice(start, end) || '文字';
-  insertAtSelection(area, `${before}${selected}${after}`);
-  area.setSelectionRange(start + before.length, start + before.length + selected.length);
-}
-
-function AuthNotice({ text = '登录后才能进行编辑。' }) {
-  const target = `${window.location.pathname}${window.location.search}`.replace(/^\//, '');
-  return <PageState kind="muted" title="需要登录" message={text} action={<a className="column-button is-primary" href={`/login.html?redirect=${encodeURIComponent(target)}`}>去登录</a>} />;
-}
-
-function EditorPage({ id, bootstrap }) {
-  const user = bootstrap.user;
-  const [article, setArticle] = useState(null);
-  const [form, setForm] = useState({ title: '', summary: '', type: 'essay', club_membership_id: '', cover_path: '', body_markdown: '' });
-  const [mode, setMode] = useState('write');
-  const [status, setStatus] = useState({ kind: '', text: '' });
+function Composer({ user, clubs, placeholder, replyTo, quoted, onPosted, autoFocus = false, compact = false }) {
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState([]);
+  const [uploadToken, setUploadToken] = useState(() => makeUploadToken());
+  const [clubId, setClubId] = useState('');
+  const [clubMenuOpen, setClubMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const bodyRef = useRef(null);
-  const imageRef = useRef(null);
-  const coverRef = useRef(null);
-  useDocumentTitle(id ? '编辑文章' : '开始编辑');
+  const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+  const cropQueueRef = useRef([]);
+  const textareaRef = useRef(null);
+  const fileRef = useRef(null);
+  const clubRef = useRef(null);
+
+  const selectedClub = clubs.find((c) => String(c.membership_id) === String(clubId)) || null;
+
   useEffect(() => {
-    if (!user || !id) return undefined;
-    const controller = new AbortController();
-    apiRequest('mine', { query: { id }, signal: controller.signal }).then((data) => {
-      const next = data.article;
-      if (!next) throw new Error('文章不存在');
-      setArticle(next);
-      setForm({ title: next.title || '', summary: next.summary || '', type: next.type || 'essay', club_membership_id: next.club_membership_id || '', cover_path: next.cover_url || '', body_markdown: next.body_markdown || '' });
-      setDirty(false);
-    }).catch((reason) => { if (reason.name !== 'AbortError') setStatus({ kind: 'error', text: reason.message }); });
-    return () => controller.abort();
-  }, [user, id]);
-  useEffect(() => {
-    const leave = (event) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
-    window.addEventListener('beforeunload', leave);
-    return () => window.removeEventListener('beforeunload', leave);
-  }, [dirty]);
-  if (!user) return <div className="column-page column-editor-page"><section className="column-page-heading"><p className="column-eyebrow">VNFEST / EDIT</p><h1>开始编辑</h1></section><AuthNotice /></div>;
-  if (id && status.kind === 'error' && !article) return <div className="column-page column-editor-page"><PageState kind="error" title="文章无法读取" message={status.text} action={<Link to="/column/my/" className="column-button is-primary">返回我的文章</Link>} /></div>;
-  const update = (key, value) => { setForm((current) => ({ ...current, [key]: value })); setDirty(true); setStatus({ kind: '', text: '' }); };
-  const requestImage = () => imageRef.current?.click();
-  const requestCover = () => coverRef.current?.click();
-  const upload = async (file, isCover = false) => {
-    if (!file) return;
-    const data = new FormData();
-    data.append('image', file);
-    data.append('upload_token', form.upload_token || `column-${Math.random().toString(36).slice(2, 14)}`);
-    try {
-      setStatus({ kind: '', text: '图片上传中…' });
-      const url = new URL(API_URL, window.location.origin);
-      url.searchParams.set('action', 'upload_image');
-      const response = await fetch(url, { method: 'POST', credentials: 'same-origin', body: data });
-      const payload = await response.json();
-      if (!response.ok || payload.success === false) throw new Error(payload.error?.message || payload.message || '图片上传失败');
-      const result = payload.data;
-      setForm((current) => ({ ...current, upload_token: result.upload_token, ...(isCover ? { cover_path: result.attachment.relative_path } : {}) }));
-      if (!isCover && bodyRef.current) insertAtSelection(bodyRef.current, `![${file.name}](${result.attachment.url})`);
-      setDirty(true);
-      setStatus({ kind: 'success', text: '图片已上传' });
-    } catch (error) {
-      setStatus({ kind: 'error', text: error.message || '图片上传失败' });
-    }
+    if (!clubMenuOpen) return undefined;
+    const close = (e) => { if (clubRef.current && !clubRef.current.contains(e.target)) setClubMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [clubMenuOpen]);
+
+  const pickClub = (id) => {
+    setClubId(id === '' ? '' : id);
+    setClubMenuOpen(false);
   };
-  const save = async (action) => {
-    if (!form.title.trim() || !form.body_markdown.trim()) { setStatus({ kind: 'error', text: '请先填写标题和正文' }); return; }
-    setBusy(true);
-    setStatus({ kind: '', text: action === 'publish' ? '发布中…' : '保存中…' });
+
+  const remaining = CONTENT_MAX - [...content].length;
+  const canPublish = !busy && remaining >= 0 && (content.trim() !== '' || images.length > 0);
+
+  const resize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(compact ? 44 : 52, el.scrollHeight)}px`;
+  }, [compact]);
+
+  useEffect(() => { resize(); }, [content, resize]);
+  useEffect(() => { if (autoFocus && textareaRef.current) textareaRef.current.focus(); }, [autoFocus]);
+
+  const uploadImageFile = async (file) => {
+    const form = new FormData();
+    form.append('image', file);
+    form.append('upload_token', uploadToken);
+    const res = await fetch(IMAGES_API, { method: 'POST', credentials: 'same-origin', body: form });
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success) {
+      showToast((data && data.error && data.error.message) || '图片上传失败', 'warn');
+      return;
+    }
+    const att = data.data.attachment;
+    setImages((prev) => [...prev, { id: att.id, url: att.url, path: att.relative_path }]);
+  };
+
+  const processCropQueue = () => {
+    const file = cropQueueRef.current.shift();
+    if (!file) {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    if (file.type === 'image/gif') {
+      // GIF 裁剪会丢失动画，直接上传原图
+      setUploading(true);
+      uploadImageFile(file).finally(processCropQueue);
+      return;
+    }
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const pickFiles = (files) => {
+    if (!files || !files.length) return;
+    const room = IMAGES_MAX - images.length;
+    if (room <= 0) { showToast(`一条动态最多 ${IMAGES_MAX} 张图片`, 'warn'); return; }
+    setUploading(true);
+    cropQueueRef.current = Array.from(files).slice(0, room);
+    processCropQueue();
+  };
+
+  const removeImage = async (item) => {
+    setImages((prev) => prev.filter((x) => x.id !== item.id));
     try {
-      const data = await apiRequest(action, { method: 'POST', body: { id: id ? Number(id) : undefined, title: form.title.trim(), summary: form.summary.trim(), type: form.type, club_membership_id: form.club_membership_id || 0, cover_path: form.cover_path, body_markdown: form.body_markdown, upload_token: form.upload_token || '' } });
-      const next = data.article;
-      setArticle(next);
-      setForm((current) => ({ ...current, ...next, type: next.type || current.type, cover_path: next.cover_url || '', body_markdown: next.body_markdown || current.body_markdown }));
-      setDirty(false);
-      setStatus({ kind: 'success', text: data.message || (action === 'publish' ? '文章已发布' : '草稿已保存') });
-      if (!id && next.id) navigate(action === 'publish' && next.path_key ? articleHref(next) : `/column/edit/${next.id}/`, true);
-      if (action === 'publish' && next.path_key) setTimeout(() => navigate(articleHref(next)), 350);
-    } catch (error) {
-      setStatus({ kind: 'error', text: error.message });
+      await fetch(`${IMAGES_API}?action=delete`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      });
+    } catch (e) { /* 未绑定前删除失败不阻塞 */ }
+  };
+
+  const publish = async () => {
+    if (!canPublish) return;
+    setBusy(true);
+    try {
+      await apiPost('create', {
+        content: content.trim(),
+        images: images.map((x) => x.path),
+        upload_token: images.length ? uploadToken : '',
+        club_membership_id: clubId || undefined,
+        reply_to_id: replyTo ? replyTo.id : undefined,
+        quoted_post_id: quoted ? quoted.id : undefined,
+      });
+      setContent('');
+      setImages([]);
+      setUploadToken(makeUploadToken());
+      showToast(replyTo ? '回复已发布' : quoted ? '转发已发布' : '动态已发布', 'ok');
+      if (onPosted) onPosted();
+    } catch (e) {
+      showToast(e.message || '发布失败', 'warn');
     } finally {
       setBusy(false);
     }
   };
-  const perform = async (action, message) => {
-    if (!article?.id) return;
-    if (!window.confirm(message)) return;
-    setBusy(true);
-    try {
-      const data = await apiRequest(action, { method: 'POST', body: { id: article.id } });
-      setStatus({ kind: 'success', text: data.message || '操作已完成' });
-      if (action === 'withdraw') setArticle((current) => ({ ...current, status: 'draft', published_at: null }));
-      if (action === 'delete') navigate('/column/my/');
-    } catch (error) {
-      setStatus({ kind: 'error', text: error.message });
-    } finally { setBusy(false); }
-  };
-  const editorStatus = article?.status === 'published' ? '已发布 · 修改会直接更新公开内容' : article?.status === 'hidden' ? '已隐藏 · 请联系管理员处理' : '草稿';
+
+  if (!user) {
+    return (
+      <div className="pt-composer pt-composer-guest">
+        <p>登录后即可发布动态、点赞和回复。</p>
+        <a className="pt-btn pt-btn-primary" href="/login.html">前往登录</a>
+      </div>
+    );
+  }
+
   return (
-    <div className="column-page column-editor-page">
-      <section className="column-editor-heading"><div><p className="column-eyebrow">VNFEST / EDIT</p><h1>{id ? '编辑文章' : '开始编辑'}</h1></div><span className="column-editor-status">{editorStatus}</span></section>
-      <section className="column-editor-workbench" aria-label="文章编辑工作台">
-        <div className="column-editor-fields">
-          <label className="column-editor-title-field">标题<input value={form.title} onChange={(event) => update('title', event.target.value)} maxLength={180} placeholder="输入文章标题" /></label>
-          <label>摘要 <span className="column-field-hint">可选</span><textarea value={form.summary} onChange={(event) => update('summary', event.target.value)} maxLength={1200} rows={2} placeholder="用一两句话介绍文章内容" /></label>
+    <div className={`pt-composer ${compact ? 'pt-composer-compact' : ''}`}>
+      {quoted && <QuoteCard post={quoted} compact />}
+      <div className="pt-composer-main">
+        <Avatar src={user.avatar_url} name={user.nickname} size={44} />
+        <div className="pt-composer-body">
+          <textarea
+            ref={textareaRef}
+            className="pt-composer-text"
+            placeholder={placeholder || '有什么新鲜事？'}
+            value={content}
+            maxLength={CONTENT_MAX + 40}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          {images.length > 0 && (
+            <div className="pt-composer-previews">
+              {images.map((item) => (
+                <div key={item.id} className="pt-preview">
+                  <img src={item.url} alt="" />
+                  <button type="button" className="pt-preview-remove" onClick={() => removeImage(item)} aria-label="移除图片">
+                    <Icon path={PATHS.close} size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="pt-composer-bar">
+            <button type="button" className="pt-icon-btn" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || images.length >= IMAGES_MAX} title="添加图片">
+              <Icon path={PATHS.image} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={(e) => pickFiles(e.target.files)} />
+            {clubs.length > 0 && (
+              <div className="pt-club-picker" ref={clubRef}>
+                <button
+                  type="button"
+                  className={`pt-club-btn ${clubId ? 'is-active' : ''}`}
+                  onClick={() => setClubMenuOpen(true)}
+                  title="关联同好会"
+                >
+                  <Icon path={PATHS.club} size={15} />
+                  <span>{selectedClub ? selectedClub.name : '关联同好会'}</span>
+                </button>
+                {clubMenuOpen && (
+                  <ClubPickerModal
+                    clubs={clubs}
+                    value={clubId}
+                    onPick={pickClub}
+                    onClose={() => setClubMenuOpen(false)}
+                  />
+                )}
+              </div>
+            )}
+            <div className="pt-composer-submit">
+              {content.length > 0 && <CharRing count={[...content].length} max={CONTENT_MAX} />}
+              <button type="button" className="pt-btn pt-btn-primary" onClick={publish} disabled={!canPublish}>
+                {busy ? '发布中…' : replyTo ? '回复' : quoted ? '转发' : '发布'}
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="column-editor-meta-fields">
-          <label>文章类型<select value={form.type} onChange={(event) => update('type', event.target.value)}><TypeOptions types={bootstrap.types} includeAll={false} /></select></label>
-          <label>同好会归属 <span className="column-field-hint">可选</span><select value={form.club_membership_id} onChange={(event) => update('club_membership_id', event.target.value)}><option value="">不添加</option>{(bootstrap.clubs || []).map((club) => <option key={club.membership_id} value={club.membership_id}>{club.name}</option>)}</select></label>
-          <div className="column-cover-field"><span>封面 <span className="column-field-hint">可选</span></span><div className="column-cover-upload"><div className="column-cover-mini">{form.cover_path ? <img src={form.cover_path.startsWith('/') ? form.cover_path : `/${form.cover_path}`} alt="封面预览" /> : <span>无封面</span>}</div><button className="column-button" type="button" onClick={requestCover}>上传封面</button></div><input ref={coverRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden onChange={(event) => upload(event.target.files?.[0], true)} /></div>
-        </div>
-        <div className="column-editor-switch" role="tablist" aria-label="编辑模式"><button type="button" role="tab" aria-selected={mode === 'write'} className={mode === 'write' ? 'is-active' : ''} onClick={() => setMode('write')}>写作</button><button type="button" role="tab" aria-selected={mode === 'preview'} className={mode === 'preview' ? 'is-active' : ''} onClick={() => setMode('preview')}>预览</button></div>
-        {mode === 'write' ? <><EditorToolbar textareaRef={bodyRef} onImage={requestImage} /><textarea ref={bodyRef} className="column-markdown-editor" value={form.body_markdown} onChange={(event) => update('body_markdown', event.target.value)} onKeyDown={(event) => { if (event.key === 'Tab') { event.preventDefault(); insertAtSelection(event.currentTarget, '  '); } }} placeholder="从这里开始编辑正文……" aria-label="Markdown 正文编辑区" /><input ref={imageRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden onChange={(event) => upload(event.target.files?.[0])} /><p className="column-editor-help">支持标题、列表、引用、代码、HTTP(S) 链接和专栏附件图片。</p></> : <MarkdownPreview value={form.body_markdown} />}
-        <div className="column-editor-footer"><span className={`column-editor-feedback is-${status.kind || 'muted'}`} aria-live="polite">{status.text || (dirty ? '有未保存的修改' : '已保存')}</span><div className="column-editor-actions"><Link to="/column/my/" className="column-button" onClick={(event) => { if (dirty && !window.confirm('还有未保存的修改，确定离开吗？')) event.preventDefault(); }}>返回我的文章</Link><button className="column-button" type="button" onClick={() => save(article?.status === 'published' ? 'update' : 'save_draft')} disabled={busy}>{article?.status === 'published' ? '保存修改' : '保存草稿'}</button><button className="column-button is-primary" type="button" onClick={() => save('publish')} disabled={busy}>发布文章</button>{article?.status === 'published' ? <button className="column-button is-quiet" type="button" onClick={() => perform('withdraw', '确定撤回这篇文章吗？') } disabled={busy}>撤回</button> : null}{article?.id && article.status !== 'deleted' ? <button className="column-button is-danger" type="button" onClick={() => perform('delete', '确定删除这篇文章吗？') } disabled={busy}>删除</button> : null}</div></div>
-      </section>
+      </div>
+      {cropSrc && (
+        <CropModal
+          src={cropSrc}
+          title="裁剪动态图片"
+          onCropped={(blob) => {
+            setCropSrc(null);
+            setUploading(true);
+            const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' });
+            uploadImageFile(file).finally(processCropQueue);
+          }}
+          onCancel={() => {
+            setCropSrc(null);
+            URL.revokeObjectURL(cropSrc);
+            processCropQueue();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function StatusChip({ status }) {
-  return <span className={`column-status-chip is-${status}`}>{STATUS_LABELS[status] || status}</span>;
+// ---------------------------------------------------------------- quote card
+
+function QuoteCard({ post, compact = false }) {
+  if (!post) return null;
+  return (
+    <div className={`pt-quote ${compact ? 'pt-quote-compact' : ''}`}>
+      <div className="pt-quote-head">
+        <Avatar src={post.author.avatar_url} name={post.author.nickname} size={20} />
+        <span className="pt-name">{post.author.nickname}</span>
+        <span className="pt-handle">{post.author.handle}</span>
+        <span className="pt-dot">·</span>
+        <span className="pt-time">{relTime(post.created_at)}</span>
+      </div>
+      <div className="pt-quote-text">{post.content}</div>
+      {post.images.length > 0 && !compact && (
+        <div className={`pt-imggrid pt-imggrid-${Math.min(post.images.length, 4)}`}>
+          {post.images.slice(0, 4).map((src) => (
+            <div key={src} className="pt-imgcell"><img src={src} alt="" loading="lazy" /></div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function MyArticlesPage({ bootstrap }) {
-  const [filter, setFilter] = useState('');
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
-  useDocumentTitle('我的文章');
-  useEffect(() => {
-    if (!bootstrap.user) return undefined;
-    const controller = new AbortController();
-    setData(null);
-    apiRequest('mine', { query: { status: filter }, signal: controller.signal }).then(setData).catch((reason) => { if (reason.name !== 'AbortError') setError(reason); });
-    return () => controller.abort();
-  }, [bootstrap.user, filter]);
-  if (!bootstrap.user) return <div className="column-page column-management-page"><section className="column-page-heading"><p className="column-eyebrow">VNFEST / ARTICLES</p><h1>我的文章</h1></section><AuthNotice /></div>;
-  return <div className="column-page column-management-page"><section className="column-page-heading"><p className="column-eyebrow">VNFEST / ARTICLES</p><h1>我的文章</h1><p>查看草稿、已发布和已撤回的文章。</p></section><div className="column-management-toolbar"><select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="文章状态"><option value="">全部状态</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><Link to="/column/edit/" className="column-button is-primary">开始编辑</Link></div>{error ? <PageState kind="error" title="文章列表暂时无法加载" message={error.message} /> : data ? (data.articles?.length ? <div className="column-management-list">{data.articles.map((article) => <article className="column-management-row" key={article.id}><div><div className="column-management-row-meta"><StatusChip status={article.status} /><ArticleMeta article={article} compact /></div><h2><Link to={articleHref(article)}>{article.title || '未命名文章'}</Link></h2><p>{article.summary || article.excerpt || '没有摘要。'}</p></div><Link to={articleHref(article)} className="column-button">{article.status === 'published' ? '查看文章' : '编辑'}</Link></article>)}</div> : <PageState title="暂时没有文章" message="开始编辑一篇文章，它会显示在这里。" action={<Link to="/column/edit/" className="column-button is-primary">开始编辑</Link>} />) : <div className="column-loading-list"><span /><span /><span /></div>}</div>;
+// ---------------------------------------------------------------- post card
+
+function PostActions({ post, user, onLike, onQuote, onReply }) {
+  return (
+    <div className="pt-actions">
+      <button type="button" className="pt-action pt-action-reply" onClick={onReply} title="回复">
+        <Icon path={PATHS.reply} size={17} />
+        <span>{post.reply_count > 0 ? post.reply_count : ''}</span>
+      </button>
+      <button type="button" className="pt-action pt-action-repost" onClick={onQuote} title="引用转发" disabled={!user}>
+        <Icon path={PATHS.repost} size={17} />
+        <span>{post.repost_count > 0 ? post.repost_count : ''}</span>
+      </button>
+      <button
+        type="button"
+        className={`pt-action pt-action-like ${post.liked ? 'is-liked' : ''}`}
+        onClick={onLike}
+        title={post.liked ? '取消点赞' : '点赞'}
+        disabled={!user}
+      >
+        <Icon path={PATHS.heart} size={17} filled={post.liked} />
+        <span>{post.like_count > 0 ? post.like_count : ''}</span>
+      </button>
+    </div>
+  );
 }
 
-function AdminPage({ bootstrap }) {
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [data, setData] = useState(null);
-  const [notice, setNotice] = useState(null);
-  useDocumentTitle('管理文章');
-  const load = () => apiRequest('admin', { query: { q: query.trim(), status, per_page: 30 } }).then(setData).catch((error) => setNotice({ kind: 'error', text: error.message }));
-  useEffect(() => { if (bootstrap.user?.can_manage) load(); }, [bootstrap.user]);
-  if (!bootstrap.user) return <div className="column-page column-admin-page"><section className="column-page-heading"><p className="column-eyebrow">VNFEST / ADMIN</p><h1>管理文章</h1></section><AuthNotice /></div>;
-  if (!bootstrap.user.can_manage) return <div className="column-page column-admin-page"><PageState kind="muted" title="没有管理权限" message="只有管理员可以查看专栏管理页面。" /></div>;
-  const update = async (article, nextStatus, rank) => {
-    try { await apiRequest('moderate_article', { method: 'POST', body: { id: article.id, status: nextStatus, featured_rank: rank } }); setNotice({ kind: 'success', text: '文章状态已更新' }); load(); } catch (error) { setNotice({ kind: 'error', text: error.message }); }
+function PostCard({ post, user, onChanged, onOpen, onQuote, lightbox, onOpenUser }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  const openAuthor = (e) => {
+    e.stopPropagation();
+    if (onOpenUser && post.author && post.author.username) onOpenUser(post.author.username);
   };
-  return <div className="column-page column-admin-page"><section className="column-page-heading"><p className="column-eyebrow">VNFEST / ADMIN</p><h1>管理文章</h1><p>处理文章状态和首页精选顺序。</p></section><form className="column-admin-filter" onSubmit={(event) => { event.preventDefault(); load(); }}><input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索标题、摘要或作者" /><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">全部状态</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className="column-button is-primary" type="submit">筛选</button></form>{notice ? <div className={`column-system-notice is-${notice.kind}`} role="status">{notice.text}</div> : null}{data ? (data.articles?.length ? <div className="column-admin-list">{data.articles.map((article) => <article className="column-admin-row" key={article.id}><div><div className="column-management-row-meta"><StatusChip status={article.status} /><ArticleMeta article={article} compact /></div><h2><Link to={articleHref(article)}>{article.title || '未命名文章'}</Link></h2><p>{article.summary || article.excerpt || '没有摘要。'}</p></div><div className="column-admin-controls"><label>状态<select defaultValue={article.status} onChange={(event) => update(article, event.target.value, article.featured_rank ?? '')}>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>精选位次<input type="number" min="0" defaultValue={article.featured_rank ?? ''} onBlur={(event) => update(article, article.status, event.target.value)} placeholder="不精选" /></label></div></article>)}</div> : <PageState title="暂时没有文章" message="没有符合条件的文章。" />) : <div className="column-loading-list"><span /><span /><span /></div>}</div>;
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
+
+  const like = async (e) => {
+    e.stopPropagation();
+    if (!user) { showToast('请先登录后再点赞', 'warn'); return; }
+    const action = post.liked ? 'unlike' : 'like';
+    try {
+      const data = await apiPost(action, { id: post.id });
+      onChanged({ ...post, liked: !!data.liked, like_count: data.like_count });
+    } catch (err) {
+      showToast(err.message || '操作失败', 'warn');
+    }
+  };
+
+  const copyLink = async (e) => {
+    e.stopPropagation();
+    const url = `${location.origin}/column/post/${post.id}/`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('链接已复制', 'ok');
+    } catch (err) {
+      showToast('复制失败', 'warn');
+    }
+    setMenuOpen(false);
+  };
+
+  const remove = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm('确定删除这条动态吗？删除后不可恢复。')) { setMenuOpen(false); return; }
+    setMenuOpen(false);
+    try {
+      await apiPost('delete', { id: post.id });
+      showToast('动态已删除', 'ok');
+      onChanged(null);
+    } catch (err) {
+      showToast(err.message || '删除失败', 'warn');
+    }
+  };
+
+  const openQuote = (e) => { e.stopPropagation(); if (onQuote) onQuote(post.quoted_post); };
+
+  return (
+    <article
+      className="pt-post"
+      onClick={() => onOpen && onOpen(post)}
+    >
+      <span className="pt-avatar-link" onClick={openAuthor} role="button" tabIndex={-1} aria-label="查看个人空间">
+        <Avatar src={post.author.avatar_url} name={post.author.nickname} size={48} />
+      </span>
+      <div className="pt-post-main">
+        <div className="pt-post-head">
+          <span className="pt-name pt-clickable" onClick={openAuthor}>{post.author.nickname}</span>
+          <span className="pt-handle pt-clickable" onClick={openAuthor}>{post.author.handle}</span>
+          {post.club && <span className="pt-club-badge" title={`同好会 · ${post.club.name}`}>{post.club.name}</span>}
+          <span className="pt-dot">·</span>
+          <span className="pt-time" title={fullTime(post.created_at)}>{relTime(post.created_at)}</span>
+          <div className="pt-post-menu" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="pt-icon-btn" onClick={() => setMenuOpen((v) => !v)} aria-label="更多">
+              <Icon path={PATHS.more} size={16} />
+            </button>
+            {menuOpen && (
+              <div className="pt-menu">
+                <button type="button" onClick={copyLink}><Icon path={PATHS.link} size={15} />复制链接</button>
+                {post.capabilities.delete && (
+                  <button type="button" className="pt-menu-danger" onClick={remove}><Icon path={PATHS.trash} size={15} />删除</button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="pt-post-text">
+          {linkify(post.content).map((part, i) => part.type === 'link'
+            ? <a key={i} href={part.value} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{part.value}</a>
+            : <span key={i}>{part.value}</span>)}
+        </div>
+        {post.images.length > 0 && (
+          <div className={`pt-imggrid pt-imggrid-${Math.min(post.images.length, 4)}`}>
+            {post.images.slice(0, 4).map((src, i) => (
+              <div
+                key={src}
+                className="pt-imgcell"
+                onClick={(e) => { e.stopPropagation(); if (lightbox) lightbox(post.images, i); }}
+              >
+                <img src={src} alt="" loading="lazy" />
+              </div>
+            ))}
+          </div>
+        )}
+        {post.quoted_post_id && (
+          post.quoted_post
+            ? <div className="pt-quote-wrap" onClick={openQuote}><QuoteCard post={post.quoted_post} /></div>
+            : <div className="pt-quote pt-quote-deleted">引用的动态已被删除</div>
+        )}
+        <PostActions
+          post={post}
+          user={user}
+          onLike={like}
+          onQuote={(e) => { e.stopPropagation(); if (onQuote) onQuote(post); }}
+          onReply={(e) => { e.stopPropagation(); if (onOpen) onOpen(post); }}
+        />
+      </div>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------- lightbox
+
+function Lightbox({ state }) {
+  if (!state) return null;
+  const { images, index, onClose } = state;
+  return (
+    <div className="pt-lightbox" onClick={onClose} role="dialog" aria-modal="true">
+      <button type="button" className="pt-lightbox-close" aria-label="关闭" onClick={onClose}><Icon path={PATHS.close} size={22} /></button>
+      <img src={images[index]} alt="" onClick={(e) => e.stopPropagation()} />
+      {images.length > 1 && (
+        <div className="pt-lightbox-count">{index + 1} / {images.length}</div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- feed hook
+
+function useCursorFeed(fetcher, deps) {
+  const [posts, setPosts] = useState([]);
+  const [nextBeforeId, setNextBeforeId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const sentinelRef = useRef(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await fetcher();
+      setPosts(data.posts);
+      setNextBeforeId(data.next_before_id);
+    } catch (e) {
+      setError(e.message || '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetcher]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || nextBeforeId === null || loading) return;
+    setLoadingMore(true);
+    try {
+      const data = await fetcher(nextBeforeId);
+      setPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...data.posts.filter((p) => !seen.has(p.id))];
+      });
+      setNextBeforeId(data.next_before_id);
+    } catch (e) {
+      showToast(e.message || '加载更多失败', 'warn');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [fetcher, loadingMore, nextBeforeId, loading]);
+
+  useEffect(() => { load(); }, deps || [load]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: '600px 0px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  const updatePost = useCallback((updated) => {
+    if (!updated) return;
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }, []);
+
+  const removePost = useCallback((id) => {
+    setPosts((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  return { posts, nextBeforeId, loading, loadingMore, error, sentinelRef, load, updatePost, removePost };
+}
+
+function FeedPage({ user, clubs, refreshKey, onQuote, lightbox, navigate, onOpenUser }) {
+  const [tab, setTab] = useState('all'); // all | following
+  const fetcher = useCallback(
+    (beforeId) => apiGet('feed', { before_id: beforeId, limit: 20, scope: tab === 'following' ? 'following' : '' }),
+    [tab]
+  );
+  const feed = useCursorFeed(fetcher, [refreshKey, tab]);
+
+  const openPost = (post) => navigate(`/column/post/${post.id}/`);
+
+  return (
+    <div className="pt-page">
+      <div className="pt-tabs">
+        <button type="button" className={`pt-tab ${tab === 'all' ? 'is-active' : ''}`} onClick={() => setTab('all')}>
+          为你推荐
+        </button>
+        <button type="button" className={`pt-tab ${tab === 'following' ? 'is-active' : ''}`} onClick={() => setTab('following')}>
+          关注
+        </button>
+      </div>
+      <Composer user={user} clubs={clubs} onPosted={() => feed.load()} />
+      <PostList
+        posts={feed.posts}
+        user={user}
+        onChanged={feed.updatePost}
+        onOpen={openPost}
+        onQuote={onQuote}
+        lightbox={lightbox}
+        onOpenUser={onOpenUser}
+        loading={feed.loading}
+        error={feed.error}
+        emptyText={tab === 'following' ? '关注一些用户后，这里会显示他们的动态' : '还没有动态，来发第一条吧！'}
+      />
+      <div ref={feed.sentinelRef} className="pt-sentinel">
+        {feed.loadingMore && <span>加载中…</span>}
+        {!feed.loadingMore && !feed.loading && feed.nextBeforeId === null && feed.posts.length > 0 && <span>已经到底啦</span>}
+      </div>
+    </div>
+  );
+}
+
+function PostList({ posts, user, onChanged, onOpen, onQuote, lightbox, onOpenUser, loading, error, emptyText }) {
+  if (loading) return <div className="pt-empty">加载中…</div>;
+  if (error) return <div className="pt-empty pt-empty-error">{error}</div>;
+  if (!posts.length) return <div className="pt-empty">{emptyText || '暂时没有内容'}</div>;
+  return (
+    <>
+      {posts.map((post) => (
+        <PostCard
+          key={post.id}
+          post={post}
+          user={user}
+          onChanged={onChanged}
+          onOpen={onOpen}
+          onQuote={onQuote}
+          lightbox={lightbox}
+          onOpenUser={onOpenUser}
+        />
+      ))}
+    </>
+  );
+}
+
+function DetailPage({ id, user, clubs, refreshKey, onQuote, lightbox, navigate, onOpenUser }) {
+  const [post, setPost] = useState(null);
+  const [replies, setReplies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiGet('detail', { id });
+      setPost(data.post);
+      setReplies(data.replies || []);
+    } catch (e) {
+      setError(e.message || '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  if (loading) return <div className="pt-empty">加载中…</div>;
+  if (error || !post) return <div className="pt-empty pt-empty-error">{error || '动态不存在'}</div>;
+
+  const likeMain = async (updated) => setPost(updated);
+  const openPost = (p) => navigate(`/column/post/${p.id}/`);
+
+  return (
+    <div className="pt-page">
+      {post.reply_to_post && (
+        <div className="pt-detail-parent">
+          <PostCard post={post.reply_to_post} user={user} onChanged={() => {}} onOpen={openPost} onQuote={onQuote} lightbox={lightbox} onOpenUser={onOpenUser} />
+        </div>
+      )}
+      <PostCard post={post} user={user} onChanged={likeMain} onOpen={null} onQuote={onQuote} lightbox={lightbox} onOpenUser={onOpenUser} />
+      <div className="pt-detail-meta">
+        <span>{fullTime(post.created_at)}</span>
+        <span>·</span>
+        <span>{post.reply_count} 条回复</span>
+      </div>
+      <Composer user={user} clubs={clubs} replyTo={post} autoFocus onPosted={load} placeholder={`回复 @${post.author.username}`} />
+      {replies.length ? (
+        replies.map((reply) => (
+          <PostCard
+            key={reply.id}
+            post={reply}
+            user={user}
+            onChanged={(updated) => setReplies((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+            onOpen={openPost}
+            onQuote={onQuote}
+            lightbox={lightbox}
+            onOpenUser={onOpenUser}
+          />
+        ))
+      ) : (
+        <div className="pt-empty">还没有回复</div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- follow & profile
+
+function FollowButton({ viewer, targetId, isFollowing, onChange, small = false }) {
+  const [busy, setBusy] = useState(false);
+  if (!viewer) {
+    return (
+      <a className="pt-btn pt-btn-primary pt-btn-sm" href="/login.html" onClick={(e) => { e.stopPropagation(); }}>关注</a>
+    );
+  }
+  const toggle = async (e) => {
+    e.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const data = await apiPost(isFollowing ? 'unfollow' : 'follow', { id: targetId });
+      onChange && onChange(!!data.following, data.followers);
+    } catch (err) {
+      showToast(err.message || '操作失败', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      className={`pt-follow-btn ${isFollowing ? 'is-following' : 'is-not-following'} ${small ? 'pt-follow-btn-sm' : ''} ${busy ? 'is-busy' : ''}`}
+      onClick={toggle}
+    >
+      {isFollowing ? '已关注' : '关注'}
+    </button>
+  );
+}
+
+function ProfilePage({ username, viewer, refreshKey, onQuote, lightbox, navigate, onOpenUser, onBump }) {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [tab, setTab] = useState('posts');
+
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiGet('profile', { username });
+      setProfile(data.user);
+    } catch (e) {
+      setError(e.message || '加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [username]);
+
+  useEffect(() => { loadProfile(); }, [loadProfile, refreshKey]);
+
+  const fetcher = useCallback(
+    (beforeId) => apiGet('user_timeline', { username, tab, before_id: beforeId, limit: 20 }),
+    [username, tab]
+  );
+  const feed = useCursorFeed(fetcher, [refreshKey, tab, profile && profile.id]);
+
+  const joinDate = useMemo(() => {
+    if (!profile || !profile.created_at) return '';
+    const d = new Date(String(profile.created_at).replace(' ', 'T'));
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}年${d.getMonth() + 1}月加入`;
+  }, [profile]);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [followListType, setFollowListType] = useState(null); // 'following' | 'followers'
+  if (loading && !profile) return <div className="pt-empty">加载中…</div>;
+  if (error || !profile) return <div className="pt-empty pt-empty-error">{error || '用户不存在'}</div>;
+
+  const updateFollow = (following) => {
+    setProfile((prev) => ({
+      ...prev,
+      is_following: following,
+      stats: { ...prev.stats, followers: prev.stats.followers + (following ? 1 : -1) },
+    }));
+  };
+
+  const openPost = (p) => navigate(`/column/post/${p.id}/`);
+
+  return (
+    <div className="pt-page pt-profile">
+      <div
+        className={`pt-profile-banner ${profile.banner_url ? 'has-image' : ''}`}
+        style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined}
+        aria-hidden="true"
+      />
+      <div className="pt-profile-head">
+        <span className="pt-profile-avatar">
+          <Avatar src={profile.avatar_url} name={profile.nickname} size={80} />
+        </span>
+        <div className="pt-profile-actions">
+          {profile.is_self
+            ? <button type="button" className="pt-follow-btn is-editing" onClick={() => setEditOpen(true)}>编辑资料</button>
+            : (
+              <span className="pt-profile-action-group">
+                {profile.is_friend && (
+                  <button type="button" className="pt-follow-btn is-following" onClick={() => navigate(`/column/messages/${profile.id}/`)}>发私信</button>
+                )}
+                <FollowButton viewer={viewer} targetId={profile.id} isFollowing={profile.is_following} onChange={updateFollow} />
+              </span>
+            )}
+        </div>
+        <div className="pt-profile-names">
+          <h1 className="pt-profile-name">{profile.nickname}</h1>
+          <span className="pt-handle">{profile.handle}</span>
+        </div>
+        {profile.bio && <p className="pt-profile-bio">{profile.bio}</p>}
+        <div className="pt-profile-meta">
+          {joinDate && (
+            <span className="pt-profile-joined">
+              <Icon path={PATHS.calendar} size={15} />
+              {joinDate}
+            </span>
+          )}
+        </div>
+        <div className="pt-profile-stats">
+          <button type="button" className="pt-profile-stat" onClick={() => setFollowListType('following')}>
+            <b>{profile.stats.following}</b> 正在关注
+          </button>
+          <button type="button" className="pt-profile-stat" onClick={() => setFollowListType('followers')}>
+            <b>{profile.stats.followers}</b> 关注者
+          </button>
+          <span className="pt-profile-stat"><b>{profile.stats.posts}</b> 动态</span>
+        </div>
+      </div>
+      <div className="pt-tabs">
+        <button type="button" className={`pt-tab ${tab === 'posts' ? 'is-active' : ''}`} onClick={() => setTab('posts')}>动态</button>
+        <button type="button" className={`pt-tab ${tab === 'replies' ? 'is-active' : ''}`} onClick={() => setTab('replies')}>回复</button>
+      </div>
+      <PostList
+        posts={feed.posts}
+        user={viewer}
+        onChanged={feed.updatePost}
+        onOpen={openPost}
+        onQuote={onQuote}
+        lightbox={lightbox}
+        onOpenUser={onOpenUser}
+        loading={feed.loading || (profile && !feed.posts.length && feed.loading)}
+        error={feed.error}
+        emptyText={tab === 'replies' ? '还没有发表过回复' : profile.is_self ? '你还没有发过动态' : 'TA 还没有发过动态'}
+      />
+      <div ref={feed.sentinelRef} className="pt-sentinel">
+        {feed.loadingMore && <span>加载中…</span>}
+        {!feed.loadingMore && !feed.loading && feed.nextBeforeId === null && feed.posts.length > 0 && <span>已经到底啦</span>}
+      </div>
+      {editOpen && (
+        <EditProfileModal
+          profile={profile}
+          onClose={() => setEditOpen(false)}
+          onSaved={(patch) => { setProfile((prev) => ({ ...prev, ...patch })); }}
+        />
+      )}
+      {followListType && (
+        <FollowListModal
+          username={profile.username}
+          type={followListType}
+          viewer={viewer}
+          onClose={() => setFollowListType(null)}
+          onOpenUser={onOpenUser}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- follow list modal
+
+function FollowListModal({ username, type, viewer, onClose, onOpenUser }) {
+  const [users, setUsers] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet('follow_list', { username, type })
+      .then((data) => { if (!cancelled) setUsers(data.users || []); })
+      .catch((e) => { if (!cancelled) setError(e.message || '加载失败'); });
+    return () => { cancelled = true; };
+  }, [username, type]);
+
+  const title = type === 'followers' ? '关注者' : '正在关注';
+
+  const updateFollow = (targetId, following) => {
+    setUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, is_following: following } : u)));
+  };
+
+  return (
+    <div className="pt-modal" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="pt-modal-panel pt-follow-list-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-modal-head">
+          <button type="button" className="pt-icon-btn" onClick={onClose} aria-label="关闭"><Icon path={PATHS.close} size={18} /></button>
+          <span>{title}</span>
+        </div>
+        {users === null ? (
+          <div className="pt-empty">加载中…</div>
+        ) : error ? (
+          <div className="pt-empty pt-empty-error">{error}</div>
+        ) : users.length ? (
+          <div className="pt-follow-list">
+            {users.map((u) => (
+              <div key={u.id} className="pt-side-user pt-follow-row">
+                <button type="button" className="pt-side-user-main" onClick={() => { onClose(); onOpenUser && onOpenUser(u.username); }}>
+                  <Avatar src={u.avatar_url} name={u.nickname} size={44} />
+                  <span className="pt-side-user-text">
+                    <span className="pt-name">{u.nickname}</span>
+                    <span className="pt-handle">{u.handle}</span>
+                    {u.bio && <span className="pt-search-user-bio">{u.bio}</span>}
+                  </span>
+                </button>
+                {(!viewer || viewer.id !== u.id) && (
+                  <FollowButton
+                    viewer={viewer}
+                    targetId={u.id}
+                    isFollowing={u.is_following}
+                    small
+                    onChange={(following) => updateFollow(u.id, following)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="pt-empty">{type === 'followers' ? '还没有人关注 TA' : 'TA 还没有关注任何人'}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- edit profile modal
+
+function EditProfileModal({ profile, onClose, onSaved }) {
+  const [nickname, setNickname] = useState(profile.nickname);
+  const [bio, setBio] = useState(profile.bio || '');
+  const [bannerUrl, setBannerUrl] = useState(profile.banner_url || '');
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    const close = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [onClose]);
+
+  const uploadBannerBlob = async (blob, filename) => {
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('image', new File([blob], filename, { type: 'image/jpeg' }));
+      const res = await fetch('/api/user_banner.php', { method: 'POST', credentials: 'same-origin', body: form });
+      const data = await res.json().catch(() => null);
+      if (!data || !data.success) throw new Error((data && data.error && data.error.message) || '横幅上传失败');
+      setBannerUrl(data.data.banner_url);
+      onSaved({ banner_url: data.data.banner_url });
+      showToast('横幅已更新', 'ok');
+    } catch (e) {
+      showToast(e.message || '横幅上传失败', 'warn');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const uploadBanner = async (file) => {
+    if (!file) return;
+    if (file.type === 'image/gif') { await uploadBannerBlob(file, 'banner.gif'); return; }
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const removeBanner = async () => {
+    try {
+      const res = await fetch('/api/user_banner.php?action=remove', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json().catch(() => null);
+      if (!data || !data.success) throw new Error('移除失败');
+      setBannerUrl('');
+      onSaved({ banner_url: '' });
+      showToast('横幅已移除', 'ok');
+    } catch (e) {
+      showToast(e.message || '移除失败', 'warn');
+    }
+  };
+
+  const save = async () => {
+    const nick = nickname.trim();
+    if (!nick) { showToast('昵称不能为空', 'warn'); return; }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/auth.php?action=update_profile', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: nick, profile_bio: bio.trim() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!data || !data.success) throw new Error((data && data.message) || '保存失败');
+      showToast('资料已保存', 'ok');
+      onSaved({ nickname: nick, bio: bio.trim() });
+      onClose();
+    } catch (e) {
+      showToast(e.message || '保存失败', 'warn');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="pt-modal" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="pt-modal-panel pt-edit-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-modal-head">
+          <button type="button" className="pt-icon-btn" onClick={onClose} aria-label="关闭"><Icon path={PATHS.close} size={18} /></button>
+          <span>编辑资料</span>
+        </div>
+        <div className="pt-edit-banner" style={bannerUrl ? { backgroundImage: `url(${bannerUrl})` } : undefined}>
+          <button type="button" className="pt-edit-banner-btn" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+            {uploading ? '上传中…' : '上传横幅图片'}
+          </button>
+          {bannerUrl && (
+            <button type="button" className="pt-edit-banner-btn is-danger" onClick={removeBanner}>移除</button>
+          )}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden onChange={(e) => uploadBanner(e.target.files && e.target.files[0])} />
+        </div>
+        {cropSrc && (
+          <CropModal
+            src={cropSrc}
+            aspectRatio={3}
+            outputWidth={1200}
+            outputHeight={400}
+            title="裁剪空间横幅"
+            onCropped={(blob) => {
+              setCropSrc(null);
+              uploadBannerBlob(blob, 'banner.jpg');
+            }}
+            onCancel={() => { setCropSrc(null); URL.revokeObjectURL(cropSrc); }}
+          />
+        )}
+        <label className="pt-edit-field">
+          <span className="pt-edit-label">昵称</span>
+          <input className="pt-edit-input" value={nickname} maxLength={30} onChange={(e) => setNickname(e.target.value)} />
+        </label>
+        <label className="pt-edit-field">
+          <span className="pt-edit-label">简介</span>
+          <textarea className="pt-edit-input pt-edit-bio" value={bio} maxLength={300} rows={3} placeholder="介绍一下你的同好会或自己…" onChange={(e) => setBio(e.target.value)} />
+          <span className="pt-edit-count">{[...bio].length}/300</span>
+        </label>
+        <div className="pt-edit-actions">
+          <button type="button" className="pt-follow-btn is-following" onClick={onClose}>取消</button>
+          <button type="button" className="pt-btn pt-btn-primary" onClick={save} disabled={saving || !nickname.trim()}>
+            {saving ? '保存中…' : '保存'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- search page
+
+function SearchPage({ query, viewer, navigate, onOpenUser }) {
+  const [input, setInput] = useState(query);
+  const [keyword, setKeyword] = useState(query);
+  const [tab, setTab] = useState('posts');
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  useEffect(() => { setInput(query); setKeyword(query); }, [query]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    const q = input.trim();
+    if (!q) return;
+    navigate(`/column/search/?q=${encodeURIComponent(q)}`);
+  };
+
+  useEffect(() => {
+    if (!keyword) { setUsers([]); return undefined; }
+    let cancelled = false;
+    setUsersLoading(true);
+    apiGet('search', { q: keyword })
+      .then((data) => { if (!cancelled) setUsers(data.users || []); })
+      .catch(() => { if (!cancelled) setUsers([]); })
+      .finally(() => { if (!cancelled) setUsersLoading(false); });
+    return () => { cancelled = true; };
+  }, [keyword]);
+
+  const fetcher = useCallback(
+    (beforeId) => apiGet('search', { q: keyword, before_id: beforeId, limit: 20 }),
+    [keyword]
+  );
+  const feed = useCursorFeed(fetcher, [keyword, tab]);
+
+  const updateFollow = (targetId, following) => {
+    setUsers((prev) => prev.map((u) => (u.id === targetId ? { ...u, is_following: following } : u)));
+  };
+
+  return (
+    <div className="pt-page">
+      <form className="pt-search-box" onSubmit={submit}>
+        <Icon path={PATHS.search} size={17} />
+        <input
+          value={input}
+          placeholder="搜索动态或用户"
+          onChange={(e) => setInput(e.target.value)}
+        />
+        {input && (
+          <button type="button" className="pt-icon-btn" onClick={() => setInput('')}>
+            <Icon path={PATHS.close} size={14} />
+          </button>
+        )}
+      </form>
+      {!keyword ? (
+        <div className="pt-empty">输入关键词搜索动态和用户</div>
+      ) : (
+        <div>
+          <div className="pt-tabs">
+            <button type="button" className={`pt-tab ${tab === 'posts' ? 'is-active' : ''}`} onClick={() => setTab('posts')}>动态</button>
+            <button type="button" className={`pt-tab ${tab === 'users' ? 'is-active' : ''}`} onClick={() => setTab('users')}>用户</button>
+          </div>
+          {tab === 'users' ? (
+            usersLoading ? <div className="pt-empty">加载中…</div> : (
+              users.length ? (
+                <div className="pt-search-users">
+                  {users.map((u) => (
+                    <div key={u.id} className="pt-side-user pt-search-user">
+                      <button type="button" className="pt-side-user-main" onClick={() => onOpenUser && onOpenUser(u.username)}>
+                        <Avatar src={u.avatar_url} name={u.nickname} size={44} />
+                        <span className="pt-side-user-text">
+                          <span className="pt-name">{u.nickname}</span>
+                          <span className="pt-handle">{u.handle}</span>
+                          {u.bio && <span className="pt-search-user-bio">{u.bio}</span>}
+                        </span>
+                      </button>
+                      {(!viewer || viewer.id !== u.id) && (
+                        <span className="pt-user-actions">
+                          {u.is_friend && (
+                            <button type="button" className="pt-icon-btn pt-dm-btn" title="发私信" onClick={() => navigate(`/column/messages/${u.id}/`)}>
+                              <Icon path={PATHS.message} size={16} />
+                            </button>
+                          )}
+                          <FollowButton
+                            viewer={viewer}
+                            targetId={u.id}
+                            isFollowing={u.is_following}
+                            small
+                            onChange={(following) => updateFollow(u.id, following)}
+                          />
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="pt-empty">没有找到相关用户</div>
+            )
+          ) : (
+            <div>
+              <PostList
+                posts={feed.posts}
+                user={viewer}
+                onChanged={feed.updatePost}
+                onOpen={(p) => navigate(`/column/post/${p.id}/`)}
+                onQuote={() => {}}
+                lightbox={null}
+                onOpenUser={onOpenUser}
+                loading={feed.loading}
+                error={feed.error}
+                emptyText="没有找到相关动态"
+              />
+              <div ref={feed.sentinelRef} className="pt-sentinel">
+                {feed.loadingMore && <span>加载中…</span>}
+                {!feed.loadingMore && !feed.loading && feed.nextBeforeId === null && feed.posts.length > 0 && <span>已经到底啦</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- layout
+
+function LeftNav({ user, route, navigate, onCompose, dmUnread = 0 }) {
+  const profilePath = user ? `/column/user/${encodeURIComponent(user.username)}/` : '/column/my/';
+  const items = [
+    { key: 'feed', label: '首页', icon: PATHS.home, path: '/column/' },
+    { key: 'search', label: '搜索', icon: PATHS.search, path: '/column/search/' },
+    { key: 'messages', label: '消息', icon: PATHS.message, path: '/column/messages/', badge: dmUnread },
+    { key: 'user', label: '个人空间', icon: PATHS.profile, path: profilePath },
+  ];
+  return (
+    <nav className="pt-leftnav">
+      <div className="pt-leftnav-scroll">
+        <a className="pt-logo" href="/index.html" title="返回地图">
+          <Icon path={PATHS.feather} size={26} />
+        </a>
+        <div className="pt-nav-items">
+          {items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`pt-nav-item ${route === item.key ? 'is-active' : ''}`}
+              onClick={() => navigate(item.path)}
+            >
+              <span className="pt-nav-icon-wrap">
+                <Icon path={item.icon} size={22} />
+                {item.badge > 0 && <span className="pt-nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}
+              </span>
+              <span className="pt-nav-label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="pt-btn pt-btn-primary pt-btn-compose" onClick={onCompose}>
+          <span className="pt-nav-label">发动态</span>
+          <Icon path={PATHS.feather} size={18} className="pt-compose-icon" />
+        </button>
+      </div>
+      {user && (
+        <button type="button" className="pt-userchip" onClick={() => navigate(profilePath)} title={user.handle}>
+          <Avatar src={user.avatar_url} name={user.nickname} size={38} />
+          <span className="pt-userchip-text">
+            <span className="pt-name">{user.nickname}</span>
+            <span className="pt-handle">{user.handle}</span>
+          </span>
+        </button>
+      )}
+    </nav>
+  );
+}
+
+function ColumnHeader({ title, showBack, indexOnly = false, navigate }) {
+  return (
+    <div className={`pt-col-header ${indexOnly ? 'pt-col-header-index' : ''}`}>
+      {showBack && (
+        <button type="button" className="pt-icon-btn" onClick={() => navigate('/column/')} aria-label="返回">
+          <Icon path={PATHS.back} size={19} />
+        </button>
+      )}
+      <span className="pt-col-title">{title}</span>
+    </div>
+  );
+}
+
+function MobileBottomNav({ route, navigate, onCompose, user, dmUnread = 0 }) {
+  const profilePath = user ? `/column/user/${encodeURIComponent(user.username)}/` : '/column/my/';
+  const items = [
+    { key: 'feed', label: '首页', icon: PATHS.home, path: '/column/' },
+    { key: 'search', label: '搜索', icon: PATHS.search, path: '/column/search/' },
+    { key: 'messages', label: '消息', icon: PATHS.message, path: '/column/messages/', badge: dmUnread },
+    { key: 'user', label: '空间', icon: PATHS.profile, path: profilePath },
+  ];
+  return (
+    <nav className="pt-bottomnav">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={`pt-bottomnav-item ${route === item.key ? 'is-active' : ''}`}
+          onClick={() => navigate(item.path)}
+        >
+          <span className="pt-nav-icon-wrap">
+            <Icon path={item.icon} size={22} />
+            {item.badge > 0 && <span className="pt-nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}
+          </span>
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function RightSidebar({ user, navigate, onOpenUser }) {
+  const [suggested, setSuggested] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    apiGet('suggested')
+      .then((data) => { if (!cancelled) setSuggested(data.users || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user && user.id]);
+
+  const updateFollow = (targetId, following) => {
+    setSuggested((prev) => prev.map((u) => (u.id === targetId ? { ...u, is_following: following } : u)));
+  };
+
+  return (
+    <aside className="pt-right">
+      <div className="pt-side-card">
+        <h3 className="pt-side-title">同好会动态</h3>
+        <p className="pt-side-desc">这里是 VNFest 同好会分享活动日常的地方。发布动态时可以选择署名你所在的同好会。</p>
+        <div className="pt-side-links">
+          <a href="/club_square.html"><Icon path={PATHS.club} size={16} />活动广场</a>
+          <a href="/index.html"><Icon path={PATHS.map} size={16} />返回地图</a>
+        </div>
+      </div>
+      {suggested.length > 0 && (
+        <div className="pt-side-card">
+          <h3 className="pt-side-title">推荐关注</h3>
+          <div className="pt-side-clubs">
+            {suggested.map((u) => (
+              <div key={u.id} className="pt-side-user">
+                <button type="button" className="pt-side-user-main" onClick={() => onOpenUser && onOpenUser(u.username)}>
+                  <Avatar src={u.avatar_url} name={u.nickname} size={36} />
+                  <span className="pt-side-user-text">
+                    <span className="pt-name">{u.nickname}</span>
+                    <span className="pt-handle">{u.handle}</span>
+                  </span>
+                </button>
+                <span className="pt-user-actions">
+                  {u.is_friend && (
+                    <button type="button" className="pt-icon-btn pt-dm-btn" title="发私信" onClick={() => navigate(`/column/messages/${u.id}/`)}>
+                      <Icon path={PATHS.message} size={16} />
+                    </button>
+                  )}
+                  <FollowButton
+                    viewer={user}
+                    targetId={u.id}
+                    isFollowing={u.is_following}
+                    small
+                    onChange={(following) => updateFollow(u.id, following)}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+// ---------------------------------------------------------------- club picker modal
+
+function ClubPickerModal({ clubs, value, onPick, onClose }) {
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    const close = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [onClose]);
+  const keyword = query.trim().toLowerCase();
+  const filtered = keyword ? clubs.filter((c) => c.name.toLowerCase().includes(keyword)) : clubs;
+  const pick = (id) => { onPick(id); onClose(); };
+  return (
+    <div className="pt-modal pt-club-modal" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="pt-modal-panel pt-club-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-modal-head">
+          <span>关联同好会</span>
+          <button type="button" className="pt-icon-btn" onClick={onClose} aria-label="关闭" style={{ marginLeft: 'auto' }}>
+            <Icon path={PATHS.close} size={18} />
+          </button>
+        </div>
+        <div className="pt-club-search">
+          <Icon path={PATHS.search} size={15} />
+          <input value={query} placeholder="搜索你的同好会" onChange={(e) => setQuery(e.target.value)} autoFocus />
+        </div>
+        <div className="pt-club-list">
+          <button type="button" className={`pt-club-option ${!value ? 'is-selected' : ''}`} onClick={() => pick('')}>
+            <span>不关联</span>
+            {!value && <Icon path={PATHS.check} size={15} />}
+          </button>
+          {filtered.map((club) => (
+            <button
+              key={club.membership_id}
+              type="button"
+              className={`pt-club-option ${String(value) === String(club.membership_id) ? 'is-selected' : ''}`}
+              onClick={() => pick(club.membership_id)}
+            >
+              <span className="pt-club-option-main">
+                <span className="pt-name">{club.name}</span>
+                <span className="pt-handle">{club.country === 'japan' ? '日本' : '中国'} · {club.role === 'representative' ? '代表' : club.role === 'manager' ? '管理' : '成员'}</span>
+              </span>
+              {String(value) === String(club.membership_id) && <Icon path={PATHS.check} size={15} />}
+            </button>
+          ))}
+          {filtered.length === 0 && <div className="pt-empty pt-empty-sm">没有匹配的同好会</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- messages
+
+function MessagesPage({ viewer, navigate, onOpenUser, refreshKey }) {
+  const [conversations, setConversations] = useState(null);
+  const [friends, setFriends] = useState([]);
+
+  useEffect(() => {
+    if (!viewer) return;
+    let cancelled = false;
+    messagesApi('list').then((data) => { if (!cancelled) setConversations(data.conversations || []); }).catch(() => { if (!cancelled) setConversations([]); });
+    messagesApi('friends').then((data) => { if (!cancelled) setFriends(data.friends || []); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [viewer, refreshKey]);
+
+  if (!viewer) {
+    return (
+      <div className="pt-empty">
+        <span>登录后即可使用私信与好友功能。</span>
+        <a className="pt-btn pt-btn-primary pt-btn-sm" href="/login.html">前往登录</a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-page">
+      {friends.length > 0 && (
+        <div className="pt-friends-strip">
+          <div className="pt-friends-label">好友</div>
+          <div className="pt-friends-row">
+            {friends.map((f) => (
+              <button key={f.id} type="button" className="pt-friend-item" onClick={() => navigate(`/column/messages/${f.id}/`)} title={f.handle}>
+                <Avatar src={f.avatar_url} name={f.nickname} size={52} />
+                <span className="pt-friend-name">{f.nickname}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {conversations === null ? (
+        <div className="pt-empty">加载中…</div>
+      ) : conversations.length ? (
+        conversations.map((conv) => (
+          <button
+            key={conv.conversation_id}
+            type="button"
+            className="pt-conv-row"
+            onClick={() => navigate(`/column/messages/${conv.user.id}/`)}
+          >
+            <Avatar src={conv.user.avatar_url} name={conv.user.nickname} size={48} />
+            <span className="pt-conv-main">
+              <span className="pt-conv-top">
+                <span className="pt-name">{conv.user.nickname}</span>
+                <span className="pt-handle">{conv.user.handle}</span>
+                {conv.last_message && <span className="pt-time">· {relTime(conv.last_message.created_at)}</span>}
+              </span>
+              {conv.last_message && (
+                <span className={`pt-conv-preview ${conv.unread ? 'is-unread' : ''}`}>
+                  {conv.last_message.mine ? '我：' : ''}{conv.last_message.content}
+                </span>
+              )}
+            </span>
+            {conv.unread > 0 && <span className="pt-conv-unread">{conv.unread > 99 ? '99+' : conv.unread}</span>}
+          </button>
+        ))
+      ) : (
+        <div className="pt-empty">
+          {friends.length ? '点击上方好友开始私信' : '和互相关注的好友互发私信。还没有好友？去关注别人并互相关注吧！'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ThreadPage({ userId, viewer, navigate, refreshKey }) {
+  const [messages, setMessages] = useState(null);
+  const [other, setOther] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pendingImages, setPendingImages] = useState([]);
+  const [uploadToken, setUploadToken] = useState(() => makeUploadToken());
+  const [lightbox, setLightbox] = useState(null);
+  const bottomRef = useRef(null);
+  const lastIdRef = useRef(0);
+  const imgFileRef = useRef(null);
+
+  const uploadImageFile = async (blob) => {
+    const form = new FormData();
+    form.append('image', new File([blob], 'dm.jpg', { type: 'image/jpeg' }));
+    form.append('upload_token', uploadToken);
+    const res = await fetch(IMAGES_API, { method: 'POST', credentials: 'same-origin', body: form });
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success) {
+      showToast((data && data.error && data.error.message) || '图片上传失败', 'warn');
+      return;
+    }
+    const att = data.data.attachment;
+    setPendingImages((prev) => (prev.length >= IMAGES_MAX ? prev : [...prev, { id: att.id, url: att.url, path: att.relative_path }]));
+  };
+
+  const removePendingImage = async (item) => {
+    setPendingImages((prev) => prev.filter((x) => x.id !== item.id));
+    try {
+      await fetch(`${IMAGES_API}?action=delete`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id }),
+      });
+    } catch (e) { /* 忽略 */ }
+  };
+
+  const markRead = useCallback((cid) => {
+    if (!cid) return;
+    messagesPost('read', { conversation_id: cid }).catch(() => {});
+  }, []);
+
+  const scrollToEnd = () => {
+    requestAnimationFrame(() => { if (bottomRef.current) bottomRef.current.scrollIntoView({ block: 'end' }); });
+  };
+
+  useEffect(() => {
+    if (!viewer) return undefined;
+    let cancelled = false;
+    messagesApi('thread', { user_id: userId })
+      .then((data) => {
+        if (cancelled) return;
+        setMessages(data.messages || []);
+        setOther(data.other || null);
+        setConversationId(data.conversation_id || null);
+        lastIdRef.current = data.messages && data.messages.length ? data.messages[data.messages.length - 1].id : 0;
+        markRead(data.conversation_id);
+        scrollToEnd();
+      })
+      .catch((e) => { if (!cancelled) showToast(e.message || '加载失败', 'warn'); });
+    return () => { cancelled = true; };
+  }, [viewer, userId, refreshKey, markRead]);
+
+  useEffect(() => {
+    if (!viewer || !conversationId) return undefined;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      messagesApi('thread', { user_id: userId, after_id: lastIdRef.current })
+        .then((data) => {
+          const fresh = data.messages || [];
+          if (fresh.length) {
+            setMessages((prev) => {
+              const seen = new Set((prev || []).map((m) => m.id));
+              return [...(prev || []), ...fresh.filter((m) => !seen.has(m.id))];
+            });
+            lastIdRef.current = Math.max(lastIdRef.current, ...fresh.map((m) => m.id));
+            scrollToEnd();
+          }
+          markRead(conversationId);
+        })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [viewer, userId, conversationId, markRead]);
+
+  if (!viewer) {
+    return (
+      <div className="pt-empty">
+        <span>登录后即可使用私信。</span>
+        <a className="pt-btn pt-btn-primary pt-btn-sm" href="/login.html">前往登录</a>
+      </div>
+    );
+  }
+  if (messages === null) return <div className="pt-empty">加载中…</div>;
+
+  const send = async () => {
+    const content = text.trim();
+    if ((!content && !pendingImages.length) || sending) return;
+    if ([...content].length > 1000) { showToast('消息不能超过 1000 字', 'warn'); return; }
+    setSending(true);
+    try {
+      const data = await messagesPost('send', {
+        to_user_id: userId,
+        content,
+        images: pendingImages.map((x) => x.path),
+        upload_token: pendingImages.length ? uploadToken : '',
+      });
+      setMessages((prev) => [...(prev || []), data.message]);
+      setConversationId(data.conversation_id);
+      lastIdRef.current = Math.max(lastIdRef.current, data.message.id);
+      setText('');
+      setPendingImages([]);
+      setUploadToken(makeUploadToken());
+      markRead(data.conversation_id);
+      scrollToEnd();
+    } catch (e) {
+      showToast(e.message || '发送失败', 'warn');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // 按天分组：渲染时在前一条日期不同处插入分隔
+  let lastDay = '';
+  const openOlder = async () => {
+    if (loadingMore || !messages.length) return;
+    setLoadingMore(true);
+    try {
+      const data = await messagesApi('thread', { user_id: userId, before_id: messages[0].id });
+      if (data.messages && data.messages.length) setMessages((prev) => [...data.messages, ...(prev || [])]);
+    } catch (e) {
+      showToast(e.message || '加载失败', 'warn');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  return (
+    <div className="pt-page pt-thread">
+      <div className="pt-thread-header">
+        {other && (
+          <button type="button" className="pt-thread-other" onClick={() => navigate(`/column/user/${encodeURIComponent(other.username)}/`)}>
+            <Avatar src={other.avatar_url} name={other.nickname} size={36} />
+            <span className="pt-name">{other.nickname}</span>
+            <span className="pt-handle">{other.handle}</span>
+          </button>
+        )}
+      </div>
+      <div className="pt-thread-body">
+        {messages.length >= 50 && (
+          <button type="button" className="pt-thread-older" onClick={openOlder} disabled={loadingMore}>
+            {loadingMore ? '加载中…' : '查看更早的消息'}
+          </button>
+        )}
+        {messages.map((m) => {
+          const day = (m.created_at || '').slice(0, 10);
+          const showDay = day !== lastDay;
+          lastDay = day;
+          const mine = m.sender_id === viewer.id;
+          return (
+            <div key={m.id}>
+              {showDay && <div className="pt-thread-day">{dayLabel(m.created_at)}</div>}
+              <div className={`pt-dm-row ${mine ? 'is-mine' : ''}`}>
+                {!mine && other && <Avatar src={other.avatar_url} name={other.nickname} size={34} />}
+                <div className={`pt-dm-bubble ${mine ? 'is-mine' : ''}`}>
+                  {m.images && m.images.length > 0 && (
+                    <div className={`pt-dm-imgs pt-dm-imgs-${Math.min(m.images.length, 4)}`}>
+                      {m.images.map((src, i) => (
+                        <img key={src} src={src} alt="" loading="lazy" onClick={() => setLightbox({ images: m.images, index: i })} />
+                      ))}
+                    </div>
+                  )}
+                  {m.content}
+                  <span className="pt-dm-time">{(m.created_at || '').slice(11, 16)}</span>
+                </div>
+                {mine && <Avatar src={viewer.avatar_url} name={viewer.nickname} size={34} />}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+      <form
+        className="pt-thread-input"
+        onSubmit={(e) => { e.preventDefault(); send(); }}
+      >
+        {pendingImages.length > 0 && (
+          <div className="pt-thread-previews">
+            {pendingImages.map((item) => (
+              <span key={item.id} className="pt-thread-preview">
+                <img src={item.url} alt="" />
+                <button type="button" onClick={() => removePendingImage(item)} aria-label="移除图片">
+                  <Icon path={PATHS.close} size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="pt-thread-input-row">
+          <button type="button" className="pt-icon-btn" onClick={() => imgFileRef.current && imgFileRef.current.click()} disabled={pendingImages.length >= IMAGES_MAX} title="发送图片">
+            <Icon path={PATHS.image} size={19} />
+          </button>
+          <input ref={imgFileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden onChange={(e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            setSending(true);
+            uploadImageFile(file).finally(() => setSending(false));
+            e.target.value = '';
+          }} />
+          <textarea
+            value={text}
+            placeholder={`发私信给 ${other ? other.nickname : '对方'}…`}
+            rows={1}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+            }}
+          />
+          <button type="submit" className="pt-btn pt-btn-primary pt-btn-sm" disabled={sending || (!text.trim() && !pendingImages.length)}>
+            {sending ? '发送中…' : '发送'}
+          </button>
+        </div>
+      </form>
+      {lightbox && (
+        <div className="pt-lightbox" onClick={() => setLightbox(null)} role="dialog" aria-modal="true">
+          <img src={lightbox.images[lightbox.index]} alt="" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function dayLabel(value) {
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date();
+  const isSameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const yesterday = new Date(today.getTime() - 86400000);
+  if (isSameDay(d, today)) return '今天';
+  if (isSameDay(d, yesterday)) return '昨天';
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+// ---------------------------------------------------------------- mobile topbar sync
+
+function TopBarSync({ title, showBack, navigate }) {
+  useEffect(() => {
+    const topbar = document.querySelector('.topbar');
+    if (!topbar) return;
+    const sub = topbar.querySelector('.topbar-sub');
+    if (sub) sub.textContent = title;
+    document.title = `${title} · VNFest`;
+    let back = topbar.querySelector('.pt-topbar-back');
+    if (showBack) {
+      if (!back) {
+        back = document.createElement('button');
+        back.className = 'pt-topbar-back';
+        back.setAttribute('aria-label', '返回');
+        back.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4m0 0 6-6m-6 6 6 6"/></svg>';
+        back.addEventListener('click', () => navigate('/column/'));
+        topbar.insertBefore(back, topbar.firstChild);
+      }
+      back.style.display = 'inline-flex';
+    } else if (back) {
+      back.style.display = 'none';
+    }
+  }, [title, showBack, navigate]);
+  return null;
+}
+
+// ---------------------------------------------------------------- quote modal
+
+function QuoteModal({ post, user, clubs, onClose, onPosted }) {
+  useEffect(() => {
+    const close = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [onClose]);
+  return (
+    <div className="pt-modal" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="pt-modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-modal-head">
+          <button type="button" className="pt-icon-btn" onClick={onClose} aria-label="关闭"><Icon path={PATHS.close} size={18} /></button>
+          <span>{post ? '引用转发' : '发动态'}</span>
+        </div>
+        {post && (
+          <div className="pt-modal-quoted">
+            <div className="pt-thread-line">正在引用 <span className="pt-handle">@{post.author.username}</span> 的动态</div>
+            <QuoteCard post={post} />
+          </div>
+        )}
+        <Composer user={user} clubs={clubs} quoted={post} autoFocus placeholder="添加你的评论" onPosted={() => { onPosted(); onClose(); }} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- app
+
+function parseRoute(pathname) {
+  const path = pathname.replace(/\/?$/, '/');
+  let match = path.match(/^\/column\/post\/(\d+)\/?$/);
+  if (match) return { name: 'detail', id: Number(match[1]) };
+  match = path.match(/^\/column\/user\/([^/]+)\/?$/);
+  if (match) return { name: 'user', username: decodeURIComponent(match[1]) };
+  let dmMatch = path.match(/^\/column\/messages\/(\d+)\/?$/);
+  if (dmMatch) return { name: 'thread', userId: Number(dmMatch[1]) };
+  if (/^\/column\/messages\/?$/.test(path)) return { name: 'messages' };
+  if (/^\/column\/search\/?$/.test(path)) {
+    return { name: 'search', query: new URLSearchParams(location.search).get('q') || '' };
+  }
+  if (/^\/column\/my\/?$/.test(path)) return { name: 'mine' };
+  return { name: 'feed' };
 }
 
 function App() {
-  const route = useRoute();
-  const bootstrap = useBootstrap();
-  const pageKey = `${route.name}:${route.pathKey || route.id || 'new'}:${route.search}`;
-  let page;
-  if (route.name === 'article') page = <ArticlePage key={pageKey} pathKey={route.pathKey} bootstrap={bootstrap.data} />;
-  else if (route.name === 'search') page = <SearchPage key={pageKey} bootstrap={bootstrap.data} />;
-  else if (route.name === 'edit') page = <EditorPage key={pageKey} id={route.id} bootstrap={bootstrap.data} />;
-  else if (route.name === 'my') page = <MyArticlesPage key={pageKey} bootstrap={bootstrap.data} />;
-  else if (route.name === 'admin') page = <AdminPage key={pageKey} bootstrap={bootstrap.data} />;
-  else page = <HomePage key={pageKey} bootstrap={bootstrap.data} />;
-  return <DocsShell route={route} bootstrap={bootstrap.data} title="专栏">{page}</DocsShell>;
+  const [route, setRoute] = useState(() => parseRoute(location.pathname));
+  const [boot, setBoot] = useState({ loading: true, user: null, clubs: [] });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [quoteTarget, setQuoteTarget] = useState(null);
+  const [lightboxState, setLightboxState] = useState(null);
+  const [composeOpen, setComposeOpen] = useState(false);
+
+  const navigate = useCallback((path) => {
+    history.pushState({}, '', path);
+    setRoute(parseRoute(path));
+    setLightboxState(null);
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => { setRoute(parseRoute(location.pathname)); setLightboxState(null); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet('bootstrap')
+      .then((data) => { if (!cancelled) setBoot({ loading: false, user: data.user, clubs: data.clubs || [] }); })
+      .catch(() => { if (!cancelled) setBoot({ loading: false, user: null, clubs: [] }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const { user, clubs } = boot;
+  const [dmUnread, setDmUnread] = useState(0);
+  useEffect(() => {
+    if (!user) { setDmUnread(0); return undefined; }
+    let inFlight = false;
+    const tick = () => {
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      messagesApi('unread_count')
+        .then((data) => setDmUnread(data.unread || 0))
+        .catch(() => {})
+        .finally(() => { inFlight = false; });
+    };
+    tick();
+    const timer = setInterval(tick, 8000);
+    return () => clearInterval(timer);
+  }, [user]);
+
+  const bump = () => setRefreshKey((k) => k + 1);
+  const openLightbox = (images, index) => setLightboxState({ images, index, onClose: () => setLightboxState(null) });
+  const askCompose = () => (user ? setComposeOpen(true) : showToast('请先登录后再发动态', 'warn'));
+  const openUser = useCallback((username) => navigate(`/column/user/${encodeURIComponent(username)}/`), [navigate]);
+
+  // /column/my/ 兼容跳转到自己的个人空间
+  const effectiveRoute = route.name === 'mine' && user
+    ? { name: 'user', username: user.username }
+    : route;
+
+  const title = effectiveRoute.name === 'detail' ? '动态'
+    : effectiveRoute.name === 'user' ? '个人空间'
+    : effectiveRoute.name === 'search' ? '搜索'
+    : effectiveRoute.name === 'messages' ? '消息'
+    : effectiveRoute.name === 'thread' ? '私信'
+    : '同好会动态';
+
+  return (
+    <>
+      <div className="pt-app">
+        <LeftNav user={user} route={effectiveRoute.name} navigate={navigate} onCompose={askCompose} dmUnread={dmUnread} />
+        <TopBarSync title={title} showBack={effectiveRoute.name === 'detail' || effectiveRoute.name === 'thread'} navigate={navigate} />
+        <main className="pt-center" key={`${effectiveRoute.name}-${effectiveRoute.id || effectiveRoute.username || effectiveRoute.query || ''}`}>
+          <ColumnHeader
+            title={title}
+            showBack={effectiveRoute.name === 'detail'}
+            indexOnly={effectiveRoute.name === 'feed' || effectiveRoute.name === 'search' || effectiveRoute.name === 'messages' || effectiveRoute.name === 'user' || effectiveRoute.name === 'mine'}
+            navigate={navigate}
+          />
+        {boot.loading ? (
+          <div className="pt-empty">加载中…</div>
+        ) : (
+          <>
+            {effectiveRoute.name === 'feed' && (
+              <FeedPage user={user} clubs={clubs} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} />
+            )}
+            {effectiveRoute.name === 'detail' && (
+              <DetailPage id={effectiveRoute.id} user={user} clubs={clubs} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} />
+            )}
+            {effectiveRoute.name === 'user' && (
+              <ProfilePage username={effectiveRoute.username} viewer={user} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} onBump={bump} />
+            )}
+            {effectiveRoute.name === 'search' && (
+              <SearchPage query={effectiveRoute.query} viewer={user} navigate={navigate} onOpenUser={openUser} />
+            )}
+            {effectiveRoute.name === 'messages' && (
+              <MessagesPage viewer={user} navigate={navigate} onOpenUser={openUser} refreshKey={refreshKey} />
+            )}
+            {effectiveRoute.name === 'thread' && (
+              <ThreadPage userId={effectiveRoute.userId} viewer={user} navigate={navigate} refreshKey={refreshKey} />
+            )}
+          </>
+        )}
+        </main>
+        <RightSidebar user={user} navigate={navigate} onOpenUser={openUser} />
+        <MobileBottomNav route={effectiveRoute.name} navigate={navigate} onCompose={askCompose} user={user} dmUnread={dmUnread} />
+      </div>
+      {(composeOpen || quoteTarget) && (
+        <QuoteModal
+          post={quoteTarget}
+          user={user}
+          clubs={clubs}
+          onClose={() => { setComposeOpen(false); setQuoteTarget(null); }}
+          onPosted={bump}
+        />
+      )}
+      <button type="button" className="pt-fab" onClick={askCompose} aria-label="发动态" title="发动态">
+        <Icon path={PATHS.feather} size={24} />
+      </button>
+      <Lightbox state={lightboxState} />
+      <ToastHost />
+    </>
+  );
 }
 
 createRoot(document.getElementById('root')).render(<App />);

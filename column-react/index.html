@@ -3,15 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#11151a" />
-    <meta name="description" content="VNFest 专栏：阅读和发布文章。" />
-    <title>专栏 · VNFest</title>
-    <link rel="stylesheet" href="/css/theme-tokens.css?v=20260910-column-react" />
-    <script src="/js/theme-runtime.js?v=20260910-column-react"></script>
-    <script src="/js/page-background.js?v=20260910-column-react"></script>
-    <script defer src="../js/analytics.js?v=20260910-analytics"></script>
+    <meta name="theme-color" content="#0f0f10" />
+    <meta name="description" content="VNFest 同好会动态：分享活动日常的推文流。" />
+    <title>同好会动态 · VNFest</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
+    <link rel="stylesheet" href="/css/theme-tokens.css?v=20260912-posts-react" />
+    <link rel="stylesheet" href="/css/site-header.css?v=20260912-posts-react" />
+    <script src="/js/theme-runtime.js?v=20260912-posts-react"></script>
+    <script>VNFTheme && VNFTheme.applyEarly && VNFTheme.applyEarly();</script>
+    <script defer src="/js/site-header.js?v=20260912-posts-react"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+    <script defer src="/js/language-runtime.js?v=20260912-posts-react"></script>
+    <script defer src="/js/page-i18n.js?v=20260912-posts-react"></script>
+    <script defer src="/js/analytics.js?v=20260912-analytics"></script>
   </head>
-  <body data-column-react="true">
+  <body data-language-managed="react" data-page-name="同好会动态">
+    <header class="topbar">
+      <span class="topbar-brand"><strong>VNFest</strong><span class="topbar-sub">同好会动态</span></span>
+      <nav class="topbar-nav">
+        <a href="/index.html">返回地图</a>
+        <a href="/club_square.html">活动广场</a>
+        <button class="theme-toggle" id="themeToggle" title="切换明亮/暗色模式" aria-label="切换明亮/暗色模式">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </nav>
+    </header>
+    <script>
+      (function () {
+        var btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        var html = document.documentElement;
+        var sun = btn.querySelector('.icon-sun');
+        var moon = btn.querySelector('.icon-moon');
+        function updateIcon() {
+          var isDark = html.getAttribute('data-theme') === 'dark';
+          if (sun) sun.style.display = isDark ? 'none' : '';
+          if (moon) moon.style.display = isDark ? '' : 'none';
+        }
+        updateIcon();
+        if (window.VNFTheme && typeof window.VNFTheme.subscribe === 'function') window.VNFTheme.subscribe(updateIcon);
+        btn.addEventListener('click', function () { window.VNFTheme && VNFTheme.toggle(btn); });
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
