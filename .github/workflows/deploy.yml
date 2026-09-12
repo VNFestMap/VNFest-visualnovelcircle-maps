@@ -18,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: 设置 Docker Buildx（docker-container 驱动，支持 gha 缓存导出）
+        uses: docker/setup-buildx-action@v3
       - name: 构建镜像（仅验证能否成功构建）
         uses: docker/build-push-action@v6
         with:
