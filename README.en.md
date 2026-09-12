@@ -284,7 +284,7 @@ For detailed deployment configuration, environment variable documentation, and o
 
 | Version | Key Theme |
 |---------|-----------|
-| **[v2.2.0](RELEASE_NOTES_2.2.0.md)** | React circle feed, standalone search, mutual-follow messaging, React admin workspace, OAuth credential upgrades, and GalgameTool Tier/MEME tools |
+| **v2.2.0** | React circle feed, standalone search, mutual-follow messaging, React admin workspace, OAuth credential upgrades, and GalgameTool Tier/MEME tools |
 | **v2.1.0** | Editorial column, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |
 | **v2.0.0** | User Center SPA, Staff recruitment, Public Archives, bracket visualization, unified design system |
 | v1.7.x | Project Hub, Twelve, Moe Contest engine, voting events, Circle Square, Docker CI/CD |

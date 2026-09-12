@@ -284,7 +284,7 @@ bash scripts/deploy.sh
 
 | バージョン | コアテーマ |
 |------|---------|
-| **[v2.2.0](RELEASE_NOTES_2.2.0.md)** | 同好会フィードの React 化、独立検索、相互フォローメッセージ、React 管理画面、OAuth 認証情報の更新、GalgameTool Tier/MEME |
+| **v2.2.0** | 同好会フィードの React 化、独立検索、相互フォローメッセージ、React 管理画面、OAuth 認証情報の更新、GalgameTool Tier/MEME |
 | **v2.1.0** | 独立コラム、スーパー管理コンソール、北京 GalOnly、MakoQuiz 連携、設定集約、Wiki 利用ガイド |
 | **v2.0.0** | ユーザーセンター SPA 化、Staff 募集、資料公開ライブラリ、トーナメント可視化、デザインシステム統一 |
 | v1.7.x | 企画ハブ、十二器、萌戦エンジン、投票イベント、サークル広場、Docker CI/CD |
