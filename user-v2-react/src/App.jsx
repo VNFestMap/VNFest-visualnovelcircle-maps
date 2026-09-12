@@ -503,6 +503,15 @@ export default function App() {
         '密码已修改'
       );
     },
+    setPassword(newPassword, newPasswordConfirmation) {
+      return runAction(
+        () => apiPost('./api/auth.php?action=set_password', {
+          new_password: newPassword,
+          new_password_confirmation: newPasswordConfirmation,
+        }),
+        '登录密码已设置'
+      );
+    },
     unbindProvider(provider) {
       return runAction(() => apiPost(`./api/auth.php?action=unbind_${provider}`), '绑定已解除');
     },
@@ -1276,6 +1285,7 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
   const [code, setCode] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
 
   useEffect(() => {
     setNickname(user?.nickname || user?.username || '');
@@ -1434,7 +1444,12 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
               <strong>{user?.email || '未绑定邮箱'}</strong>
               <span>用于找回账号与重要通知</span>
             </div>
-            {user?.email && <Button size="small" danger onClick={actions.unbindEmail}>解绑</Button>}
+            {user?.email && user?.can_unbind_email !== false && <Button size="small" danger onClick={actions.unbindEmail}>解绑</Button>}
+            {user?.email && user?.can_unbind_email === false && (
+              <Tooltip title="已完成邮箱验证和密码设置，邮箱是账号的恢复凭证，不能解绑">
+                <Button size="small" disabled>已作为恢复凭证</Button>
+              </Tooltip>
+            )}
           </div>
           <div className="vn-list-item">
             <div className="vn-list-body" style={{ flex: 1 }}>
@@ -1464,29 +1479,65 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
                 <Button onClick={() => actions.sendEmailCode(email)}>发送验证码</Button>
                 <Button type="primary" onClick={() => actions.bindEmail(email, code)}>绑定邮箱</Button>
               </Space>
-            </Space>
+              </Space>
           </div>
-          <div className="vn-account-divider" style={{ paddingTop: 14 }}>
-            <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>修改密码</Text>
-            <Space direction="vertical" style={{ width: '100%' }} size={8}>
-              <Text className="vn-field-label">当前密码</Text>
-              <Input.Password value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} prefix={<LockOutlined />} placeholder="当前密码" />
-              <Text className="vn-field-label">新密码</Text>
-              <Input.Password value={newPassword} onChange={(e) => setNewPassword(e.target.value)} prefix={<LockOutlined />} placeholder="新密码" />
-              <Button
-                type="primary"
-                onClick={async () => {
-                  const ok = await actions.changePassword(currentPassword, newPassword);
-                  if (ok) {
-                    setCurrentPassword('');
-                    setNewPassword('');
-                  }
-                }}
-              >
-                修改密码
-              </Button>
-            </Space>
-          </div>
+          {user?.needs_credential_upgrade && !user?.email_verified && (
+            <Alert
+              type="info"
+              showIcon
+              message="可选完善登录凭证"
+              description="这是旧的 QQ/Discord 账号。请先在上方绑定并验证邮箱，随后即可设置密码；不完善也不影响继续使用第三方登录。"
+            />
+          )}
+          {user?.can_set_password && (
+            <div className="vn-account-divider" style={{ paddingTop: 14 }}>
+              <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>完善登录凭证（可选）</Text>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 10 }}>
+                当前邮箱已验证。设置密码后可以使用邮箱/用户名密码登录，QQ/Discord 登录方式保持不变。
+              </Text>
+              <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                <Text className="vn-field-label">设置密码</Text>
+                <Input.Password value={newPassword} onChange={(e) => setNewPassword(e.target.value)} prefix={<LockOutlined />} placeholder="至少6位" autoComplete="new-password" />
+                <Text className="vn-field-label">确认密码</Text>
+                <Input.Password value={newPasswordConfirmation} onChange={(e) => setNewPasswordConfirmation(e.target.value)} prefix={<LockOutlined />} placeholder="再次输入密码" autoComplete="new-password" />
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    const ok = await actions.setPassword(newPassword, newPasswordConfirmation);
+                    if (ok) {
+                      setNewPassword('');
+                      setNewPasswordConfirmation('');
+                    }
+                  }}
+                >
+                  设置登录密码
+                </Button>
+              </Space>
+            </div>
+          )}
+          {user?.has_password && (
+            <div className="vn-account-divider" style={{ paddingTop: 14 }}>
+              <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>修改密码</Text>
+              <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                <Text className="vn-field-label">当前密码</Text>
+                <Input.Password value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} prefix={<LockOutlined />} placeholder="当前密码" autoComplete="current-password" />
+                <Text className="vn-field-label">新密码</Text>
+                <Input.Password value={newPassword} onChange={(e) => setNewPassword(e.target.value)} prefix={<LockOutlined />} placeholder="新密码" autoComplete="new-password" />
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    const ok = await actions.changePassword(currentPassword, newPassword);
+                    if (ok) {
+                      setCurrentPassword('');
+                      setNewPassword('');
+                    }
+                  }}
+                >
+                  修改密码
+                </Button>
+              </Space>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -1495,13 +1546,13 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
           <SocialRow
             name="QQ"
             bound={!!user?.qq_bound}
-            bindUrl="./api/auth.php?action=qq_auth&mode=bind"
+            bindUrl="./api/auth.php?action=qq_auth&mode=bind&return_to=user.html%3Ftab%3Daccount"
             onUnbind={() => actions.unbindProvider('qq')}
           />
           <SocialRow
             name="Discord"
             bound={!!user?.discord_bound}
-            bindUrl="./api/auth.php?action=discord_auth&mode=bind"
+            bindUrl="./api/auth.php?action=discord_auth&mode=bind&return_to=user.html%3Ftab%3Daccount"
             onUnbind={() => actions.unbindProvider('discord')}
           />
           <SocialRow

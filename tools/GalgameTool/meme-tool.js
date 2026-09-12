@@ -1279,12 +1279,11 @@
     });
   }
 
-  async function exportImage() {
+  async function renderMemeCanvas() {
     if (typeof window.html2canvas !== 'function') {
       showToast('图片渲染组件尚未加载，请刷新后重试', 'error');
-      return;
+      return null;
     }
-    setProgress(8, '准备看板');
     const source = $('#memeBoard');
     const host = document.createElement('div');
     host.className = 'meme-export-host';
@@ -1305,9 +1304,7 @@
     try {
       const images = $$('img', clone);
       images.forEach(image => { image.loading = 'eager'; image.crossOrigin = 'anonymous'; });
-      setProgress(28, '加载卡片图片');
       await Promise.all(images.map(waitForImage));
-      setProgress(58, '渲染看板');
       const canvas = await window.html2canvas(clone, {
         backgroundColor: '#fffdf9',
         scale: Math.min(2, window.devicePixelRatio || 1.5),
@@ -1319,6 +1316,19 @@
         windowWidth: width,
         windowHeight: clone.scrollHeight
       });
+      return canvas;
+    } finally {
+      host.remove();
+    }
+  }
+
+  async function exportImage() {
+    setProgress(8, '准备看板');
+    try {
+      setProgress(28, '加载卡片图片');
+      setProgress(58, '渲染看板');
+      const canvas = await renderMemeCanvas();
+      if (!canvas) { finishProgress(); return; }
       setProgress(82, '生成 PNG');
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       if (!blob) throw new Error('PNG conversion failed');
@@ -1330,8 +1340,17 @@
       console.warn('MEME export failed:', error);
       finishProgress('保存失败');
       showToast('图片保存失败，请确认图片加载完成后重试', 'error');
-    } finally {
-      host.remove();
+    }
+  }
+
+  async function shareToPosts() {
+    const canvas = await renderMemeCanvas();
+    if (!canvas) return;
+    if (window.VNFPostShare) {
+      const title = (state.board && state.board.title) || '我的 MEME 看板';
+      window.VNFPostShare.share({ canvas, defaultText: `【MEME 看板】${title} #Galgame` });
+    } else {
+      showToast('转发组件尚未加载，请刷新后重试', 'error');
     }
   }
 
@@ -1431,6 +1450,7 @@
     $('#memeJsonInput')?.addEventListener('change', event => { importJson(event.target.files?.[0]); event.target.value = ''; });
     $('#memeCopyUrl')?.addEventListener('click', copyShareUrl);
     $('#memeShareX')?.addEventListener('click', shareX);
+    $('#memeSharePosts')?.addEventListener('click', shareToPosts);
     $('#memeSaveImage')?.addEventListener('click', exportImage);
     $('#memeReset')?.addEventListener('click', resetBoard);
     $('#memeImageInput')?.addEventListener('change', event => readCustomImage(event.target.files?.[0]));

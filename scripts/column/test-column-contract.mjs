@@ -17,52 +17,56 @@ for (const relative of [
   'column/index.html',
   'column/.htaccess',
   'column/legacy.css',
-  'api/column.php',
-  'api/waline-sso.php',
-  'includes/column/schema.php',
-  'includes/column/helpers.php',
+  'api/posts.php',
+  'api/post_images.php',
+  'api/user_banner.php',
+  'api/messages.php',
+  'includes/posts/schema.php',
+  'includes/posts/helpers.php',
   'scripts/column/migrate-column.php',
   'scripts/column/sync-column-build.mjs',
 ]) check(exists(relative), `missing ${relative}`);
 
-const api = read('api/column.php');
-for (const action of ['bootstrap', 'feed', 'article', 'mine', 'admin', 'save_draft', 'publish', 'update', 'withdraw', 'delete', 'upload_image', 'delete_upload', 'moderate_article', 'set_featured']) {
-  contains('api/column.php', `'${action}'`);
+const api = read('api/posts.php');
+for (const action of ['bootstrap', 'feed', 'detail', 'mine', 'create', 'delete', 'like', 'unlike']) {
+  contains('api/posts.php', `'${action}'`);
 }
-check(!api.includes('column_articles'), 'new API must not use the legacy article table');
-check(!api.includes('column_comments'), 'new API must not create a local comment system');
 
-const schema = read('includes/column/schema.php');
-for (const table of ['column_documents', 'column_attachments', 'column_document_revisions']) contains('includes/column/schema.php', table);
-for (const legacy of ['column_series', 'column_tags', 'column_article_tags', 'column_comments']) contains('includes/column/schema.php', legacy);
-check(!schema.includes('CREATE TABLE IF NOT EXISTS column_series'), 'series must remain deferred');
-check(!schema.includes('CREATE TABLE IF NOT EXISTS column_comments'), 'comments must remain external to the MVP');
-contains('scripts/migrate.php', 'columnMigrateSchema');
+const schema = read('includes/posts/schema.php');
+for (const table of ['posts', 'post_likes', 'post_attachments']) contains('includes/posts/schema.php', table);
 
-const helpers = read('includes/column/helpers.php');
-contains('includes/column/helpers.php', 'League\\CommonMark\\CommonMarkConverter');
-contains('includes/column/helpers.php', 'body_markdown');
-contains('includes/column/helpers.php', 'allow_unsafe_links');
-contains('includes/column/helpers.php', 'column-section-');
+contains('scripts/migrate.php', 'postsMigrateSchema');
+check(!read('scripts/migrate.php').includes('columnMigrateSchema'), 'old column migration must be unhooked');
+
+const helpers = read('includes/posts/helpers.php');
+contains('includes/posts/helpers.php', 'POSTS_CONTENT_MAX');
+contains('includes/posts/helpers.php', 'postsRequireSameOrigin');
+contains('includes/posts/helpers.php', 'post_attachments');
 
 const react = read('column-react/src/main.jsx');
-for (const route of ['/column/', '/column/search/', '/column/article/', '/column/edit/', '/column/my/', '/column/admin/']) check(react.includes(route), `React route missing: ${route}`);
-for (const phrase of ['开始编辑', '保存草稿', '发布文章', '我的文章', '最新文章', '按类型浏览', '暂时没有文章']) contains('column-react/src/main.jsx', phrase);
-for (const deferred of ['/column/series/', '/column/category/', '/column/tag/', '/column/archive/']) check(!react.includes(deferred), `deferred route should not be linked: ${deferred}`);
-for (const required of ['ReactMarkdown', 'vnfestWikiAppearance', 'login: \'force\'', 'imageUploader: false', 'data-reader-theme']) check(react.includes(required), `React behavior missing: ${required}`);
+for (const route of ['/column/', '/column/post/', '/column/my/', '/column/user/', '/column/messages/', '/column/search/']) check(react.includes(route), `React route missing: ${route}`);
+for (const phrase of ['有什么新鲜事', '同好会动态', '个人空间', '引用转发', '已经到底啦', '关注', '为你推荐', '关联同好会', '消息', '好友']) contains('column-react/src/main.jsx', phrase);
+check(!react.includes('推文'), '推文 wording must stay replaced by 动态');
+check(react.includes('CropModal'), 'crop modal must exist');
+check(!react.includes("pt-side-search"), 'right sidebar search box must stay removed');
 
 const styles = read('column-react/src/styles.css');
-for (const token of ['--vn-primary', '--md-primary', '--md-surface', 'prefers-reduced-motion', 'min-height: 44px', '.column-layout', '.column-page']) check(styles.includes(token), `style contract missing: ${token}`);
-check(!styles.includes('#f97316') && !styles.includes('#ff7a18'), 'do not restore an independent orange palette');
+for (const token of ['--pt-accent', 'var(--vn-primary)', 'prefers-reduced-motion', '@media (max-width: 680px)']) {
+  check(styles.includes(token), `style contract missing: ${token}`);
+}
+check(!styles.includes('has-vnfest-wallpaper'), 'wallpaper stays disabled on this page');
+
+const entry = read('column-react/index.html');
+for (const required of ['site-header.js', 'site-header.css', 'topbar', 'data-page-name']) check(entry.includes(required), `entry missing: ${required}`);
+check(!entry.includes('page-background.js'), 'page background must stay disabled');
 
 const built = read('column/index.html');
-for (const required of ['/js/theme-runtime.js', '/js/page-background.js', '/column/assets/']) check(built.includes(required), `built entry missing: ${required}`);
-check(!built.includes('language-runtime.js'), 'column entry must stay Chinese-only');
+for (const required of ['/js/theme-runtime.js', '/column/assets/']) check(built.includes(required), `built entry missing: ${required}`);
+check(!built.includes('page-background.js'), 'built entry must not load the wallpaper');
 
 for (const relative of ['Forum/forum-plaza.html', 'Forum/forum-post.html', 'Forum/forum-create.html']) {
   contains(relative, '../column/legacy.css');
   contains(relative, '论坛功能已停止');
 }
-for (const legacy of ['column/article.html', 'column/write.html', 'column/my.html', 'column/series.html']) check(!exists(legacy), `legacy column entry should be removed: ${legacy}`);
 
-console.log('column contract checks passed');
+console.log('posts contract checks passed');

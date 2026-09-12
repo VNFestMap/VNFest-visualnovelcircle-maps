@@ -3118,7 +3118,13 @@ function openExportModal(parts, frameMetrics) {
     saveButton.textContent = '保存';
     saveButton.setAttribute('aria-label', `保存第${index + 1}张图片`);
     saveButton.addEventListener('click', () => saveExportPart(index));
-    item.append(title, preview, meta, saveButton);
+    const shareButton = document.createElement('button');
+    shareButton.className = 'export-part-save export-part-share';
+    shareButton.type = 'button';
+    shareButton.textContent = '转发到动态';
+    shareButton.setAttribute('aria-label', `转发第${index + 1}张图片到同好会动态`);
+    shareButton.addEventListener('click', () => shareExportPart(index));
+    item.append(title, preview, meta, saveButton, shareButton);
     grid.appendChild(item);
   });
 
@@ -3136,6 +3142,16 @@ function closeExportModal() {
   if (grid) grid.innerHTML = '';
   exportParts = [];
   exportDisplayParts = [];
+}
+
+function shareExportPart(index) {
+  const part = exportDisplayParts[index];
+  if (!part) return;
+  if (window.VNFPostShare) {
+    window.VNFPostShare.share({ canvas: part, defaultText: '【Galgame 履历书】我的游玩履历 #Galgame #履历书' });
+  } else {
+    showToast('转发组件尚未加载，请刷新后重试', 'error');
+  }
 }
 
 function saveExportPart(index) {
@@ -3238,11 +3254,59 @@ async function exportImage() {
 }
 
 // ===== Share on X =====
-function shareX() {
-  const name = state.profile.name || 'Galgame玩家';
-  const text = `【Galgame履历书】\n${name}的履历书制作完成！\n\n#Galgame #履历书`;
-  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-  window.open(url, '_blank', 'width=600,height=400');
+async function shareResumeToPosts(btn) {
+  const paper = document.getElementById('resumePaper');
+  if (!paper) return;
+  if (!window.VNFPostShare) {
+    showToast('转发组件尚未加载，请刷新后重试', 'error');
+    return;
+  }
+  if (btn) { btn.classList.add('is-busy'); btn.disabled = true; }
+  const clearBusy = () => { if (btn) { btn.classList.remove('is-busy'); btn.disabled = false; } };
+  setExportProgress(5, '准备转发');
+  const exportControls = hideExportControls();
+  const restoreExportLayout = prepareExportLayout(paper);
+
+  try {
+    setExportProgress(20, '处理图片', true);
+    const allImgs = paper.querySelectorAll('img');
+    allImgs.forEach(img => {
+      if (img.loading === 'lazy') img.loading = 'eager';
+    });
+    await convertAllImagesToBase64(paper);
+    await Promise.all(Array.from(allImgs).map(img => waitForImageReady(img)));
+    await prepareExportImageLayout(paper);
+    setExportProgress(55, '渲染履历');
+    const canvas = await html2canvas(paper, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      imageTimeout: 0,
+      logging: false
+    });
+    setExportProgress(80, '生成分页图片');
+    const parts = buildExportParts(canvas, paper);
+    finishExportProgress('已生成');
+    const name = state.profile.name || 'Galgame玩家';
+    window.VNFPostShare.share({
+      canvases: parts.slice(0, 4),
+      defaultText: `【Galgame履历书】
+${name}的履历书制作完成！
+
+#Galgame #履历书`
+    });
+  } catch (err) {
+    console.error('Resume share failed:', err);
+    finishExportProgress('转发失败');
+    showToast('生成图片失败，请重试', 'error');
+  } finally {
+    clearBusy();
+    restoreExportControls(exportControls);
+    restoreExportLayout();
+    restoreOriginalImages(paper);
+    restoreExportImageStyles(paper);
+  }
 }
 
 // ===== Reset =====

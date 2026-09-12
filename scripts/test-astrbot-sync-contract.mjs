@@ -108,9 +108,9 @@ assert.ok(readme.includes('/gal地图 待审') && readme.includes('/gal地图 �
   console.warn('astrbot plugin files not found; skipped plugin-side contract checks');
 }
 
-const manager = read('admin/club_manager.html');
-assert.ok(manager.includes('data-tab="bot_tokens"'), 'club manager should expose Bot 接入 tab');
-assert.ok(manager.includes('renderBotTokens') && manager.includes('generateBotToken') && manager.includes('revokeBotToken'), 'club manager should manage bot tokens');
+const manager = read('club-manager-react/src/model.js') + read('club-manager-react/src/tabs/BotTokensTab.jsx');
+assert.ok(manager.includes("key: 'bot_tokens'"), 'club manager should expose Bot 接入 tab');
+assert.ok(manager.includes('const create = async') && manager.includes('const revoke = async'), 'club manager should manage bot tokens');
 assert.ok(manager.includes('bot_tokens_create') && manager.includes('bot_tokens_revoke'), 'club manager should call bot token management API');
 
 const migrate = read('scripts/migrate.php');

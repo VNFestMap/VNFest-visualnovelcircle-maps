@@ -122,7 +122,16 @@ async function startFixtureServer() {
       return json(res, { success: true, data: [] });
     }
     if (pathname === '/api/club_moe_king.php' && action === 'get') {
-      return json(res, { success: true, data: null });
+      return json(res, {
+        success: true,
+        data: {
+          character_id: 77,
+          name: 'Top Cropped Character',
+          name_cn: '顶部裁剪角色',
+          image_url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+          summary: '用于验证角色头像从顶部开始裁剪。',
+        },
+      });
     }
     if (pathname === '/api/bangumi_proxy.php') {
       if (action === 'search') {
@@ -181,17 +190,20 @@ async function openManager(baseUrl, size, theme) {
   });
   await win.loadURL(`${baseUrl}/admin/club_manager.html?recommendations_test=1`);
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const ready = await win.webContents.executeJavaScript(`Boolean(document.querySelector('#clubSelector option[value="1|china"]'))`);
+    const ready = await win.webContents.executeJavaScript(`Boolean(document.querySelector('#root .cm-app'))`);
     if (ready) break;
     await wait(100);
   }
   await win.webContents.executeJavaScript(`
     (async () => {
       document.documentElement.dataset.theme = ${JSON.stringify(theme)};
-      const selector = document.getElementById('clubSelector');
-      selector.value = '1|china';
-      onClubChange();
-      switchTab('recommendations');
+      document.querySelector('.cm-menu-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 150));
+      document.querySelector('#clubSelector').closest('.ant-select').querySelector('.ant-select-selector').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 100));
+      Array.from(document.querySelectorAll('.ant-select-item-option')).find(node => node.innerText.includes('测试同好会'))?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, 100));
+      Array.from(document.querySelectorAll('.ant-menu-item')).find(node => node.innerText.includes('神器榜'))?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
       for (let attempt = 0; attempt < 40; attempt += 1) {
         if (document.querySelector('.rec-list [data-rec-slot="0"]')) return;
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -208,7 +220,7 @@ async function inspectViewport(baseUrl, name, size, theme) {
   const { win, consoleErrors } = await openManager(baseUrl, size, theme);
   try {
     const result = await win.webContents.executeJavaScript(`
-      (() => {
+      (async () => {
         const cards = Array.from(document.querySelectorAll('.rec-list [data-rec-slot]'));
         return {
           innerWidth,
@@ -216,6 +228,11 @@ async function inspectViewport(baseUrl, name, size, theme) {
           slotCount: cards.length,
           emptySlots: cards.filter(card => card.classList.contains('rec-card-empty')).map(card => Number(card.dataset.recSlot)),
           touchTargets: cards.map(card => Math.round(card.getBoundingClientRect().height)),
+          filledRanks: cards.filter(card => card.classList.contains('is-filled')).map(card => card.dataset.rank),
+          moeObjectPosition: (() => {
+            const image = document.querySelector('.cm-character-avatar img');
+            return image ? getComputedStyle(image).objectPosition : '';
+          })(),
           statusText: document.getElementById('recSlotStatus')?.innerText || '',
         };
       })();
@@ -232,16 +249,24 @@ async function testMobileInteractions(baseUrl) {
   try {
     await win.webContents.executeJavaScript(`
       (async () => {
-        window.confirm = () => true;
         document.querySelector('[data-rec-slot="6"]').click();
-        document.getElementById('recSearchInput').value = '指定位置';
-        await searchBangumi();
-        await addRecommendation(999);
-        await removeRecommendation(104);
-        document.querySelector('[data-rec-slot="0"]').click();
-        document.querySelector('[data-rec-slot="1"]').click();
+        const input = document.querySelector('.ant-input-search input');
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(input, '指定位置'); input.dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('.ant-input-search-button').click();
+        for (let i = 0; i < 30; i++) { if (Array.from(document.querySelectorAll('button')).some(b => b.innerText.includes('添加到第 7 位'))) break; await new Promise(r => setTimeout(r, 50)); }
+        Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('添加到第 7 位'))?.click();
       })();
     `);
+    for (let attempt = 0; attempt < 40; attempt += 1) { if (fixtureState.recommendations.some(item => item.id === 999)) break; await wait(50); }
+    await win.webContents.executeJavaScript(`document.querySelector('[data-rec-slot="3"] button').click()`);
+    await wait(120);
+    const confirmPoint = await win.webContents.executeJavaScript(`(() => { const node = Array.from(document.querySelectorAll('.ant-modal-confirm-btns .ant-btn-primary')).filter(n => n.offsetParent !== null).at(-1); if (!node) return null; const r = node.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+    assert.ok(confirmPoint, 'remove confirmation should be visible');
+    win.webContents.sendInputEvent({ type: 'mouseDown', x: confirmPoint.x, y: confirmPoint.y, button: 'left', clickCount: 1 });
+    win.webContents.sendInputEvent({ type: 'mouseUp', x: confirmPoint.x, y: confirmPoint.y, button: 'left', clickCount: 1 });
+    await wait(250);
+    await win.webContents.executeJavaScript(`(async () => { document.querySelector('[data-rec-slot="0"]').click(); await new Promise(r => setTimeout(r, 60)); document.querySelector('[data-rec-slot="1"]').click(); })()`);
     for (let attempt = 0; attempt < 40; attempt += 1) {
       if (fixtureState.recommendations.some(item => item.id === 101 && item.sort_order === 1)) break;
       await wait(50);
@@ -252,11 +277,11 @@ async function testMobileInteractions(baseUrl) {
     assert.equal(fixtureState.recommendations.find(item => item.id === 101)?.sort_order, 1, 'mobile click-to-move should move the item');
 
     fixtureState.failNextReorder = true;
-    await win.webContents.executeJavaScript(`moveRecommendationSlot(1, 2)`);
+    await win.webContents.executeJavaScript(`(async () => { document.querySelector('[data-rec-slot="1"]').click(); await new Promise(r => setTimeout(r, 60)); document.querySelector('[data-rec-slot="2"]').click(); })()`);
     await wait(120);
     assert.equal(fixtureState.recommendations.find(item => item.id === 101)?.sort_order, 1, 'failed reorder should leave server order unchanged');
-    const uiSlot = await win.webContents.executeJavaScript(`document.querySelector('[data-rec-slot="1"]')?.getAttribute('aria-label') || ''`);
-    assert.match(uiSlot, /第 2 位/, 'failed reorder should restore the original UI slot');
+    const uiSlot = await win.webContents.executeJavaScript(`document.querySelector('[data-rec-slot="1"]')?.innerText || ''`);
+    assert.match(uiSlot, /第一个作品/, 'failed reorder should restore the original UI slot');
     assert.equal(consoleErrors.length, 0, `mobile interaction should not add console errors: ${consoleErrors.join('; ')}`);
   } finally {
     win.destroy();
@@ -268,11 +293,12 @@ async function testDesktopDrag(baseUrl) {
   const { win, consoleErrors } = await openManager(baseUrl, viewportSizes.desktop, 'light');
   try {
     await win.webContents.executeJavaScript(`
-      (() => {
+      (async () => {
         const source = document.querySelector('[data-rec-slot="11"]');
         const target = document.querySelector('[data-rec-slot="0"]');
         const transfer = new DataTransfer();
         source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+        await new Promise(resolve => setTimeout(resolve, 60));
         target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
         target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
         source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: transfer }));
@@ -307,6 +333,8 @@ async function main() {
         assert.equal(result.slotCount, 12, `${name}/${theme} should render all twelve recommendation slots`);
         assert.equal(result.bodyWidth <= result.innerWidth + 1, true, `${name}/${theme} should not horizontally overflow`);
         assert.deepEqual(result.emptySlots, [1, 2, 4, 5, 6, 7, 8, 9, 10], `${name}/${theme} should preserve the sparse fixture slots`);
+        assert.deepEqual(result.filledRanks, ['1', '4', '12'], `${name}/${theme} recommendation rank metadata must remain stable`);
+        assert.ok(result.moeObjectPosition.includes('0%'), `${name}/${theme} character avatars should crop from the top (got ${result.moeObjectPosition})`);
         if (size.width <= 640) {
           assert.equal(result.touchTargets.every(height => height >= 44), true, `${name}/${theme} recommendation slots should remain touch-friendly`);
         }
@@ -326,5 +354,8 @@ if (app?.whenReady && BrowserWindow) {
   main().catch(error => {
     console.error(error.stack || error.message || error);
     process.exitCode = 1;
+    /* app.quit() always terminates Electron with code 0, so a failing run has to
+       force the exit status or a chained `&&` script would report success. */
+    if (app?.exit) app.exit(1);
   });
 }

@@ -81,6 +81,11 @@ function getCurrentUser(): ?array {
     $db = getDB();
     $user = false;
     $variants = [
+        'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.password_hash, u.credentials_completed_at, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled, u.display_membership_id, u.language_preference',
+        'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.password_hash, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled, u.display_membership_id, u.language_preference',
+        'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.password_hash, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled, u.display_membership_id',
+        'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.password_hash, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled',
+        'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.password_hash, u.qq_openid, u.discord_id, u.is_audit',
         'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled, u.display_membership_id, u.language_preference',
         'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled, u.display_membership_id',
         'u.id, u.username, u.nickname, u.avatar_url, u.role, u.status, u.email, u.email_verified_at, u.qq_openid, u.discord_id, u.is_audit, u.profile_bio, u.membership_application_email_enabled',

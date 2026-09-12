@@ -530,7 +530,8 @@ switch ($action) {
             $stmt = $db->query(
                 "SELECT cm.id, cm.user_id, cm.club_id, cm.country, cm.status, cm.joined_at,
                         cm.apply_role, cm.qq_account, cm.contact_account, cm.is_student,
-                        cm.join_method, cm.external_club_name, cm.external_club_role, cm.apply_reason, u.username
+                        cm.join_method, cm.external_club_name, cm.external_club_role, cm.apply_reason,
+                        u.username, u.avatar_url
                  FROM club_memberships cm
                  JOIN users u ON u.id = cm.user_id
                  WHERE 1=1 $statusCondition
@@ -541,7 +542,8 @@ switch ($action) {
             $stmt = $db->prepare(
                 "SELECT cm.id, cm.user_id, cm.club_id, cm.country, cm.status, cm.joined_at,
                         cm.apply_role, cm.qq_account, cm.contact_account, cm.is_student,
-                        cm.join_method, cm.external_club_name, cm.external_club_role, cm.apply_reason, u.username
+                        cm.join_method, cm.external_club_name, cm.external_club_role, cm.apply_reason,
+                        u.username, u.avatar_url
                  FROM club_memberships cm
                  JOIN users u ON u.id = cm.user_id
                  WHERE 1=1 $statusCondition

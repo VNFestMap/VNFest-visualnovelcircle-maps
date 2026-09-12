@@ -1,0 +1,25 @@
+{
+  "$schema": "https://sparkdesign.dev/schema/components.json",
+  "style": "soft",
+  "appearance": "dark",
+  "theme": "vnfest-md3",
+  "rsc": false,
+  "typescript": false,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/components",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "utils": "@/lib/utils",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide",
+  "registries": {
+    "spark": "https://sparkdesign.dev/r/{name}.json"
+  }
+}

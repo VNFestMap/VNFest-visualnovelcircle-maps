@@ -1,10 +1,20 @@
-# Galgame履历书 (Galgame Resume)
+# GalgameTool 自助工具（履历书 / MEME / Tier 表）
 
 对 [bishogedb.com/profile](https://bishogedb.com/profile) 的逆向工程复刻，适配 VNFmap 前端风格，支持 **Bangumi + VNDB + CnGal + 鲲Gal + 月暮Gal** 五 API 数据源（CnGal 始终启用，其余四个可在作品搜索时自选启用）。角色搜索使用 Bangumi + CnGal，VNDB 角色接口已停用。
 
+页面为多视图单页：侧栏切换 **履历书 / MEME / Tier 表** 三个工具（`index.html#meme`、`index.html#tier` 直达对应视图，`meme.html`、`tier.html` 为各自独立跳转入口）。
+
+### Tier 表（`tier-tool.js` / `tier-tool.css`，复刻 bishogedb.com/tier 形态）
+- 默认 S/A/B/C/D 五档，最多 12 行；双击行标签改名、点色块换色、行可增删/上下移
+- 卡片三源搜索（作品/角色双 tab + 发售年筛选），结果先进未分类池，再拖入梯队
+- 拖拽：桌面 HTML5 DnD + 移动端 Pointer Events，行内按落点位置插入；双击表内卡片退回未分类；方向键跨行移动 / 行内排序
+- 卡片预览弹窗（放大 + 打开条目页 bgm.tv / vndb.org / cngal.com）；支持本地上传自定义图片卡
+- 持久化：localStorage + 登录用户经 `api/galgame_tier.php` 云同步（表 `galgame_tiers`，见 `scripts/migrate.php`）
+- 分享：结构链接 `#tier=<base64url>`、X 分享、JSON 文件导入导出、html2canvas 导出 PNG（导出前将克隆树上的 `color(srgb …)` 计算值清洗回 `rgba()`，规避 html2canvas 1.4.1 不支持新颜色函数的问题）
+
 ## 功能特性
 
-### 核心功能
+### 核心功能（履历书）
 - **履历书模式 (Resume Mode)** — 传统履历书网格布局，完美复刻原版设计
 - **卡片模式 (Card Mode)** — 现代卡片式个人资料布局
 - **可编辑文本** — 点击任意文本字段即可编辑，实时保存
@@ -136,10 +146,16 @@ npx serve .
 ## 项目结构
 ```
 GalgameTool/
-├── index.html      # 页面骨架、弹窗容器和资源引用
-├── galgame-tool.css # 工具页样式、响应式布局和主题适配
+├── index.html       # 多视图页面骨架（履历书/MEME/Tier 表）、弹窗容器和资源引用
+├── galgame-tool.css # 履历书样式、响应式布局和主题适配
 ├── galgame-tool.js  # 履历编辑、搜索、导入和导出逻辑
-├── README.md       # 本文件
+├── meme.html        # MEME 跳转入口（重定向到 index.html#meme）
+├── meme-tool.css    # MEME 看板样式
+├── meme-tool.js     # MEME 看板逻辑
+├── tier.html        # Tier 表跳转入口（重定向到 index.html#tier）
+├── tier-tool.css    # Tier 表样式
+├── tier-tool.js     # Tier 表逻辑（行编辑/搜索/拖拽/云同步/导出）
+├── README.md        # 本文件
 ├── assets/          # 账号平台等工具资源
 └── fonts/
     └── README.md               # 字体说明；二进制字体按授权另行提供

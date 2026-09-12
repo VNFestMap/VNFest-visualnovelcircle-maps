@@ -113,10 +113,10 @@ const clubCodesApi = read('api/club_codes.php');
 const clubCodeHelper = read('includes/club_code.php');
 assert.ok(clubCodesApi.includes('clubCodeBindUser') && clubCodeHelper.includes("join_method = 'school_code'") && clubCodeHelper.includes("'school_code'"), 'club code redemption should mark direct joins as school_code');
 
-const manager = read('admin/club_manager.html');
-assert.ok(manager.includes('data-tab="diplomatic"'), 'club manager should have a diplomatic applications tab');
-assert.ok(manager.includes("tab === 'approved'") && manager.includes("s.status === 'active'"), 'club manager approved tab should show active history');
-assert.ok(manager.includes('joinMethodText') && manager.includes('外校成员交流申请'), 'club manager should show application method labels');
+const manager = read('club-manager-react/src/model.js') + read('club-manager-react/src/tabs/MembershipsTab.jsx') + read('club-manager-react/src/tabs/RecommendationsTab.jsx');
+assert.ok(manager.includes("key: 'diplomatic'"), 'club manager should have a diplomatic applications tab');
+assert.ok(manager.includes("item.status === 'active'") && manager.includes("item.status === 'approved'"), 'club manager approved tab should show active history');
+assert.ok(manager.includes('join_method') && manager.includes('外校成员交流申请'), 'club manager should show application method labels');
 assert.ok(manager.includes('club_moe_king.php?action=get') && manager.includes('search_character'), 'club manager should manage Bangumi-backed moe kings');
 
 const moeKingApi = read('api/club_moe_king.php');

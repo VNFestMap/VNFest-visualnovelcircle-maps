@@ -286,6 +286,7 @@ bash scripts/deploy.sh
 
 | 版本 | 核心主题 |
 |------|---------|
+| **v2.2.0** | 同好会动态 React 化、独立搜索、互关私信、管理员 React 工作台、OAuth 凭证升级、GalgameTool Tier/MEME 与后端迁移 |
 | **v2.1.0** | 独立专栏、超级管理控制台、北京 GalOnly、MakoQuiz 连携、偏好集中化、Wiki 使用文档 |
 | **v2.0.0** | 用户中心 SPA 化、Staff 招募、资料公开库、淘汰赛可视化、设计系统统一 |
 | v1.7.x | 企划枢纽、十二器、萌战引擎、投票活动、同好会广场、Docker CI/CD |

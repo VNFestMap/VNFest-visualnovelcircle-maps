@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const appSource = fs.readFileSync(path.join(process.cwd(), 'js/app.js'), 'utf8');
-const managerSource = fs.readFileSync(path.join(process.cwd(), 'admin/club_manager.html'), 'utf8');
+const managerSource = ['App.jsx', 'Shell.jsx', 'model.js', 'tabs/SettingsTab.jsx']
+  .map((file) => fs.readFileSync(path.join(process.cwd(), 'club-manager-react', 'src', file), 'utf8')).join('\n');
 const indexSource = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
 const clubsApiSource = fs.readFileSync(path.join(process.cwd(), 'api', 'clubs.php'), 'utf8');
 const pageBackgroundSource = fs.readFileSync(path.join(process.cwd(), 'js', 'page-background.js'), 'utf8');
@@ -32,24 +33,17 @@ assert.ok(!renderClubCardsSource.includes('japanSet'), 'renderClubCards should n
 assert.match(appSource, /deleteClub[\s\S]*clubs_japan\.php/, 'delete flow should use Japan API for Japan clubs');
 assert.match(appSource, /deleteClub[\s\S]*credentials:\s*['"]same-origin['"]/, 'delete flow should include credentials');
 
-assert.match(managerSource, /let\s+allClubOptions\s*=\s*\[\]/, 'manager should keep all club options for super admin');
-assert.match(managerSource, /managedClubs\s*=\s*\[\{\s*club_id:\s*0[\s\S]*\.concat\(allClubOptions\)/, 'super admin should be able to select real clubs');
-assert.match(managerSource, /sel\.selectedIndex\s*=\s*0/, 'single managed club should select the first real option');
-assert.match(managerSource, /selectedCountry\s*=\s*managedClubs\[0\]\.country/, 'single managed club should sync country');
-assert.match(managerSource, /function\s+updateSuperAdminTabs\s*\([\s\S]*usersTabBtn\.style\.display\s*=\s*isSuperAdminUser\(\)\s*\?\s*['"]{2}\s*:\s*['"]none['"]/, 'super admin users module should be visible regardless of selected club');
-assert.doesNotMatch(managerSource, /selectedClubId\s*!==\s*0[\s\S]{0,160}无权限访问/, 'super admin users module should not require selecting club #0');
-assert.doesNotMatch(managerSource, /请先选择\s*同好会\s*#0/, 'users tab should not ask super admin to select club #0');
-assert.match(managerSource, /--sidebar-w:\s*248px/, 'manager page should keep the sidebar/topbar admin console layout');
-assert.match(managerSource, /:root\[data-theme='light'\]\s*\{/, 'manager page should include a dedicated light mode pass');
-assert.match(managerSource, /async function saveClubSettings\s*\(/, 'manager should save club settings in-page without redirecting to the main editor');
+assert.match(managerSource, /available\s*=\s*\[[\s\S]*all:\s*true[\s\S]*\.\.\.china\.map[\s\S]*\.\.\.japan\.map/, 'super admin should keep all clubs and the global option');
+assert.match(managerSource, /setSelectedKey\(available\[0\]\.all \? 'all' : clubKey/, 'manager should select the first available option and preserve country in its composite key');
+assert.match(managerSource, /TAB_META\.filter\(\(item\) => !item\.superAdmin \|\| superAdmin\)/, 'super-admin tabs must be permission-filtered before rendering');
+assert.doesNotMatch(managerSource, /请先选择\s*同好会\s*#0/, 'users tab should not require a sentinel club');
+assert.match(managerSource, /width=\{collapsed \? 64 : 244\}/, 'manager page should keep the tightened second-level sidebar');
+assert.match(managerSource, /algorithm:\s*isDark \? theme\.darkAlgorithm : theme\.defaultAlgorithm/, 'manager page should support light and dark themes');
+assert.match(managerSource, /const save = async/, 'manager should save club settings in-page without redirecting');
 
 // A stray </div> inside the topbar header makes the HTML parser close .admin-main
 // early, re-parenting <main class="admin-content"> as a flex-row sibling and
 // pushing all tab content to the right half of the screen.
-for (const headerBlock of managerSource.match(/<header\b[\s\S]*?<\/header>/g) || []) {
-  const navOpens = (headerBlock.match(/<nav\b/g) || []).length;
-  const navCloses = (headerBlock.match(/<\/nav>/g) || []).length;
-  assert.equal(navOpens, navCloses, 'manager header blocks must close every <nav> they open');
-}
+assert.match(managerSource, /<header[\s\S]*<Layout className="cm-workspace">/, 'React topbar must precede the sidebar/content workspace');
 
 console.log('club edit contract tests passed');

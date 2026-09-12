@@ -20,6 +20,7 @@ require_once __DIR__ . '/../includes/notifications.php';
 require_once __DIR__ . '/../includes/display_club.php';
 require_once __DIR__ . '/../includes/club_code.php';
 require_once __DIR__ . '/../includes/oauth_bangumi.php';
+require_once __DIR__ . '/../includes/oauth_account.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -71,7 +72,9 @@ function maskEmail(string $email): string {
 
     $name = $parts[0];
     $domain = $parts[1];
-    $first = mb_substr($name, 0, 1);
+    $first = function_exists('oauthAccountStringSubstr')
+        ? oauthAccountStringSubstr($name, 0, 1)
+        : substr($name, 0, 1);
     return $first . '***@' . $domain;
 }
 
@@ -83,6 +86,9 @@ function publicAuthUser(array $user): array {
         $displayClub = displayClubForUser(getDB(), (int)$user['id']);
     }
     $bangumiBinding = bangumiPublicBindingForUser((int)($user['id'] ?? 0));
+    $hasPassword = oauthAccountHasPassword($user);
+    $credentialsComplete = $hasPassword && !empty($user['email_verified_at']);
+    $hasSocialProvider = !empty($user['qq_openid']) || !empty($user['discord_id']);
     return [
         'id' => (int)($user['id'] ?? 0),
         'username' => $user['username'] ?? '',
@@ -91,6 +97,12 @@ function publicAuthUser(array $user): array {
         'role' => $user['role'] ?? 'visitor',
         'email' => $user['email'] ?? '',
         'email_verified' => !empty($user['email_verified_at']),
+        'has_password' => $hasPassword,
+        'credentials_complete' => $credentialsComplete,
+        'needs_credential_upgrade' => $hasSocialProvider && !$credentialsComplete,
+        'can_set_password' => !$hasPassword && !empty($user['email_verified_at']),
+        // 仅对已经完成社交凭证升级的账号锁定邮箱；本地注册账号继续保留原有规则。
+        'can_unbind_email' => !$hasSocialProvider || !$credentialsComplete,
         'qq_bound' => !empty($user['qq_openid']),
         'discord_bound' => !empty($user['discord_id']),
         'bangumi_bound' => $bangumiBinding['bound'],
@@ -162,6 +174,81 @@ function authEnsureLanguagePreferenceColumn(PDO $db): void {
     } catch (Throwable $e) {
         error_log('Unable to add language preference column: ' . $e->getMessage());
     }
+}
+
+function authJsonInput(): array {
+    $input = json_decode(file_get_contents('php://input'), true);
+    return is_array($input) ? $input : [];
+}
+
+function authOAuthError(string $code, string $message, int $status = 422): void {
+    http_response_code($status);
+    echo json_encode([
+        'success' => false,
+        'code' => $code,
+        'message' => $message,
+    ]);
+    exit();
+}
+
+function authOAuthPendingContext(PDO $db): array {
+    $context = oauthAccountLoadPending($db);
+    if ($context) {
+        return ['success' => true, 'context' => $context];
+    }
+
+    $errorCode = oauthAccountTakePendingError() ?: 'OAUTH_PENDING_NOT_FOUND';
+    return [
+        'success' => false,
+        'code' => $errorCode,
+        'message' => $errorCode === 'OAUTH_PENDING_EXPIRED'
+            ? '本次授权已过期，请重新登录'
+            : '没有找到待完成的授权，请重新登录',
+    ];
+}
+
+function authOAuthCodeHash(string $code): string {
+    initSession();
+    return hash_hmac('sha256', $code, session_id());
+}
+
+function authOAuthChallengeIsVerified(array $row): bool {
+    return !empty($row['verified_at']) && empty($row['consumed_at']);
+}
+
+function authOAuthEmailUser(PDO $db, string $email): ?array {
+    $stmt = $db->prepare('SELECT id, status, email, email_verified_at FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+    return $user ?: null;
+}
+
+function authOAuthUserHasAlternativeLogin(PDO $db, int $userId, string $provider): bool {
+    $stmt = $db->prepare(
+        'SELECT password_hash, email_verified_at, qq_openid, discord_id FROM users WHERE id = ? LIMIT 1'
+    );
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+    if (!$user) return false;
+
+    if (oauthAccountHasPassword($user)) return true;
+    // 已验证邮箱可以通过现有密码找回流程恢复本地登录，因此也是可保留的恢复方式。
+    if (!empty($user['email_verified_at'])) return true;
+    $otherProvider = $provider === 'qq' ? 'discord_id' : 'qq_openid';
+    return trim((string)($user[$otherProvider] ?? '')) !== '';
+}
+
+function authOAuthCredentialStateUpdate(PDO $db, int $userId): void {
+    $db->prepare(
+        "UPDATE users
+         SET credentials_completed_at = CASE
+             WHEN COALESCE(password_hash, '') <> '' AND email_verified_at IS NOT NULL
+             THEN COALESCE(credentials_completed_at, CURRENT_TIMESTAMP)
+             ELSE credentials_completed_at
+         END,
+         updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?"
+    )->execute([$userId]);
 }
 
 switch ($action) {
@@ -245,8 +332,11 @@ switch ($action) {
             $db->beginTransaction();
 
             $stmt = $db->prepare(
-                "INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at, created_at, updated_at, last_login_at)
-                 VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                "INSERT INTO users
+                    (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at,
+                     credentials_completed_at, created_at, updated_at, last_login_at)
+                 VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
             );
             $stmt->execute([$username, $username, $hash, $email]);
             $userId = $db->lastInsertId();
@@ -295,6 +385,8 @@ switch ($action) {
                 'role' => 'visitor',
                 'email' => $email,
                 'email_verified_at' => date('Y-m-d H:i:s'),
+                'password_hash' => $hash,
+                'credentials_completed_at' => date('Y-m-d H:i:s'),
                 'profile_bio' => '',
             ])
         ];
@@ -478,6 +570,7 @@ switch ($action) {
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
         $db->prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$newHash, $user['id']]);
+        authOAuthCredentialStateUpdate($db, (int)$user['id']);
         $db->prepare("UPDATE sessions SET is_valid = 0 WHERE user_id = ?")->execute([$user['id']]);
 
         $codes[$matchedIndex]['used'] = true;
@@ -615,9 +708,55 @@ switch ($action) {
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
         $db->prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$newHash, $user['id']]);
+        authOAuthCredentialStateUpdate($db, (int)$user['id']);
 
         logAction('user.change_password', 'user', $user['id']);
         echo json_encode(['success' => true, 'message' => '密码修改成功']);
+        exit();
+
+    case 'set_password':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
+            exit();
+        }
+        authRequireSameOrigin();
+        $user = requireLogin();
+        checkRateLimit('set_password', 5, 1);
+
+        $input = authJsonInput();
+        $newPassword = (string)($input['new_password'] ?? '');
+        $confirmation = (string)($input['new_password_confirmation'] ?? '');
+        if (strlen($newPassword) < 6 || strlen($newPassword) > 128) {
+            authOAuthError('PASSWORD_INVALID', '新密码需为 6-128 位');
+        }
+        if ($newPassword !== $confirmation) {
+            authOAuthError('PASSWORD_MISMATCH', '两次输入的密码不一致');
+        }
+
+        $db = getDB();
+        $stmt = $db->prepare('SELECT password_hash, email_verified_at FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([(int)$user['id']]);
+        $securityUser = $stmt->fetch() ?: [];
+        if (oauthAccountHasPassword($securityUser)) {
+            authOAuthError('PASSWORD_ALREADY_SET', '当前账号已有密码，请使用修改密码功能');
+        }
+        if (empty($securityUser['email_verified_at'])) {
+            authOAuthError('EMAIL_VERIFICATION_REQUIRED', '请先验证邮箱，再设置密码');
+        }
+
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+        $passwordUpdate = $db->prepare(
+            "UPDATE users SET password_hash = ?, credentials_completed_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND COALESCE(password_hash, '') = '' AND email_verified_at IS NOT NULL"
+        );
+        $passwordUpdate->execute([$newHash, (int)$user['id']]);
+        if ($passwordUpdate->rowCount() !== 1) {
+            authOAuthError('PASSWORD_ALREADY_SET', '当前账号已有密码，请使用修改密码功能');
+        }
+
+        logAction('user.set_password', 'user', (int)$user['id']);
+        echo json_encode(['success' => true, 'message' => '密码设置成功']);
         exit();
 
     case 'send_code':
@@ -630,7 +769,7 @@ switch ($action) {
         checkRateLimit('send_code', 3, 1); // 每分钟最多 3 次
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $email = trim($input['email'] ?? '');
+        $email = normalizeEmail($input['email'] ?? '');
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             echo json_encode(['success' => false, 'message' => '邮箱格式不正确']);
@@ -688,7 +827,7 @@ switch ($action) {
         checkRateLimit('bind_email', 5, 1);
 
         $input = json_decode(file_get_contents('php://input'), true);
-        $email = trim($input['email'] ?? '');
+        $email = normalizeEmail((string)($input['email'] ?? ''));
         $code = trim($input['code'] ?? '');
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -715,9 +854,6 @@ switch ($action) {
             exit();
         }
 
-        // 标记验证码已使用
-        $db->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?")->execute([$verification['id']]);
-
         // 检查邮箱唯一性
         $stmt = $db->prepare('SELECT id FROM users WHERE email = ? AND id != ?');
         $stmt->execute([$email, $user['id']]);
@@ -726,8 +862,17 @@ switch ($action) {
             exit();
         }
 
+        // 验证码只在所有更新条件通过后消耗，避免邮箱冲突导致验证码被无效占用。
+        $db->prepare("UPDATE email_verifications SET used = 1 WHERE id = ?")->execute([$verification['id']]);
+
         $db->prepare(
-            "UPDATE users SET email = ?, email_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            "UPDATE users SET email = ?, email_verified_at = CURRENT_TIMESTAMP,
+                    credentials_completed_at = CASE
+                        WHEN COALESCE(password_hash, '') <> '' THEN COALESCE(credentials_completed_at, CURRENT_TIMESTAMP)
+                        ELSE credentials_completed_at
+                    END,
+                    updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?"
         )->execute([$email, $user['id']]);
 
         logAction('user.bind_email', 'user', $user['id'], ['email' => $email]);
@@ -742,6 +887,18 @@ switch ($action) {
         $user = requireLogin();
 
         $db = getDB();
+        $stmt = $db->prepare(
+            'SELECT password_hash, email_verified_at, qq_openid, discord_id, credentials_completed_at
+             FROM users WHERE id = ? LIMIT 1'
+        );
+        $stmt->execute([(int)$user['id']]);
+        $securityUser = $stmt->fetch() ?: [];
+        $credentialsComplete = oauthAccountCredentialsComplete($securityUser);
+        $hasSocialProvider = trim((string)($securityUser['qq_openid'] ?? '')) !== ''
+            || trim((string)($securityUser['discord_id'] ?? '')) !== '';
+        if ($hasSocialProvider && $credentialsComplete) {
+            authOAuthError('EMAIL_REQUIRED', '已完成登录凭证的账号不能解绑邮箱');
+        }
         $db->prepare(
             "UPDATE users SET email = NULL, email_verified_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         )->execute([$user['id']]);
@@ -940,11 +1097,469 @@ switch ($action) {
         ]);
         exit();
 
+    case 'oauth_pending':
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 GET 请求', 405);
+        }
+        initSession();
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                authOAuthError($pendingResult['code'], $pendingResult['message'], 409);
+            }
+
+            $pendingContext = $pendingResult['context'];
+            $pending = $pendingContext['pending'];
+            $meta = oauthAccountProviderMeta((string)$pending['provider']);
+            echo json_encode([
+                'success' => true,
+                'pending' => true,
+                'flow' => $pending['flow'],
+                'provider' => $meta['provider'],
+                'provider_label' => $meta['label'],
+                'display_name' => $pending['username'] ?? '',
+                'avatar' => $pending['avatar_url'] ?? '',
+                'return_to' => oauthAccountSafeReturnTo($pending['return_to'] ?? null, $meta['default_return']),
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to load OAuth pending challenge: ' . $error->getMessage());
+            authOAuthError('OAUTH_SETUP_UNAVAILABLE', '登录服务暂时不可用，请稍后再试', 503);
+        }
+        exit();
+
+    case 'oauth_send_code':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        checkRateLimit('oauth_send_code', 3, 1);
+
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                authOAuthError($pendingResult['code'], $pendingResult['message'], 409);
+            }
+            $pendingContext = $pendingResult['context'];
+            $row = $pendingContext['row'];
+            $pending = $pendingContext['pending'];
+            $flow = (string)$pending['flow'];
+
+            if ($flow === 'provider_transfer') {
+                $currentUser = getCurrentUser();
+                if (!$currentUser || (int)($pending['target_user_id'] ?? 0) !== (int)$currentUser['id']) {
+                    authOAuthError('OAUTH_PENDING_NOT_FOUND', '授权状态已失效，请重新绑定', 409);
+                }
+                $email = normalizeEmail((string)($currentUser['email'] ?? ''));
+                if ($email === '' || empty($currentUser['email_verified_at'])) {
+                    authOAuthError('TARGET_EMAIL_REQUIRED', '请先验证当前账号邮箱');
+                }
+            } else {
+                $input = authJsonInput();
+                $email = normalizeEmail((string)($input['email'] ?? ''));
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) {
+                    authOAuthError('EMAIL_INVALID', '邮箱格式不正确');
+                }
+            }
+
+            $now = time();
+            $windowStartedAt = strtotime((string)($row['send_window_started_at'] ?? ''));
+            $sendCount = (int)($row['send_count'] ?? 0);
+            if ($windowStartedAt === false || $windowStartedAt <= $now - 60) {
+                $windowStartedAt = $now;
+                $sendCount = 0;
+            }
+            // 发送次数同时跨越同一 Session 创建的多个挑战统计，避免反复发起
+            // OAuth 回调后绕过单挑战的 3 次/分钟限制。
+            $recentSent = $db->prepare(
+                'SELECT COUNT(*) FROM oauth_account_challenges
+                 WHERE session_id_hash = ? AND email = ? AND code_sent_at >= ?'
+            );
+            $recentSent->execute([
+                oauthAccountSessionHash(),
+                $email,
+                date('Y-m-d H:i:s', $now - 60),
+            ]);
+            if ($sendCount >= 3 || (int)$recentSent->fetchColumn() >= 3) {
+                authOAuthError('OAUTH_CODE_RATE_LIMITED', '验证码发送过于频繁，请稍后再试', 429);
+            }
+
+            $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $newSendCount = $sendCount + 1;
+            $windowDate = date('Y-m-d H:i:s', $windowStartedAt);
+            $sentDate = date('Y-m-d H:i:s', $now);
+            $expiresDate = date('Y-m-d H:i:s', $now + 300);
+            $update = $db->prepare(
+                'UPDATE oauth_account_challenges
+                 SET email = ?, code_hash = ?, code_expires_at = ?, verified_at = NULL,
+                     attempt_count = 0, code_sent_at = ?, send_count = ?, send_window_started_at = ?
+                 WHERE challenge_hash = ? AND session_id_hash = ? AND consumed_at IS NULL'
+            );
+            $update->execute([
+                $email,
+                authOAuthCodeHash($code),
+                $expiresDate,
+                $sentDate,
+                $newSendCount,
+                $windowDate,
+                $row['challenge_hash'],
+                oauthAccountSessionHash(),
+            ]);
+            if ($update->rowCount() !== 1) {
+                authOAuthError('OAUTH_PENDING_EXPIRED', '本次授权已过期，请重新登录', 409);
+            }
+
+            $subject = $flow === 'provider_transfer' ? '账号绑定确认验证码' : '社交账号登录验证码';
+            $message = "您的验证码是：{$code}\n\n";
+            $message .= "验证码 5 分钟内有效。如果不是您本人操作，请忽略此邮件。\n";
+            $mailSent = sendMail($email, ($subjectPrefix ?? '') . $subject, $message);
+            logAction('user.oauth_send_code', 'user', $flow === 'provider_transfer' ? (int)$pending['target_user_id'] : null, [
+                'provider' => $pending['provider'],
+                'flow' => $flow,
+                'email' => $email,
+                'mail_sent' => $mailSent,
+            ]);
+            if (!$mailSent) {
+                authOAuthError('OAUTH_CODE_SEND_FAILED', '验证码发送失败，请稍后再试', 503);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => '验证码已发送至 ' . maskEmail($email),
+                'expires_in' => 300,
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to send OAuth account code: ' . $error->getMessage());
+            authOAuthError('OAUTH_SETUP_UNAVAILABLE', '登录服务暂时不可用，请稍后再试', 503);
+        }
+        exit();
+
+    case 'oauth_verify_code':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        checkRateLimit('oauth_verify_code', 10, 1);
+
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                authOAuthError($pendingResult['code'], $pendingResult['message'], 409);
+            }
+            $pendingContext = $pendingResult['context'];
+            $row = $pendingContext['row'];
+            $pending = $pendingContext['pending'];
+            $flow = (string)$pending['flow'];
+            $input = authJsonInput();
+            $code = trim((string)($input['code'] ?? ''));
+            if (!preg_match('/^\d{6}$/', $code)) {
+                authOAuthError('OAUTH_CODE_INVALID', '验证码为 6 位数字');
+            }
+
+            if (authOAuthChallengeIsVerified($row)) {
+                authOAuthError('OAUTH_CHALLENGE_CONSUMED', '验证码已使用，请继续完成下一步');
+            }
+
+            $email = '';
+            if ($flow === 'new_login') {
+                $email = normalizeEmail((string)($input['email'] ?? ''));
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $email !== normalizeEmail((string)($row['email'] ?? ''))) {
+                    authOAuthError('OAUTH_EMAIL_MISMATCH', '验证码与当前邮箱不匹配');
+                }
+            }
+
+            if (!authOAuthChallengeIsVerified($row)) {
+                $codeExpiresAt = strtotime((string)($row['code_expires_at'] ?? ''));
+                if (empty($row['code_hash']) || $codeExpiresAt === false || $codeExpiresAt <= time()) {
+                    authOAuthError('OAUTH_CODE_EXPIRED', '验证码无效或已过期');
+                }
+
+                $attemptCount = (int)($row['attempt_count'] ?? 0);
+                if ($attemptCount >= 5) {
+                    authOAuthError('OAUTH_CODE_ATTEMPTS_EXCEEDED', '验证码错误次数过多，请重新发送验证码');
+                }
+
+                $expectedHash = authOAuthCodeHash($code);
+                if (!hash_equals((string)$row['code_hash'], $expectedHash)) {
+                    $attemptUpdate = $db->prepare(
+                        'UPDATE oauth_account_challenges
+                         SET attempt_count = attempt_count + 1
+                         WHERE challenge_hash = ? AND session_id_hash = ? AND consumed_at IS NULL AND attempt_count < 5'
+                    );
+                    $attemptUpdate->execute([$row['challenge_hash'], oauthAccountSessionHash()]);
+                    if ($attemptUpdate->rowCount() !== 1 || $attemptCount + 1 >= 5) {
+                        authOAuthError('OAUTH_CODE_ATTEMPTS_EXCEEDED', '验证码错误次数过多，请重新发送验证码');
+                    }
+                    authOAuthError('OAUTH_CODE_INVALID', '验证码无效或已过期');
+                }
+
+                $verifiedUpdate = $db->prepare(
+                    'UPDATE oauth_account_challenges
+                     SET verified_at = CURRENT_TIMESTAMP, code_hash = NULL, code_expires_at = NULL, attempt_count = 0
+                     WHERE challenge_hash = ? AND session_id_hash = ? AND consumed_at IS NULL
+                       AND code_hash IS NOT NULL AND code_expires_at > ? AND attempt_count < 5'
+                );
+                $verifiedUpdate->execute([
+                    $row['challenge_hash'],
+                    oauthAccountSessionHash(),
+                    date('Y-m-d H:i:s'),
+                ]);
+                if ($verifiedUpdate->rowCount() !== 1) {
+                    $attemptCheck = $db->prepare(
+                        'SELECT attempt_count, consumed_at FROM oauth_account_challenges
+                         WHERE challenge_hash = ? AND session_id_hash = ? LIMIT 1'
+                    );
+                    $attemptCheck->execute([$row['challenge_hash'], oauthAccountSessionHash()]);
+                    $attemptState = $attemptCheck->fetch() ?: [];
+                    if ((int)($attemptState['attempt_count'] ?? 0) >= 5) {
+                        authOAuthError('OAUTH_CODE_ATTEMPTS_EXCEEDED', '验证码错误次数过多，请重新发送验证码');
+                    }
+                    authOAuthError('OAUTH_CHALLENGE_CONSUMED', '验证码已使用，请重新发送验证码');
+                }
+            } else {
+                $email = normalizeEmail((string)($row['email'] ?? ''));
+            }
+
+            if ($flow === 'provider_transfer') {
+                echo json_encode(['success' => true, 'next' => 'transfer']);
+                exit();
+            }
+
+            $existing = authOAuthEmailUser($db, $email);
+            echo json_encode([
+                'success' => true,
+                'email_exists' => (bool)$existing,
+                'next' => $existing ? 'choose_existing' : 'set_password',
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to verify OAuth account code: ' . $error->getMessage());
+            authOAuthError('OAUTH_SETUP_UNAVAILABLE', '登录服务暂时不可用，请稍后再试', 503);
+        }
+        exit();
+
+    case 'oauth_complete_account':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        checkRateLimit('oauth_complete_account', 5, 1);
+
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                authOAuthError($pendingResult['code'], $pendingResult['message'], 409);
+            }
+            $pendingContext = $pendingResult['context'];
+            $row = $pendingContext['row'];
+            $pending = $pendingContext['pending'];
+            if (($pending['flow'] ?? '') !== 'new_login' || !authOAuthChallengeIsVerified($row)) {
+                authOAuthError('OAUTH_EMAIL_VERIFICATION_REQUIRED', '请先验证邮箱验证码');
+            }
+            $provider = (string)($pending['provider'] ?? '');
+            if (!in_array($provider, ['qq', 'discord'], true)) {
+                authOAuthError('OAUTH_PENDING_NOT_FOUND', '授权状态已失效，请重新登录', 409);
+            }
+
+            $input = authJsonInput();
+            $email = normalizeEmail((string)($input['email'] ?? ''));
+            $password = (string)($input['password'] ?? '');
+            $confirmation = (string)($input['password_confirmation'] ?? '');
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $email !== normalizeEmail((string)($row['email'] ?? ''))) {
+                authOAuthError('OAUTH_EMAIL_MISMATCH', '邮箱与已验证的邮箱不匹配');
+            }
+            if (strlen($password) < 6 || strlen($password) > 128) {
+                authOAuthError('PASSWORD_INVALID', '密码需为 6-128 位');
+            }
+            if ($password !== $confirmation) {
+                authOAuthError('PASSWORD_MISMATCH', '两次输入的密码不一致');
+            }
+
+            $profile = oauthAccountProfileFromPending($pending);
+            $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+            $result = oauthAccountCreateCompletedUser($db, $provider, $profile, $email, $hash, (string)$row['challenge_hash']);
+            if (!$result['success']) {
+                $status = in_array($result['code'] ?? '', ['EMAIL_EXISTS', 'PROVIDER_CONFLICT', 'OAUTH_CHALLENGE_CONSUMED'], true) ? 409 : 500;
+                authOAuthError((string)$result['code'], (string)$result['message'], $status);
+            }
+
+            $userId = (int)$result['user_id'];
+            oauthAccountClearPending();
+            createSession($userId);
+            logAction('user.register', 'user', $userId, ['provider' => $provider, 'email' => $email, 'result' => 'success']);
+            if (function_exists('backfillAnnouncements')) backfillAnnouncements($userId);
+            $createdUser = oauthAccountFindUser($db, $userId) ?: [
+                'id' => $userId,
+                'username' => $result['username'],
+                'nickname' => $pending['username'] ?? $result['username'],
+                'avatar_url' => $pending['avatar_url'] ?? '',
+                'role' => 'visitor',
+                'email' => $email,
+                'email_verified_at' => date('Y-m-d H:i:s'),
+                'password_hash' => $hash,
+            ];
+            echo json_encode([
+                'success' => true,
+                'message' => '账号创建成功',
+                'redirect_to' => oauthAccountSafeReturnTo($pending['return_to'] ?? null),
+                'user' => publicAuthUser($createdUser),
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to complete OAuth account: ' . $error->getMessage());
+            authOAuthError('OAUTH_ACCOUNT_CREATE_FAILED', '账号创建失败，请稍后再试', 500);
+        }
+        exit();
+
+    case 'oauth_link_existing':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        checkRateLimit('oauth_link_existing', 5, 1);
+
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                authOAuthError($pendingResult['code'], $pendingResult['message'], 409);
+            }
+            $pendingContext = $pendingResult['context'];
+            $row = $pendingContext['row'];
+            $pending = $pendingContext['pending'];
+            if (($pending['flow'] ?? '') !== 'new_login' || !authOAuthChallengeIsVerified($row)) {
+                authOAuthError('OAUTH_EMAIL_VERIFICATION_REQUIRED', '请先验证邮箱验证码');
+            }
+            $provider = (string)($pending['provider'] ?? '');
+            if (!in_array($provider, ['qq', 'discord'], true)) {
+                authOAuthError('OAUTH_PENDING_NOT_FOUND', '授权状态已失效，请重新登录', 409);
+            }
+
+            $input = authJsonInput();
+            $email = normalizeEmail((string)($input['email'] ?? ''));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $email !== normalizeEmail((string)($row['email'] ?? ''))) {
+                authOAuthError('OAUTH_EMAIL_MISMATCH', '邮箱与已验证的邮箱不匹配');
+            }
+            $target = authOAuthEmailUser($db, $email);
+            if (!$target) {
+                authOAuthError('TARGET_ACCOUNT_UNAVAILABLE', '目标账号当前不可用');
+            }
+            if (($target['status'] ?? '') !== 'active') {
+                authOAuthError('TARGET_ACCOUNT_UNAVAILABLE', '目标账号当前不可用');
+            }
+
+            $result = oauthAccountLinkPendingToExisting(
+                $db,
+                $provider,
+                oauthAccountProfileFromPending($pending),
+                $email,
+                (int)$target['id'],
+                (string)$row['challenge_hash']
+            );
+            if (!$result['success']) {
+                $status = in_array($result['code'] ?? '', ['PROVIDER_CONFLICT', 'TARGET_PROVIDER_ALREADY_BOUND', 'OAUTH_CHALLENGE_CONSUMED'], true) ? 409 : 422;
+                authOAuthError((string)$result['code'], (string)$result['message'], $status);
+            }
+
+            oauthAccountClearPending();
+            createSession((int)$target['id']);
+            logAction('user.oauth_link_existing', 'user', (int)$target['id'], ['provider' => $provider, 'result' => 'success']);
+            echo json_encode([
+                'success' => true,
+                'message' => '已绑定到已有账号',
+                'redirect_to' => oauthAccountSafeReturnTo($pending['return_to'] ?? null),
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to link OAuth provider to existing account: ' . $error->getMessage());
+            authOAuthError('OAUTH_LINK_FAILED', '绑定已有账号失败，请稍后再试', 500);
+        }
+        exit();
+
+    case 'oauth_transfer_provider':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        checkRateLimit('oauth_transfer_provider', 5, 1);
+
+        try {
+            $db = getDB();
+            $pendingResult = authOAuthPendingContext($db);
+            if (!$pendingResult['success']) {
+                $pendingCode = $pendingResult['code'] === 'OAUTH_PENDING_EXPIRED'
+                    ? 'PROVIDER_TRANSFER_EXPIRED' : $pendingResult['code'];
+                authOAuthError($pendingCode, $pendingResult['message'], 409);
+            }
+            $pendingContext = $pendingResult['context'];
+            $row = $pendingContext['row'];
+            $pending = $pendingContext['pending'];
+            if (($pending['flow'] ?? '') !== 'provider_transfer' || !authOAuthChallengeIsVerified($row)) {
+                authOAuthError('OAUTH_EMAIL_VERIFICATION_REQUIRED', '请先验证当前账号邮箱');
+            }
+            $provider = (string)($pending['provider'] ?? '');
+            if (!in_array($provider, ['qq', 'discord'], true)) {
+                authOAuthError('OAUTH_PENDING_NOT_FOUND', '授权状态已失效，请重新绑定', 409);
+            }
+
+            $currentUser = getCurrentUser();
+            $targetId = (int)($pending['target_user_id'] ?? 0);
+            if (!$currentUser || $targetId <= 0 || (int)$currentUser['id'] !== $targetId) {
+                authOAuthError('OAUTH_PENDING_NOT_FOUND', '授权状态已失效，请重新绑定', 409);
+            }
+
+            $result = oauthAccountTransferProviderToUser($db, $provider, $pending, $targetId, (string)$row['challenge_hash']);
+            if (!$result['success']) {
+                $status = in_array($result['code'] ?? '', ['PROVIDER_CONFLICT', 'PROVIDER_OWNER_UNAVAILABLE', 'TARGET_PROVIDER_ALREADY_BOUND', 'OAUTH_CHALLENGE_CONSUMED'], true) ? 409 : 422;
+                authOAuthError((string)$result['code'], (string)$result['message'], $status);
+            }
+
+            oauthAccountClearPending();
+            logAction('user.oauth_provider_transfer', 'user', $targetId, [
+                'provider' => $provider,
+                'source_user_id' => $result['source_id'] ?? null,
+                'result' => 'success',
+            ]);
+            echo json_encode([
+                'success' => true,
+                'message' => '第三方登录身份已转移到当前账号',
+                'redirect_to' => oauthAccountSafeReturnTo($pending['return_to'] ?? null, 'user.html?tab=account'),
+            ]);
+        } catch (Throwable $error) {
+            error_log('Unable to transfer OAuth provider identity: ' . $error->getMessage());
+            authOAuthError('PROVIDER_TRANSFER_FAILED', '第三方账号转移失败，请稍后再试', 500);
+        }
+        exit();
+
+    case 'oauth_cancel':
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            authOAuthError('METHOD_NOT_ALLOWED', '仅支持 POST 请求', 405);
+        }
+        authRequireSameOrigin();
+        try {
+            $db = getDB();
+            $pendingContext = oauthAccountLoadPending($db);
+            if ($pendingContext) {
+                oauthAccountConsumeChallenge($db, (string)$pendingContext['row']['challenge_hash']);
+            }
+        } catch (Throwable $error) {
+            error_log('Unable to cancel OAuth challenge: ' . $error->getMessage());
+        }
+        oauthAccountClearPending();
+        echo json_encode(['success' => true, 'message' => '授权已取消']);
+        exit();
+
     case 'qq_auth':
         // 跳转到 QQ OAuth 授权页面
         initSession();
         require_once __DIR__ . '/../includes/oauth_qq.php';
-        $_SESSION['oauth_mode'] = $_GET['mode'] ?? 'login';
+        $mode = (string)($_GET['mode'] ?? 'login');
+        if (!in_array($mode, ['login', 'bind'], true)) $mode = 'login';
+        if ($mode === 'bind' && !getCurrentUser()) {
+            header('Location: ' . oauthAccountCallbackRedirect('login.html', 'error', '请先登录再绑定QQ'));
+            exit();
+        }
+        oauthAccountSetOAuthContext('qq', $mode, $_GET['return_to'] ?? ($mode === 'bind' ? 'user.html?tab=account' : 'index.html'));
         $url = qq_get_authorization_url();
         header('Location: ' . $url);
         exit();
@@ -953,7 +1568,13 @@ switch ($action) {
         // 跳转到 Discord OAuth 授权页面
         initSession();
         require_once __DIR__ . '/../includes/oauth_discord.php';
-        $_SESSION['oauth_mode'] = $_GET['mode'] ?? 'login';
+        $mode = (string)($_GET['mode'] ?? 'login');
+        if (!in_array($mode, ['login', 'bind'], true)) $mode = 'login';
+        if ($mode === 'bind' && !getCurrentUser()) {
+            header('Location: ' . oauthAccountCallbackRedirect('login.html', 'error', '请先登录再绑定Discord'));
+            exit();
+        }
+        oauthAccountSetOAuthContext('discord', $mode, $_GET['return_to'] ?? ($mode === 'bind' ? 'user.html?tab=account' : 'index.html'));
         $url = discord_get_authorization_url();
         header('Location: ' . $url);
         exit();
@@ -974,34 +1595,7 @@ switch ($action) {
         exit();
 
     case 'bind_qq':
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
-            exit();
-        }
-        $user = requireLogin();
-        $input = json_decode(file_get_contents('php://input'), true);
-        $openid = trim($input['openid'] ?? '');
-        $unionid = trim($input['unionid'] ?? '');
-
-        if (!$openid) {
-            echo json_encode(['success' => false, 'message' => 'QQ OpenID 不能为空']);
-            exit();
-        }
-
-        // 检查是否已被其他账号绑定
-        $db = getDB();
-        $stmt = $db->prepare('SELECT id FROM users WHERE qq_openid = ? AND id != ?');
-        $stmt->execute([$openid, $user['id']]);
-        if ($stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => '该 QQ 账号已被其他用户绑定']);
-            exit();
-        }
-
-        $db->prepare("UPDATE users SET qq_openid = ?, qq_unionid = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            ->execute([$openid, $unionid, $user['id']]);
-
-        logAction('user.bind_qq', 'user', $user['id']);
-        echo json_encode(['success' => true, 'message' => 'QQ 绑定成功']);
+        authOAuthError('OAUTH_BIND_REQUIRED', '请通过 QQ 授权页面完成绑定', 410);
         exit();
 
     case 'unbind_qq':
@@ -1009,8 +1603,12 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
             exit();
         }
+        authRequireSameOrigin();
         $user = requireLogin();
         $db = getDB();
+        if (!authOAuthUserHasAlternativeLogin($db, (int)$user['id'], 'qq')) {
+            authOAuthError('LAST_LOGIN_METHOD', '请先设置密码或绑定其他登录方式，再解绑 QQ');
+        }
         $db->prepare("UPDATE users SET qq_openid = NULL, qq_unionid = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$user['id']]);
 
@@ -1019,33 +1617,7 @@ switch ($action) {
         exit();
 
     case 'bind_discord':
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
-            exit();
-        }
-        $user = requireLogin();
-        $input = json_decode(file_get_contents('php://input'), true);
-        $discordId = trim($input['discord_id'] ?? '');
-
-        if (!$discordId) {
-            echo json_encode(['success' => false, 'message' => 'Discord ID 不能为空']);
-            exit();
-        }
-
-        // 检查是否已被其他账号绑定
-        $db = getDB();
-        $stmt = $db->prepare('SELECT id FROM users WHERE discord_id = ? AND id != ?');
-        $stmt->execute([$discordId, $user['id']]);
-        if ($stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => '该 Discord 账号已被其他用户绑定']);
-            exit();
-        }
-
-        $db->prepare("UPDATE users SET discord_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            ->execute([$discordId, $user['id']]);
-
-        logAction('user.bind_discord', 'user', $user['id']);
-        echo json_encode(['success' => true, 'message' => 'Discord 绑定成功']);
+        authOAuthError('OAUTH_BIND_REQUIRED', '请通过 Discord 授权页面完成绑定', 410);
         exit();
 
     case 'unbind_discord':
@@ -1053,8 +1625,12 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => '仅支持 POST 请求']);
             exit();
         }
+        authRequireSameOrigin();
         $user = requireLogin();
         $db = getDB();
+        if (!authOAuthUserHasAlternativeLogin($db, (int)$user['id'], 'discord')) {
+            authOAuthError('LAST_LOGIN_METHOD', '请先设置密码或绑定其他登录方式，再解绑 Discord');
+        }
         $db->prepare("UPDATE users SET discord_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$user['id']]);
 
@@ -1095,6 +1671,8 @@ switch ($action) {
     default:
         echo json_encode(['success' => false, 'message' => '未知动作', 'available_actions' => [
             'login_local', 'register_local', 'logout', 'me', 'change_password',
+            'set_password', 'oauth_pending', 'oauth_send_code', 'oauth_verify_code',
+            'oauth_complete_account', 'oauth_link_existing', 'oauth_transfer_provider', 'oauth_cancel',
             'send_register_code', 'send_code', 'bind_email', 'unbind_email', 'update_profile',
             'update_membership_application_email_preference', 'update_language_preference', 'update_display_club',
             'bind_qq', 'unbind_qq', 'bind_discord', 'unbind_discord',

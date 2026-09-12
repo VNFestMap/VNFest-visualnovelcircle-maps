@@ -13,7 +13,13 @@ const indexSource = read('index.html');
 const cssSource = read('css/styles.css');
 const chinaSource = read('js/china.js');
 const clubsApi = read('api/clubs.php');
-const adminSource = read('admin/club_manager.html');
+const adminSource = [
+  read('club-manager-react/src/tabs/SettingsTab.jsx'),
+  read('club-manager-react/src/tabs/JiangsuTab.jsx'),
+  read('club-manager-react/src/model.js'),
+  read('club-manager-react/src/App.jsx'),
+  read('club-manager-react/src/Shell.jsx'),
+].join('\n');
 const jaSource = read('js/language-static-ja.js');
 
 // ── 1. jiangsu.js 模块契约 ──
@@ -182,27 +188,15 @@ assert.match(cssSource, /#mapSvg\.map-switch-in/);
 assert.match(cssSource, /prefers-reduced-motion[\s\S]*jiangsu-zoom-in/s);
 
 // ── 7. 管理后台契约 ──
-assert.ok(adminSource.includes('id="settingsCity"'), 'admin settings must include the city input');
-assert.ok(adminSource.includes('id="settingsProvincePicker"'), 'admin settings must include the multi-select province picker');
-assert.ok(adminSource.includes('id="settingsProvincePickerSearch"'), 'admin province picker must support search');
-assert.ok(adminSource.includes('id="settingsProvincePickerTags"'), 'admin province picker must render selected tags');
-assert.ok(adminSource.includes('id="settingsProvincePickerClear"'), 'admin province picker must support clearing');
-assert.match(adminSource, /type="hidden" id="settingsProvince"/);
-assert.match(adminSource, /normalizeSettingsProvinceValues/);
-assert.match(adminSource, /normalizeSettingsCity/);
-assert.ok(adminSource.includes('payload.city'), 'admin save must include city');
-assert.ok(adminSource.includes('renderJiangsuSettings'), 'admin must include the Jiangsu bulk settings panel');
-assert.ok(adminSource.includes('JIANGSU_CITY_OPTIONS'), 'admin must define the 13-city options');
-assert.ok(adminSource.includes('data-tab="jiangsu"'), 'admin sidebar must include the Jiangsu tab');
-assert.ok(adminSource.includes('id="jiangsuTabBtn"'), 'Jiangsu tab must have an independent permission target');
-assert.match(adminSource, /id="jiangsuTabBtn"[^>]*style="display:none;"/);
-assert.match(adminSource, /jiangsuTabBtn[^\n]*isSuperAdminUser/);
-const sidebarNav = adminSource.match(/<nav class="sidebar-nav"[\s\S]*?<\/nav>/)?.[0] || '';
-const sidebarTabs = [...sidebarNav.matchAll(/data-tab="([^"]+)"/g)].map((match) => match[1]);
-assert.equal(sidebarTabs[sidebarTabs.indexOf('jiangsu') + 1], 'users', 'Jiangsu tab must be directly above User Management');
-assert.match(adminSource, /id="usersTabBtn"[^>]*style="display:none;"/);
+assert.match(adminSource, /name="city"/, 'React admin settings must include the city input');
+assert.match(adminSource, /name="provinces"/, 'React admin settings must include the multi-select province picker');
+assert.match(adminSource, /mode="multiple"/, 'admin province picker must support multiple searchable choices');
+assert.match(adminSource, /payload\.city\s*=/, 'admin save must include city');
+assert.ok(adminSource.includes('JIANGSU_CITIES'), 'admin must define Jiangsu city options');
+assert.match(adminSource, /key: 'jiangsu',[^\n]*superAdmin: true/, 'Jiangsu tab must be permission-gated');
+assert.match(adminSource, /key: 'jiangsu'[\s\S]*key: 'users'/, 'Jiangsu tab must be directly above User Management');
 assert.match(adminSource, /operation:\s*'jiangsu_city_bulk'/);
-assert.match(adminSource, /tab === 'users' \|\| tab === 'jiangsu'/);
+assert.match(adminSource, /next === 'users' \|\| next === 'jiangsu'/);
 
 // ── 8. i18n 契约 ──
 assert.match(jaSource, /'展开江苏地区':\s*'江蘇エリアを展開'/);

@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 
-const clubManager = readFileSync(new URL('../admin/club_manager.html', import.meta.url), 'utf8');
+const clubManager = readFileSync(new URL('../club-manager-react/src/tabs/MembershipsTab.jsx', import.meta.url), 'utf8');
 const reviews = readFileSync(new URL('../admin/reviews.html', import.meta.url), 'utf8');
 const membershipApi = readFileSync(new URL('../api/membership.php', import.meta.url), 'utf8');
 const usersApi = readFileSync(new URL('../api/users.php', import.meta.url), 'utf8');
 
 /* ========== club_manager.html: 新申请在上、旧申请在下 ========== */
-assert.match(clubManager, /tab === 'pending' \|\| tab === 'diplomatic' \|\| tab === 'approved'/, 'club manager should sort the three review tabs');
-assert.match(clubManager, /tb\.localeCompare\(ta\)/, 'club manager should sort newest joined_at first');
-assert.match(clubManager, /申请时间.*joined_at/, 'club manager cards should keep showing application time');
+assert.match(clubManager, /mode === 'pending'[\s\S]*mode === 'diplomatic'/, 'club manager should handle the three review tabs');
+assert.match(clubManager, /String\(b\.joined_at[\s\S]*localeCompare\(String\(a\.joined_at/, 'club manager should sort newest joined_at first');
+assert.match(clubManager, /申请时间[\s\S]*joined_at/, 'club manager cards should keep showing application time');
 
 /* ========== reviews.html: 用户管理 API 对齐 ========== */
 assert.match(reviews, /\.\.\/api\/users\.php\?action=stats/, 'reviews should load user KPIs from users.php stats');
@@ -29,13 +29,15 @@ assert.ok(reviews.includes('暂无成员'), 'reviews member modal should handle 
 
 /* ========== reviews.html: 操作日志 API 对齐 ========== */
 assert.match(reviews, /\.\.\/api\/admin_logs\.php\?/, 'reviews should load operation logs from admin_logs.php');
-assert.match(reviews, /action=list&page=1&per_page=100&type=/, 'reviews should pass list filters to the logs API');
+assert.match(reviews, /const qs = 'action=list&page='[\s\S]*'&per_page='[\s\S]*'&type='/, 'reviews should pass pagination and type filters to the logs API');
 assert.match(reviews, /function logTypeLabel/, 'reviews should classify log types');
-assert.match(reviews, /<th>说明<\/th>/, 'reviews logs table should include an explanation column');
-assert.match(reviews, /function translateLogAction/, 'reviews should translate actions into readable explanations');
-assert.match(reviews, /LOG_ACTION_LABELS/, 'reviews should carry an action-to-explanation dictionary');
-assert.match(reviews, /membership\.change_role[\s\S]*old_role/, 'reviews explanations should enrich role changes');
-assert.match(reviews, /function formatLogDetail/, 'reviews should render log details');
+assert.match(reviews, /<th>时间<\/th>[\s\S]*<th>检测到的操作<\/th>[\s\S]*<th>结果 \/ 影响<\/th>/, 'reviews logs table should include an explanation column');
+assert.match(reviews, /l\.definition\.label/, 'reviews should render a readable explanation for every log row');
+assert.match(reviews, /function showLogDetail/, 'reviews should open a per-entry explanation dialog');
+assert.match(reviews, /log-detail-button/, 'reviews should expose a per-row explanation trigger');
+assert.match(reviews, /function detailKeyText/, 'reviews should carry a detail-key dictionary');
+assert.match(reviews, /old_role: '原角色'/, 'reviews explanations should enrich role changes');
+assert.match(reviews, /function formatLogTarget/, 'reviews should render the affected target');
 
 /* ========== 后端 API ========== */
 assert.match(membershipApi, /case 'club_member_counts':/, 'membership API should expose per-club member counts');
