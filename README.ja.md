@@ -12,8 +12,8 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_オンラインアクセス-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-2ecc71?style=flat-square">
-  <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-777bb4?style=flat-square&logo=php&logoColor=white">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-GPLv3-355c9b?style=flat-square">
@@ -156,14 +156,14 @@ Cinematic Frontend v2 デザインを採用——放射状グラデーション�
 └────────────────┬─────────────┴───────────┬───────────┘
                  │  fetch() / REST         │
 ┌────────────────┴─────────────────────────┴───────────┐
-│                   PHP 8.x 后端                         │
-│   api/*.php (端点)  │  includes/*.php (公共模块)        │
-│   __DIR__ 相对路径引用，无框架依赖                        │
+│                         Go バックエンド                  │
+│ backend/ · 既存 /api/*.php URL 互換 · OAuth · Worker      │
+│ 共有 Session · アップロード · マイグレーション            │
 └────────────────┬─────────────────────────────────────┘
                  │
 ┌────────────────┴─────────────────────────────────────┐
 │                     数据层                             │
-│   JSON 运行时文件  │  SQLite / MySQL via PDO            │
+│   JSON 运行时文件  │  SQLite / MySQL via Go             │
 │   data/*.json     │  data/galgame.db                  │
 └──────────────────────────────────────────────────────┘
 ```
@@ -171,10 +171,10 @@ Cinematic Frontend v2 デザインを採用——放射状グラデーション�
 | 層 | 技術 |
 |---|---|
 | フロントエンド | HTML · CSS · Vanilla JavaScript · React 18 · D3.js 7 |
-| バックエンド | PHP 8.x（`__DIR__` 相対パス参照、ゼロフレームワーク依存） |
-| データ | JSON ランタイムファイル · SQLite / MySQL via PDO |
+| バックエンド | Go 1.26（`net/http`、`database/sql`、SQLite/MySQL） |
+| データ | JSON ランタイムファイル · Go の SQLite / MySQL ドライバ |
 | ビルド | Vite（ユーザーセンター SPA）|
-| テスト | Node.js コントラクトテスト（39+ テストスクリプト） |
+| テスト | Go テスト · Node.js コントラクトテスト · Electron ブラウザ回帰 |
 | デプロイ | Docker · GitHub Actions CI/CD · Watchtower 自動ローリングアップデート |
 | 国際化 | 中国語 / 日本語 バイリンガルサポート |
 
@@ -185,14 +185,15 @@ Cinematic Frontend v2 デザインを採用——放射状グラデーション�
 ```text
 .
 ├─ admin/                  管理パネル（審査、大会管理、Wiki 編集）
-├─ api/                    PHP API エンドポイント（60+ インターフェース）
+├─ backend/                Go サーバー、Worker、マイグレーション、ドメインモジュール
+├─ api/                    既存 PHP URL 名と動作の基準（本番は Go が応答）
 ├─ css/                    サイト全体スタイル
 ├─ data/                   ランタイムデータディレクトリ（Git に含まない）
 ├─ Galgame_events/         GalOnly イベントページと素材
 ├─ Game/                   Galgame サークルシミュレーター
 ├─ image/background/       ローカル壁紙配置ディレクトリ
 ├─ images/                 サイト内蔵画像リソース
-├─ includes/               PHP 共通モジュール（認証、メール、通知、OAuth…）
+├─ includes/               ロールバック/動作比較用の旧 PHP モジュール
 ├─ js/                     フロントエンドスクリプト（地図、投票、プロジェクト管理…）
 ├─ JUYOU/                  友游イベントページ
 ├─ moe/                    萌戦システム（トーナメント可視化コンポーネント含む）
@@ -225,9 +226,9 @@ Cinematic Frontend v2 デザインを採用——放射状グラデーション�
 
 ### 環境要件
 
-- PHP 8.0+（`mbstring`、`pdo_sqlite` 拡張を含む）
+- Go 1.26+
 - Node.js 18+（テストとビルド用）
-- Git
+- Docker と Git
 
 ### ローカル実行
 
@@ -239,25 +240,35 @@ cd china-visualnovelcircle-maps
 # 2. 安装依赖
 npm install
 
-# 3. 准备配置文件
-cp config.example.php config.php
-# 编辑 config.php，设置数据库路径和站点 URL
+# 3. Go ランタイム設定を準備
+cp .env.example .env
+# .env を編集（ローカルは SQLite がデフォルト）
 
-# 4. 启动 PHP 开发服务器
-php -S 127.0.0.1:8000
+# 4. Go サービスを起動
+docker compose up -d app
 ```
 
 ブラウザで以下の URL にアクセスしてください：
 
 | ページ | URL |
 |------|------|
-| ログイン / 新規登録 | `http://127.0.0.1:8000/login.html` |
-| ゲストモード閲覧 | `http://127.0.0.1:8000/index.html?guest=1` |
+| ログイン / 新規登録 | `http://127.0.0.1:8080/login.html` |
+| ゲストモード閲覧 | `http://127.0.0.1:8080/index.html?guest=1` |
 
 ### テストの実行
 
 ```bash
 npm run check
+```
+
+Go バックエンドのチェック：
+
+```bash
+cd backend
+go test -mod=mod ./... -count=1 -timeout=120s
+go vet ./...
+cd ..
+npm run test:go-route-inventory
 ```
 
 このコマンドは全 40+ のコントラクトテストを実行し、フロントエンドインタラクション、Wiki 生成、アップロード契約、サークル編集、バックエンドプライバシー、成長システム、ユーザーページ、国際化、パフォーマンス最適化、投票フロー、ボット同期、プロジェクト全体の健全性をカバーします。
@@ -266,17 +277,17 @@ npm run check
 
 ## デプロイ
 
-プロジェクトは Docker コンテナ化デプロイをサポートしており、GitHub Actions 経由で自動的にイメージをビルドし GHCR にプッシュします。サーバー側の Watchtower が自動プルとローリングアップデートを担当します。
+本番バックエンドは既存ページ、`/api/*.php` URL、OAuth コールバック、アップロード、Worker を提供する Go コンテナです。PHP はリリース期間中の独立したロールバック用イメージとしてのみ保持します。GitHub Actions は Go イメージをビルドし、Watchtower は旧イメージを削除しません。
 
 ```bash
 # 使用 Docker Compose 一键部署
 docker compose up -d
 
-# 或使用部署脚本（含数据备份和权限设置）
+# またはデプロイスクリプト（スナップショット、マイグレーション、ヘルスチェック）
 bash scripts/deploy.sh
 ```
 
-詳細なデプロイ設定、環境変数の説明、運用手引は [`DEPLOY.md`](DEPLOY.md) を参照してください。
+詳細な設定、データ損失ゼロの確認、切替とロールバックは [`DEPLOY.md`](DEPLOY.md) と [`GO_MIGRATION_RUNBOOK.md`](GO_MIGRATION_RUNBOOK.md) を参照してください。ローカルビルドだけでは本番切替を意味しません。
 
 ---
 
@@ -284,6 +295,7 @@ bash scripts/deploy.sh
 
 | バージョン | コアテーマ |
 |------|---------|
+| **v2.3.0** | PHP から Go へのバックエンド移行基盤、共有 Session、既存 API 互換、Go Worker、デプロイ/ロールバック、画像プロキシと GalgameTool の修正 |
 | **v2.2.0** | 同好会フィードの React 化、独立検索、相互フォローメッセージ、React 管理画面、OAuth 認証情報の更新、GalgameTool Tier/MEME |
 | **v2.1.0** | 独立コラム、スーパー管理コンソール、北京 GalOnly、MakoQuiz 連携、設定集約、Wiki 利用ガイド |
 | **v2.0.0** | ユーザーセンター SPA 化、Staff 募集、資料公開ライブラリ、トーナメント可視化、デザインシステム統一 |

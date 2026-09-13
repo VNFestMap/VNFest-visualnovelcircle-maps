@@ -12,8 +12,8 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_Visit-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-2ecc71?style=flat-square">
-  <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-777bb4?style=flat-square&logo=php&logoColor=white">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/license-GPLv3-355c9b?style=flat-square">
@@ -156,14 +156,14 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 └────────────────┬─────────────┴───────────┬───────────┘
                  │  fetch() / REST         │
 ┌────────────────┴─────────────────────────┴───────────┐
-│                   PHP 8.x Backend                      │
-│   api/*.php (endpoints)  │  includes/*.php (shared)    │
-│   __DIR__ relative paths, zero framework dependency    │
+│                       Go Backend                       │
+│ backend/ · existing /api/*.php URL compatibility       │
+│ OAuth sessions · uploads · workers · migrations        │
 └────────────────┬─────────────────────────────────────┘
                  │
 ┌────────────────┴─────────────────────────────────────┐
 │                     Data Layer                         │
-│   JSON runtime files   │  SQLite / MySQL via PDO      │
+│   JSON runtime files   │  SQLite / MySQL via Go       │
 │   data/*.json          │  data/galgame.db             │
 └──────────────────────────────────────────────────────┘
 ```
@@ -171,10 +171,10 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | HTML · CSS · Vanilla JavaScript · React 18 · D3.js 7 |
-| Backend | PHP 8.x (`__DIR__` relative paths, zero framework dependency) |
-| Data | JSON runtime files · SQLite / MySQL via PDO |
+| Backend | Go 1.26 (`net/http`, `database/sql`, SQLite/MySQL drivers) |
+| Data | JSON runtime files · SQLite / MySQL via Go drivers |
 | Build | Vite (User Center SPA) |
-| Testing | Node.js contract tests (39+ test scripts) |
+| Testing | Go unit/integration tests · Node.js contract tests · Electron browser QA |
 | Deployment | Docker · GitHub Actions CI/CD · Watchtower auto rolling updates |
 | i18n | Chinese / Japanese bilingual support |
 
@@ -185,14 +185,15 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 ```text
 .
 ├─ admin/                  Admin panel (reviews, contest management, Wiki editing)
-├─ api/                    PHP API endpoints (60+ interfaces)
+├─ backend/                Go server, workers, migrations, and domain modules
+├─ api/                    Historical PHP URL names and behavior baseline (Go serves production)
 ├─ css/                    Site-wide styles
 ├─ data/                   Runtime data directory (excluded from Git)
 ├─ Galgame_events/         GalOnly event pages and assets
 ├─ Game/                   Visual novel circle simulator
 ├─ image/background/       Local wallpaper directory
 ├─ images/                 Built-in site image assets
-├─ includes/               PHP shared modules (auth, email, notifications, OAuth…)
+├─ includes/               Legacy PHP modules for rollback/behavior comparison only
 ├─ js/                     Frontend scripts (map, voting, project management…)
 ├─ JUYOU/                  JUYOU event page
 ├─ moe/                    Moe Contest system (including bracket visualization)
@@ -225,8 +226,9 @@ The page adopts a Cinematic Frontend v2 design — radial gradient backgrounds, 
 
 ### Requirements
 
-- PHP 8.0+ (with `mbstring` and `pdo_sqlite` extensions)
+- Go 1.26+
 - Node.js 18+ (for testing and builds)
+- Docker and Git
 - Git
 
 ### Running Locally
@@ -239,25 +241,35 @@ cd china-visualnovelcircle-maps
 # 2. Install dependencies
 npm install
 
-# 3. Prepare the config file
-cp config.example.php config.php
-# Edit config.php to set the database path and site URL
+# 3. Prepare the Go runtime config
+cp .env.example .env
+# Edit .env; local development defaults to SQLite
 
-# 4. Start the PHP development server
-php -S 127.0.0.1:8000
+# 4. Start the Go service
+docker compose up -d app
 ```
 
 Open your browser and visit:
 
 | Page | URL |
 |------|-----|
-| Login / Register | `http://127.0.0.1:8000/login.html` |
-| Guest mode browsing | `http://127.0.0.1:8000/index.html?guest=1` |
+| Login / Register | `http://127.0.0.1:8080/login.html` |
+| Guest mode browsing | `http://127.0.0.1:8080/index.html?guest=1` |
 
 ### Running Tests
 
 ```bash
 npm run check
+```
+
+Go backend checks:
+
+```bash
+cd backend
+go test -mod=mod ./... -count=1 -timeout=120s
+go vet ./...
+cd ..
+npm run test:go-route-inventory
 ```
 
 This command runs all 40+ contract tests, covering frontend interactions, Wiki generation, upload contracts, circle editing, backend privacy, growth system, user pages, internationalization, performance optimization, voting flows, bot sync, and overall project health.
@@ -266,17 +278,17 @@ This command runs all 40+ contract tests, covering frontend interactions, Wiki g
 
 ## Deployment
 
-The project supports Docker containerized deployment. GitHub Actions automatically builds images and pushes them to GHCR, while Watchtower on the server handles automatic pulling and rolling updates.
+The production backend is a Go container serving the existing pages, `/api/*.php` URLs, OAuth callbacks, uploads, and workers. PHP is retained only as a separately built rollback image during the release window. GitHub Actions builds the Go image and Watchtower never removes the previous image.
 
 ```bash
 # One-click deploy with Docker Compose
 docker compose up -d
 
-# Or use the deployment script (includes data backup and permission setup)
+# Or use the deployment helper (snapshot, migrations, and health checks)
 bash scripts/deploy.sh
 ```
 
-For detailed deployment configuration, environment variable documentation, and operations guides, see [`DEPLOY.md`](DEPLOY.md).
+For detailed deployment configuration, data-zero-loss gates, cutover, and rollback, see [`DEPLOY.md`](DEPLOY.md) and [`GO_MIGRATION_RUNBOOK.md`](GO_MIGRATION_RUNBOOK.md). Production cutover is not implied by a local build.
 
 ---
 
@@ -284,6 +296,7 @@ For detailed deployment configuration, environment variable documentation, and o
 
 | Version | Key Theme |
 |---------|-----------|
+| **v2.3.0** | PHP-to-Go backend migration foundation, shared sessions, compatible API paths, Go workers, deployment rollback, image proxy, and GalgameTool performance/image fixes |
 | **v2.2.0** | React circle feed, standalone search, mutual-follow messaging, React admin workspace, OAuth credential upgrades, and GalgameTool Tier/MEME tools |
 | **v2.1.0** | Editorial column, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |
 | **v2.0.0** | User Center SPA, Staff recruitment, Public Archives, bracket visualization, unified design system |

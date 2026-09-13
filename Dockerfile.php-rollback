@@ -1,0 +1,44 @@
+# ROLLBACK ONLY — this file is not used by the Go Dockerfile or CI.
+# Build/tag this image before the Go cutover and retain the resulting image for
+# one complete release cycle. It is intentionally kept separate so the normal
+# runtime image remains PHP-free.
+
+FROM php:8.4-apache
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+LABEL org.opencontainers.image.source="https://github.com/VNFestMap/galgame-community-map"
+LABEL org.opencontainers.image.description="VNFest Galgame 同好会地图 PHP rollback image"
+
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git libpng-dev libjpeg-dev libfreetype6-dev libonig-dev \
+        libcurl4-openssl-dev zip unzip curl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo_mysql mbstring curl gd bcmath \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN a2enmod rewrite headers expires
+
+ENV APACHE_DOCUMENT_ROOT=/var/www/html
+RUN sed -ri \
+    -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf \
+    && echo '<Directory "${APACHE_DOCUMENT_ROOT}">\nAllowOverride All\nRequire all granted\n</Directory>' > /etc/apache2/conf-available/allow-override.conf \
+    && a2enconf allow-override
+
+COPY . /var/www/html/
+
+RUN cd /var/www/html \
+    && composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader \
+    && mkdir -p /var/www/html/uploads /var/www/html/wiki/uploads /var/www/html/data/cache \
+    && chown -R www-data:www-data /var/www/html/data /var/www/html/uploads /var/www/html/wiki \
+    && chmod -R 755 /var/www/html/data /var/www/html/uploads /var/www/html/wiki
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1/api/health.php || exit 1

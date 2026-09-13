@@ -25,6 +25,8 @@ assert.match(js, /\.\.\/api\/galgame_resume\.php/, 'tool should resolve the resu
 assert.match(js, /setTimeout\(async \(\) => \{[\s\S]*?\}, 800\)/, 'cloud saves should be debounced');
 assert.match(js, /delete toSave\.searchResults/, 'runtime search results must not be saved');
 assert.match(js, /delete toSave\.selectedItems/, 'runtime selections must not be saved');
+assert.match(js, /lain\.bgm\.tv[^\]]*tucang\.cngal\.top/, 'resume image proxy should include CnGal wrapper images');
+assert.match(js, /tucang\.cngal\.top[^\]]*image\.cngal\.org/, 'resume image proxy should include both CnGal image hosts');
 
 assert.match(css, /--vn-primary:\s*#e67e22/i, 'GalgameTool should use VNFest orange');
 assert.match(css, /\.resume-section\.works-section \.section-label::before/, 'works title should have an accent bar');

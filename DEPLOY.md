@@ -1,6 +1,6 @@
 # VNFest 地图 — 部署与多人协作指南
 
-> 生产环境：宝塔面板 + Docker + PHP 8.4 + MySQL
+> 生产环境：宝塔面板 + Docker + Go + MySQL。PHP 仅作为独立回滚镜像保留。
 
 ---
 
@@ -25,7 +25,7 @@ GitHub Actions 自动构建 Docker 镜像
 ### 2.1 在宝塔创建网站
 
 1. 宝塔 → 网站 → 添加站点
-2. 填入域名，PHP 版本选 **纯静态**（Docker 管理 PHP）
+2. 填入域名，站点选择 **纯静态**；应用由 Docker 中的 Go 服务提供
 3. 创建后记下网站根目录（例如 `/www/wwwroot/map.vnfest.top`）
 
 ### 2.2 创建项目目录
@@ -38,17 +38,18 @@ cd /www/wwwroot/162.251.93.178
 git clone https://github.com/VNFestMap/china-visualnovelcircle-maps.git .
 git checkout main
 
-# 创建配置文件和持久化目录
-cp config.example.php config.php
+# 创建环境变量模板和持久化目录
+cp .env.example .env
 mkdir -p data/cache uploads wiki/uploads
 chmod -R 755 data uploads wiki
 ```
 
-编辑 `config.php`，填入真实数据库信息（宝塔里先创建好 MySQL 数据库）。
+编辑服务器 `.env`，填入真实数据库和外部服务信息（宝塔里先创建好 MySQL
+数据库）。真实密钥只能放在服务器 Secret 管理位置。
 
 ### 2.3 公开图片图床配置
 
-公开头像、同好会图片、Wiki 图片和刊物预览页会由 PHP 服务端代传到 picui。真实 Token 只放服务器的 `.env`，不要写入 Git、前端代码或命令输出：
+公开头像、用户横幅、同好会/活动/刊物图片、Wiki 图片、Recognition 徽章和公开动态图片会由 Go 服务端代传到 picui。真实 Token 只放服务器的 `.env`，不要写入 Git、前端代码或命令输出：
 
 ```bash
 PICUI_TOKEN=在服务器环境中填写
@@ -57,31 +58,31 @@ PICUI_ENABLED=true
 PICUI_PERMISSION=1
 PICUI_TIMEOUT=30
 PICUI_FALLBACK_LOCAL=true
-PICUI_ALLOWED_HOSTS=picui.cn,www.picui.cn
+PICUI_ALLOWED_HOSTS=picui.cn,www.picui.cn,free.picui.cn
 ```
 
-上传时仍会先保留本地副本。picui 不可用时，公开图片会自动返回本地副本；作品审核图、稿件附件和内部考核图片不会作为公开图床图片上传。
+上传时仍会先保留本地副本。picui 不可用时，公开图片会自动返回本地副本；私信图片、作品审核图、稿件附件、项目文件和内部考核图片不会作为公开图床图片上传。动态图片使用同一个临时上传接口，但只有公开动态提交成功后才会提升到 picui，避免私信复用接口导致误公开。
 
 首次迁移前先执行清单检查，确认公开图片数量和排除项：
 
 ```bash
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --dry-run
+docker exec vnfest-app vnfest-worker migrate-images --dry-run
 ```
 
 确认清单后分批上传并保存映射；全部完成后再替换引用：
 
 ```bash
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --resume --limit=100
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --resume --rewrite
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --verify
+docker exec vnfest-app vnfest-worker migrate-images --resume --limit=100
+docker exec vnfest-app vnfest-worker migrate-images --resume --rewrite
+docker exec vnfest-app vnfest-worker migrate-images --verify
 ```
 
 默认迁移重要公开图片，不包含刊物预览页面。重要图片完成后，再单独迁移刊物预览：
 
 ```bash
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --resume --limit=100
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --resume --rewrite
-docker exec vnfest-app php scripts/migrate-images-to-picui.php --include-publications --verify
+docker exec vnfest-app vnfest-worker migrate-images --include-publications --resume --limit=100
+docker exec vnfest-app vnfest-worker migrate-images --include-publications --resume --rewrite
+docker exec vnfest-app vnfest-worker migrate-images --include-publications --verify
 ```
 
 迁移清单和备份位于服务器 `data/image-host/`，原 `data/`、`uploads/` 和 `wiki/uploads/` 图片不删除。
@@ -96,7 +97,7 @@ docker compose up -d
 docker compose logs -f
 
 # 运行数据库迁移
-docker exec vnfest-app php scripts/migrate.php
+docker exec vnfest-app vnfest-migrate --verify
 ```
 
 ### 2.5 配置 Nginx 反代
@@ -181,12 +182,12 @@ git clone https://github.com/VNFestMap/china-visualnovelcircle-maps.git
 cd china-visualnovelcircle-maps
 
 # 配置（本地用 SQLite，不用配 MySQL）
-cp config.example.php config.php
-# config.php 里 DB_DRIVER 保持 sqlite 即可
+cp .env.example .env
+# .env 里 DB_DRIVER 保持 sqlite 即可
 
 # 启动开发服务器
-php -S 127.0.0.1:8000
-# 浏览器访问 http://127.0.0.1:8000
+go run ./backend/cmd/vnfest-server
+# 浏览器访问 http://127.0.0.1:8080
 ```
 
 ### 4.3 开发流程
@@ -223,16 +224,15 @@ chore     杂项          chore: bump version to 1.7.1
 
 - 有没有破坏已有功能（JS 和 API 改动要特别注意）
 - 有没有在 `data/*.json` 里加字段（确认前后端一致）
-- 有没有新增数据库字段（确认 `scripts/migrate.php` 已更新）
+- 有没有新增数据库字段（确认 `backend/internal/store/sqlstore/migrations.go` 和 reference SQL 已更新）
 - 有没有引入调试代码（`console.log`、`var_dump` 等）
-- 不要在 `config.php` 里提交真实密钥
+- 不要在 `.env` 或任何配置文件里提交真实密钥
 
 ### 4.6 数据库变更
 
-1. 修改 `scripts/migrate.php` 添加 `CREATE TABLE IF NOT EXISTS`
-2. PR 中注明有数据库变更（同好会考核相关表均以 `recognition_` 前缀命名，需同时维护 MySQL 与 SQLite 两个分支）
-3. 合并后第一次构建的镜像运行时会自动执行（首次启动后手动跑）
-4. 发布顺序固定为：合并 → 容器更新 → `docker exec vnfest-app php scripts/migrate.php` → 访问 `api/health.php` 验证，顺序颠倒会导致新代码访问不到新表而 500
+1. 修改 Go 版本化迁移并同步维护 MySQL 与 SQLite reference SQL。
+2. PR 中注明有数据库变更（同好会考核相关表均以 `recognition_` 前缀命名）。
+3. 发布顺序固定为：备份 → 容器更新 → `vnfest-migrate --apply` → `vnfest-migrate --verify` → 访问 `api/health.php` 验证；服务不会自动改表。
 
 ---
 
@@ -275,9 +275,10 @@ tar -czf backup-uploads-$(date +%Y%m%d).tar.gz uploads/
 ```bash
 # 新服务器上
 git clone ...
-cp config.example.php config.php   # 填入新数据库信息
+cp .env.example .env             # 填入新数据库信息
 docker compose up -d
-docker exec vnfest-app php scripts/migrate.php
+docker exec vnfest-app vnfest-migrate --apply
+docker exec vnfest-app vnfest-migrate --verify
 
 # 从旧服务器复制 data/、uploads/、wiki/uploads/
 rsync -avz root@旧IP:/www/wwwroot/旧目录/data/ ./data/
@@ -288,13 +289,13 @@ rsync -avz root@旧IP:/www/wwwroot/旧目录/uploads/ ./uploads/
 
 ## 六之二、同好会考核（Recognition）运维事项
 
-- **配置**：`config.php` 需新增 `RECOGNITION_HMAC_SECRET`（外部 Connector 签名校验）与 `RECOGNITION_CRED_PREFIX`（凭证编号前缀，见 `config.example.php`）。
-- **cron 补偿任务**：凭证过期扫描与通知重试由 `scripts/recognition_worker.php` 消费 `recognition_outbox`，需在宿主机配置：
+- **配置**：`.env` 需配置 `RECOGNITION_HMAC_SECRET`（外部 Connector 签名校验）与 `RECOGNITION_CRED_PREFIX`（凭证编号前缀，见 `.env.example`）。
+- **cron 补偿任务**：凭证过期扫描与通知重试由 Go worker 消费 `recognition_outbox`，需在宿主机配置：
   ```bash
-  */5 * * * * docker exec vnfest-app php scripts/recognition_worker.php >> /tmp/recog_worker.log 2>&1
+  */5 * * * * docker exec vnfest-app vnfest-worker recognition >> /tmp/recog_worker.log 2>&1
   ```
   未配置 cron 时，签发通知会滞留在 outbox 中（不丢失，配置后自动补发）。
-- **上传目录**：考核徽章图片存放在 `data/badge_images/`（由 `api/badge_image.php` 写入）。容器部署时确保该目录存在且 Web 用户可写（`chown -R www-data:www-data data/badge_images`）；仓库中仅保留 `.gitkeep`，图片本身不入库。
+- **上传目录**：考核徽章图片存放在 `data/badge_images/`（由 `/api/badge_image.php` 写入）。容器部署时确保该目录存在且 Go 容器用户可写；仓库中仅保留 `.gitkeep`，图片本身不入库。
 - **旧链接兼容**：`trial/index.html` 与 `achievements.html` 为重定向 stub（分别指向 `exam/` 与 `user.html?tab=achievements`），兼容存量二维码与通知链接；至少保留一个发布周期后再删除。
 - **验证**：访问 `api/recognition_programs.php?action=list` 应返回 `{"success":true,...}`。
 
@@ -333,7 +334,7 @@ docker compose logs watchtower   # 查看 Watchtower 是否检测到新版本
 
 **Q: 图片上传 403？**
 ```bash
-chown -R www-data:www-data uploads/ wiki/uploads/
+chmod -R u+rwX,g+rwX uploads/ wiki/uploads/
 ```
 
 **Q: 本地开发需要完整数据？**

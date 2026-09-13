@@ -18,12 +18,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: 设置 Go 工具链
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache-dependency-path: backend/go.sum
+      - name: 运行 Go 后端测试
+        working-directory: backend
+        run: go test -mod=mod ./... -count=1 -timeout=120s
       - name: 设置 Docker Buildx（docker-container 驱动，支持 gha 缓存导出）
         uses: docker/setup-buildx-action@v3
       - name: 构建镜像（仅验证能否成功构建）
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -38,6 +47,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: 设置 Go 工具链
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache-dependency-path: backend/go.sum
+      - name: 运行 Go 后端测试
+        working-directory: backend
+        run: go test -mod=mod ./... -count=1 -timeout=120s
 
       - name: 设置 Docker 元数据
         id: meta
@@ -64,6 +81,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

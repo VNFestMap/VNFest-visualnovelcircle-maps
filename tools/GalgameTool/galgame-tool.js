@@ -8,7 +8,13 @@ const BANGUMI_PROXY_URL = new URL('../../api/bangumi_proxy.php', document.baseUR
 const BANGUMI_ACCOUNT_API_URL = new URL('../../api/bangumi_account.php', document.baseURI).href;
 const IMAGE_PROXY_URL = new URL('../../api/image_proxy.php', document.baseURI).href;
 const BILIBILI_ACCOUNT_ICON_URL = new URL('./assets/bilibili-account.svg', document.baseURI).href;
-const IMAGE_PROXY_HOSTS = new Set(['lain.bgm.tv', 't.vndb.org', 's.vndb.org']);
+const IMAGE_PROXY_HOSTS = new Set([
+  'lain.bgm.tv',
+  't.vndb.org',
+  's.vndb.org',
+  'tucang.cngal.top',
+  'image.cngal.org'
+]);
 const DEFAULT_ACCOUNT_TYPE = 'bgm';
 const CHARACTER_SEARCH_RESULT_LIMIT = 15;
 const CHARACTER_CV_PREFETCH_LIMIT = 6;
@@ -266,7 +272,9 @@ async function bootstrapAccountState() {
   serverResumeExists = false;
   serverLoadPending = true;
 
-  const auth = await fetchJson('../../api/auth.php?action=me');
+  const authPromise = fetchJson('../../api/auth.php?action=me');
+  const resumePromise = loadServerResume();
+  const auth = await authPromise;
   if (!auth.logged_in || !auth.user?.id) {
     const guest = readStoredState(GUEST_STORAGE_KEY);
     if (!guest) {
@@ -283,7 +291,7 @@ async function bootstrapAccountState() {
   activeStorageKey = `${STORAGE_KEY_PREFIX}${sessionUser.id}`;
   updateResumeSyncStatus('loading');
 
-  const remote = await loadServerResume();
+  const remote = await resumePromise;
   if (remote.ok && remote.success && remote.resume) {
     loadState(remote.resume);
     applyAuthenticatedDefaults();

@@ -1,0 +1,7 @@
+-- Reference manifest for migration 0003.
+-- The Go runner executes the dialect-specific statements atomically. Existing
+-- application tables are never dropped or rewritten; these tables/indexes are
+-- only created when absent so the PHP posts/DM module can be served by Go.
+--
+-- SQLite and MySQL statements intentionally live in the runner because their
+-- AUTOINCREMENT, index, and foreign-key syntax differ.
