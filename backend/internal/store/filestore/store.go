@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -225,13 +226,20 @@ func (s *Store) withLock(ctx context.Context, path string, fn func() error) erro
 }
 
 func (s *Store) safePath(root, name string) (string, error) {
-	if name == "" || filepath.IsAbs(name) || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") {
+	// Normalize both separator styles before validating. filepath.Clean only
+	// understands the host OS separator, so validating a Windows-shaped path
+	// on Linux would otherwise treat "..\\outside" as a literal filename.
+	normalized := strings.ReplaceAll(name, "\\", "/")
+	if name == "" || filepath.IsAbs(name) || path.IsAbs(normalized) ||
+		strings.HasPrefix(normalized, "/") ||
+		(len(normalized) >= 2 && normalized[1] == ':') {
 		return "", errors.New("file path must be relative")
 	}
-	clean := filepath.Clean(filepath.FromSlash(name))
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+	cleanSlash := path.Clean(normalized)
+	if cleanSlash == "." || cleanSlash == ".." || strings.HasPrefix(cleanSlash, "../") {
 		return "", errors.New("file path escapes storage root")
 	}
+	clean := filepath.FromSlash(cleanSlash)
 	path := filepath.Join(root, clean)
 	rel, err := filepath.Rel(root, path)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {

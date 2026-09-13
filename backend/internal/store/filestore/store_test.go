@@ -70,7 +70,7 @@ func TestUploadPathBoundaryAndRoundTrip(t *testing.T) {
 	if err != nil || string(data) != "hello" {
 		t.Fatalf("unexpected upload: %q, %v", data, err)
 	}
-	for _, name := range []string{"../outside", "../../outside", "/absolute", `..\outside`} {
+	for _, name := range []string{"../outside", "../../outside", "/absolute", `..\outside`, `C:\outside`} {
 		if err := store.SaveUpload(context.Background(), name, strings.NewReader("bad")); err == nil {
 			t.Fatalf("path traversal was accepted: %q", name)
 		}
