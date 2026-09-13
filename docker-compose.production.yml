@@ -1,0 +1,11 @@
+services:
+  app:
+    # The production MySQL and MakoQuiz services run on the host under Baota.
+    # Host networking keeps the Go container on the same loopback namespace and
+    # avoids changing either the public API URL or the existing service layout.
+    network_mode: host
+    ports: !reset []
+    networks: !reset []
+    environment:
+      DB_HOST: "127.0.0.1"
+      MAKOQUIZ_URL: "http://127.0.0.1:3001"

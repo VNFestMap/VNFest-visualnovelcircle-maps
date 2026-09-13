@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/session_bridge.php';
 
 const ROLE_HIERARCHY = [
     'visitor' => 0,
@@ -39,7 +40,16 @@ function initSession(): void {
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
             ini_set('session.cookie_secure', '1');
         }
+        // PHP strict mode rejects a PHPSESSID that Go created because it is
+        // absent from PHP's native file-session directory. Accept it only if
+        // it is a current row in the shared bridge table.
+        $incomingSessionId = (string)($_COOKIE[session_name()] ?? '');
+        if ($incomingSessionId !== '' && sessionBridgeKnown($incomingSessionId)) {
+            ini_set('session.use_strict_mode', '0');
+        }
         session_start();
+        sessionBridgeSyncFromDatabase(session_id());
+        sessionBridgeSave(session_id(), isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
         if ($migrateLegacyHostCookie) {
             $secure = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
             // 不带 domain 才能精确删除 host-only cookie，不影响新的共享 cookie。
@@ -207,6 +217,7 @@ function createSession(int $userId): void {
         $_SERVER['HTTP_USER_AGENT'] ?? '',
         $expiresAt,
     ]);
+    sessionBridgeSave(session_id(), $userId);
 }
 
 function destroySession(): void {
@@ -215,6 +226,7 @@ function destroySession(): void {
         $db = getDB();
         $db->prepare('UPDATE sessions SET is_valid = 0 WHERE id = ?')->execute([session_id()]);
     }
+    sessionBridgeInvalidate(session_id());
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $p = session_get_cookie_params();

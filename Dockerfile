@@ -1,64 +1,55 @@
-# VNFest 地图 — PHP 8 + Apache 镜像
-# 构建方式: docker build -t ghcr.io/vnfestmap/galgame-community-map:latest .
+# VNFest Go backend image.
+# The previous PHP image remains a separately retained rollback artifact during
+# the release window; this production Dockerfile intentionally contains no
+# PHP, Apache, Composer, or PHP dependency tree.
 
-FROM php:8.4-apache
+FROM golang:1.26-bookworm AS build
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+WORKDIR /src
+COPY backend/go.mod backend/go.sum ./backend/
+RUN cd /src/backend && go mod download
+COPY backend ./backend
+COPY . .
 
-LABEL org.opencontainers.image.source="https://github.com/VNFestMap/galgame-community-map"
-LABEL org.opencontainers.image.description="VNFest Galgame 同好会地图"
+RUN cd /src/backend \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /out/vnfest-server ./cmd/vnfest-server \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /out/vnfest-worker ./cmd/vnfest-worker \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /out/vnfest-migrate ./cmd/vnfest-migrate
 
-# 安装系统依赖和 PHP 扩展
-RUN set -eux \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        git \
-        libpng-dev \
-        libjpeg-dev \
-        libfreetype6-dev \
-        libonig-dev \
-        libcurl4-openssl-dev \
-        zip \
-        unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        pdo_mysql \
-        mbstring \
-        curl \
-        gd \
-        bcmath \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+FROM debian:bookworm-slim AS runtime
 
-# 启用 Apache 模块
-RUN a2enmod rewrite headers expires
+ENV TZ=Asia/Shanghai \
+    BACKEND_ROOT=/app \
+    APP_ADDR=:8080
 
-# 配置 Apache 允许 .htaccess
-ENV APACHE_DOCUMENT_ROOT=/var/www/html
-RUN sed -ri \
-    -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
-    -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
-    /etc/apache2/sites-available/*.conf \
-    /etc/apache2/apache2.conf \
-    /etc/apache2/conf-available/*.conf \
-&& echo '<Directory "${APACHE_DOCUMENT_ROOT}">\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>' > /etc/apache2/conf-available/allow-override.conf \
-&& a2enconf allow-override
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/data /app/uploads /app/wiki/uploads
 
-# 复制应用代码
-COPY . /var/www/html/
+WORKDIR /app
+COPY --from=build /out/vnfest-server /usr/local/bin/vnfest-server
+COPY --from=build /out/vnfest-worker /usr/local/bin/vnfest-worker
+COPY --from=build /out/vnfest-migrate /usr/local/bin/vnfest-migrate
+COPY . /app
 
-RUN cd /var/www/html \
-    && composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+# Static HTML/CSS/JS and public assets are served by Go. PHP source is never
+# copied into the runtime image; admin/events.php is the one historical URL
+# deliberately retained as a static document and is restored after cleanup.
+RUN mkdir -p /tmp/vnfest-static \
+    && cp /app/admin/events.php /tmp/vnfest-static/events.php \
+    && find /app -type f -name '*.php' ! -path '/app/admin/events.php' -delete \
+    && rm -rf /app/api /app/includes /app/scripts /app/backend /app/vendor /app/node_modules /app/.github /app/.codex /app/.agents \
+    && rm -f /app/config.php /app/config.example.php /app/composer.json /app/composer.lock \
+    && mkdir -p /app/admin \
+    && cp /tmp/vnfest-static/events.php /app/admin/events.php \
+    && rm -rf /tmp/vnfest-static \
+    && chown -R 65532:65532 /app /usr/local/bin/vnfest-*
 
-# 创建持久化目录并设置权限
-# uploads/ 和 wiki/uploads/ 被 .dockerignore 排除，需要提前创建作为挂载点
-RUN mkdir -p /var/www/html/uploads /var/www/html/wiki/uploads /var/www/html/data/cache \
-    && chown -R www-data:www-data /var/www/html/data /var/www/html/uploads /var/www/html/wiki \
-    && chmod -R 755 /var/www/html/data /var/www/html/uploads /var/www/html/wiki
+USER 65532:65532
+EXPOSE 8080
 
-# 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost/api/health.php || exit 1
+    CMD curl --fail --silent http://127.0.0.1:8080/api/health.php || exit 1
+
+ENTRYPOINT ["/usr/local/bin/vnfest-server"]

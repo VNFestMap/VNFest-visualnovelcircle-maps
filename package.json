@@ -17,6 +17,7 @@
     "wiki:build": "node scripts/generate-wiki-pages.mjs",
     "wiki:daily:fetch": "node scripts/fetch-daily-notion.mjs",
     "wiki:daily:test": "node scripts/test-daily-notion-contract.mjs",
+    "test:go-route-inventory": "node scripts/test-go-api-route-inventory.mjs",
     "wiki:daily:browser": "node scripts/test-daily-browser.mjs",
     "test:analytics": "node scripts/test-analytics-contract.mjs && php scripts/test-analytics.php",
     "test:analytics:browser": "electron scripts/test-analytics-browser.cjs",

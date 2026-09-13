@@ -13,10 +13,12 @@ DEPLOY.md
 
 # Docker 相关
 Dockerfile
+Dockerfile.php-rollback
 docker-compose*.yml
 
 # 配置文件（运行时不包含在镜像中，通过 volume 挂载）
 config.php
+.env
 deploy-config.sh
 deploy-config.example.sh
 

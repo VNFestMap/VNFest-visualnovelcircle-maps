@@ -1,5 +1,5 @@
 services:
-  # ── 主应用: PHP 8 + Apache ──
+  # ── 主应用: Go ──
   app:
     build:
       context: .
@@ -7,12 +7,67 @@ services:
     image: ghcr.io/vnfestmap/galgame-community-map:latest
     container_name: vnfest-app
     restart: unless-stopped
+    # Match the mounted webroot data owner on production while keeping the
+    # image itself non-root. Local development can keep the 65532 default.
+    user: "${RUN_UID:-65532}:${RUN_GID:-65532}"
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     ports:
-      - "127.0.0.1:8080:80"    # 仅本地监听，由宝塔 Nginx 反代
+      - "127.0.0.1:8080:8080"  # 仅本地监听，由宝塔 Nginx 反代
     environment:
       - TZ=Asia/Shanghai
+      - BACKEND_ROOT=/app
+      - APP_ADDR=:8080
+      - APP_ENV=${APP_ENV:-development}
+      - SITE_URL=${SITE_URL:-http://localhost:8080}
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - DB_PATH=${DB_PATH:-/app/data/galgame.db}
+      - DB_HOST=${DB_HOST:-127.0.0.1}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-www_test_map_vnf}
+      - DB_USER=${DB_USER:-www_test_map_vnf}
+      - DB_PASS=${DB_PASS:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      - BOT_API_KEY=${BOT_API_KEY:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - ANALYTICS_HASH_KEY=${ANALYTICS_HASH_KEY:-}
+      - QUIZ_LINK_SECRET=${QUIZ_LINK_SECRET:-}
+      - QUIZ_API_KEY=${QUIZ_API_KEY:-}
+      - RECOGNITION_HMAC_SECRET=${RECOGNITION_HMAC_SECRET:-}
+      - RECOGNITION_CRED_PREFIX=${RECOGNITION_CRED_PREFIX:-VNF-CRED-}
+      - COLUMN_WALINE_SERVER_URL=${COLUMN_WALINE_SERVER_URL:-}
+      - COLUMN_WALINE_SSO_SECRET=${COLUMN_WALINE_SSO_SECRET:-}
+      - COLUMN_WALINE_ALLOWED_REDIRECTS=${COLUMN_WALINE_ALLOWED_REDIRECTS:-}
+      - SESSION_COOKIE_DOMAIN=${SESSION_COOKIE_DOMAIN:-}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      - LEGACY_AUTH_ENABLED=${LEGACY_AUTH_ENABLED:-true}
+      - LEGACY_PHP_UPSTREAM=${LEGACY_PHP_UPSTREAM:-}
+      - DATA_DIR=/app/data
+      - UPLOAD_DIR=/app/uploads
+      - WIKI_UPLOAD_DIR=/app/wiki/uploads
+      - SESSION_LIFETIME=${SESSION_LIFETIME:-604800}
+      - MAIL_DRIVER=${MAIL_DRIVER:-mail}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-地图}
+      - MAIL_FROM_ADDR=${MAIL_FROM_ADDR:-noreply@localhost}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_SECURE=${SMTP_SECURE:-ssl}
+      - QQ_APPID=${QQ_APPID:-}
+      - QQ_APPSECRET=${QQ_APPSECRET:-}
+      - QQ_REDIRECT_URI=${QQ_REDIRECT_URI:-}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI:-}
+      - BANGUMI_CLIENT_ID=${BANGUMI_CLIENT_ID:-}
+      - BANGUMI_CLIENT_SECRET=${BANGUMI_CLIENT_SECRET:-}
+      - BANGUMI_REDIRECT_URI=${BANGUMI_REDIRECT_URI:-}
+      - BANGUMI_TOKEN_ENCRYPTION_KEY=${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
+      - BANGUMI_OAUTH_URL=${BANGUMI_OAUTH_URL:-https://bgm.tv}
+      - BANGUMI_API_URL=${BANGUMI_API_URL:-https://api.bgm.tv}
+      - VNDB_API_URL=${VNDB_API_URL:-https://api.vndb.org/kana}
+      - MAKOQUIZ_URL=${MAKOQUIZ_URL:-http://127.0.0.1:3001}
       - PICUI_TOKEN=${PICUI_TOKEN:-}
       - PICUI_API_URL=${PICUI_API_URL:-https://picui.cn/api/v1}
       - PICUI_ENABLED=${PICUI_ENABLED:-false}
@@ -20,20 +75,26 @@ services:
       - PICUI_TIMEOUT=${PICUI_TIMEOUT:-30}
       - PICUI_FALLBACK_LOCAL=${PICUI_FALLBACK_LOCAL:-true}
       - PICUI_ALLOWED_HOSTS=${PICUI_ALLOWED_HOSTS:-picui.cn,www.picui.cn}
+      - LLM_ENABLED=${LLM_ENABLED:-false}
+      - LLM_PROVIDER=${LLM_PROVIDER:-deepseek}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_API_URL=${LLM_API_URL:-}
+      - LLM_PROXY=${LLM_PROXY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-2048}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.7}
     volumes:
-      # 配置文件（每个服务器不同，不打包进镜像）
-      - ./config.php:/var/www/html/config.php:ro
       # 运行时数据（同好会 JSON、提交等）
-      - ./data:/var/www/html/data
+      - ./data:/app/data
       # 用户上传文件
-      - ./uploads:/var/www/html/uploads
-      - ./wiki/uploads:/var/www/html/wiki/uploads
+      - ./uploads:/app/uploads
+      - ./wiki/uploads:/app/wiki/uploads
       # 缓存
-      - ./data/cache:/var/www/html/data/cache
+      - ./data/cache:/app/data/cache
     networks:
       - vnfest-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/api/health.php"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/api/health.php"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -48,7 +109,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Asia/Shanghai
-      - WATCHTOWER_CLEANUP=true           # 更新后删除旧镜像
+      - WATCHTOWER_CLEANUP=false          # 发布窗口保留旧镜像以支持回滚
       - WATCHTOWER_POLL_INTERVAL=300       # 每 5 分钟检查一次
       - WATCHTOWER_INCLUDE_STOPPED=true    # 也更新已停止的容器
       - WATCHTOWER_REVIVE_STOPPED=false

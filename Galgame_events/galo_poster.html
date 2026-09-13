@@ -1055,6 +1055,13 @@ body {
     return d.innerHTML;
   }
 
+  function normalizePosterImageSrc(src) {
+    src = String(src || '').replace(/\\/g, '/').trim();
+    if (!src) return '';
+    if (/^(https?:)?\/\//i.test(src) || /^(data|blob):/i.test(src) || src.charAt(0) === '/') return src;
+    return '../' + src.replace(/^\/+/, '');
+  }
+
   function boothCard(app, index) {
     var clubs = app.clubs || [];
     var isJoint = app.is_joint == 1;
@@ -1069,7 +1076,7 @@ body {
     var productHtml = '';
     if (displaySrc) {
       var isPriorityImage = index < 8;
-      productHtml = '<img src="' + esc('../' + displaySrc) + '" alt="" width="800" height="500"' +
+      productHtml = '<img src="' + esc(normalizePosterImageSrc(displaySrc)) + '" alt="" width="800" height="500"' +
         ' loading="' + (isPriorityImage ? 'eager' : 'lazy') + '" decoding="async"' +
         (index < 4 ? ' fetchpriority="high"' : '') +
         ' onerror="this.style.display=\'none\';this.parentElement.querySelector(\'.booth-product-ph\').style.display=\'flex\';">' +

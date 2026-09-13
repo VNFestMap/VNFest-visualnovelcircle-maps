@@ -1,0 +1,20 @@
+# ROLLBACK ONLY. Do not run alongside the Go app on the same upstream port.
+# Set PHP_ROLLBACK_IMAGE to the immutable PHP image captured before cutover.
+services:
+  app-php-rollback:
+    image: ${PHP_ROLLBACK_IMAGE:?set PHP_ROLLBACK_IMAGE to the retained PHP image}
+    container_name: vnfest-app-php-rollback
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./config.php:/var/www/html/config.php:ro
+      - ./data:/var/www/html/data
+      - ./uploads:/var/www/html/uploads
+      - ./wiki/uploads:/var/www/html/wiki/uploads
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost/api/health.php"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

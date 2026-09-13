@@ -5,10 +5,10 @@ This repository is the public web root for the VNFest Galgame club map. Root-lev
 ## Public Runtime
 
 - `admin/` - admin pages.
-- `api/` - PHP API endpoints.
+- `api/` - historical compatibility path names; production handlers are registered by `backend/cmd/vnfest-server`.
 - `css/` - shared page styles.
 - `js/` - shared browser scripts.
-- `includes/` - PHP shared modules.
+- `includes/` - legacy behavior reference and rollback source; Go production code lives under `backend/internal/`.
 - `data/` - runtime data placeholders and protected writable folders.
 - `uploads/` - protected upload placeholders.
 - `image/background/` - local background image drop folder.
@@ -20,8 +20,8 @@ This repository is the public web root for the VNFest Galgame club map. Root-lev
 - `JUYOU/` - JUYOU event page and local assets.
 - `club-operation-portrait/` - standalone club operation portrait tool.
 - `Game/galgame_club_sim/` - standalone Galgame club simulator.
-- `Game/spy/` - served build output of the 谁是卧底 (spy game); entry card lives in `club_square.html`. Real multiplayer backend: `api/spy_rooms.php|spy_table.php|spy_actions.php` over the `spy_*` tables, rules engine in `includes/spy_game.php` (+ `includes/spy_rules.php`), phase timeouts and idle-room reaping by `scripts/spy_worker.php` (server cron, every minute; `--reap` hourly).
-- `Game/spy-react/` - Vite source project for `Game/spy/`. `npm install && npm run build` writes straight into `Game/spy/`; `node_modules/` is not part of the delivery. Contract check: `node scripts/test-page-i18n-contract.mjs` (with cwd = repo root); rules-engine assertions: `php scripts/test-spy-game.php`.
+- `Game/spy/` - served build output of the 谁是卧底 (spy game); entry card lives in `club_square.html`. Real multiplayer backend: `api/spy_rooms.php|spy_table.php|spy_actions.php` over the `spy_*` tables, with the Go rules engine in `backend/internal/httpapi/spy.go` and timeout/reaping handled by `vnfest-worker spy` (server cron, every minute; `--reap` hourly).
+- `Game/spy-react/` - Vite source project for `Game/spy/`. `npm install && npm run build` writes straight into `Game/spy/`; `node_modules/` is not part of the delivery. Contract check: `node scripts/test-page-i18n-contract.mjs` (with cwd = repo root); Go rules-engine assertions live in `backend/internal/httpapi` tests.
 - `tools/` - small public utility pages, including `tools/GalgameTool/` (Galgame 履历书自助工具).
 - `exam/` - club recognition assessment pages (list, detail, quiz, claim code redeem) and their assets; backed by the `recognition_*` tables and `includes/recognition/` modules. Renamed from `trial/` (同好会试炼 → 同好会考核); `trial/index.html` stays as a redirect stub for legacy links.
 - `user-v2-assets/` - built assets used by the root `user.html` entry.
@@ -56,7 +56,7 @@ The following files intentionally stay at the web root so existing links keep wo
 
 - Keep public URL entry files at the root unless a redirect or compatibility wrapper is added.
 - Put feature-owned browser assets inside that feature directory, such as `Galgame_events/assets/`.
-- Keep PHP endpoints in `api/`; do not place API copies under `js/`.
+- Keep historical API URL names in `api/`; production handlers are implemented under `backend/internal/httpapi/`, not copied into `js/`.
 - Keep browser scripts in `js/`; do not nest a second `js/` folder inside it.
 - Keep logs, compressed backups, exported archives, and raw source materials under `_local/` or another ignored operations directory.
-- Recognition/trial backend lives in `includes/recognition/` (one responsibility per file: capability / roles / events / rules / credential / outbox / pipeline / signature); only `credential.php` may create or change credential state. All `recognition_*` tables must be maintained in both dialect branches of `scripts/migrate.php`.
+- Recognition/trial production backend lives in `backend/internal/httpapi/` and `backend/internal/jobs/`; `includes/recognition/` remains the behavior reference for rollback/replay. All `recognition_*` tables must be maintained by versioned Go migrations and both MySQL/SQLite reference SQL files.

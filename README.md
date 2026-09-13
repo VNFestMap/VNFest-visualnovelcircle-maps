@@ -12,8 +12,8 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_在线访问-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-2ecc71?style=flat-square">
-  <img alt="PHP" src="https://img.shields.io/badge/PHP-8.x-777bb4?style=flat-square&logo=php&logoColor=white">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7.x-646cff?style=flat-square&logo=vite&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
@@ -35,6 +35,20 @@
 在线访问：[https://www.map.vnfest.top](https://www.map.vnfest.top)
 
 访客无需注册即可浏览地图、同好会信息、Wiki 和公开活动。需要发布内容、加入同好会、发送私信或执行管理操作时，再使用对应账号登录。
+
+## v2.3.0 更新日志
+
+本版本完成 VNFmap 后端从 PHP 运行时到 Go 服务的生产迁移基础建设，并保留现有前端 URL、API 路径、Cookie 和回滚边界。
+
+- 新增 `backend/` Go 服务、Worker、迁移工具、MySQL/SQLite 双驱动、版本化迁移、文件存储、Session bridge、OAuth/邮件/图床和状态机模块。
+- Go 直接提供静态页面、现有 `/api/*.php` 兼容路径、OAuth 回调、上传、健康检查，以及 Forum 归档和 club-operation-portrait 兼容接口。
+- 保留 `PHPSESSID` 共享会话桥接，支持已有登录态继续使用；生产配置只从服务器环境读取，仓库不包含真实密钥和运行时数据。
+- 新增 Go Docker/CI/宝塔部署说明、健康检查、数据快照、差异回放和 PHP 独立回滚镜像，回滚不依赖数据库降级。
+- 统一图片代理的安全白名单和本地缓存；兼容 CnGal 包装图、CnGal 原图、限定路径 Steam CDN、旧 Bangumi HTTP 图片，并保留本地文件兜底。
+- 优化履历书初始化请求并行化；修复 CnGal 搜索结果图片无法加载；生产 Nginx 开启文本资源 gzip，降低首页、脚本、样式和地图 JSON 的公网传输体积。
+- 完成 Go 单元测试、图片代理回归、履历书契约、API 路由清单、真实健康检查和公网图片/静态资源验证。
+
+详细迁移门禁和回滚流程见 [`GO_MIGRATION_RUNBOOK.md`](GO_MIGRATION_RUNBOOK.md)，部署协作说明见 [`DEPLOY.md`](DEPLOY.md)。
 
 ## v2.2.0 更新日志
 
@@ -71,7 +85,7 @@
 - QQ/Discord 登录补充账号凭证升级流程。
 - 第三方登录用户可以完成邮箱验证码、设置密码、凭证完成状态和账号提供商转移。
 - 数据库结构增加 `credentials_completed_at` 与 `oauth_account_challenges`。
-- 邮箱唯一性、PHP Session、登录注册和 OAuth 回调继续遵循现有 API 契约。
+- 邮箱唯一性、`PHPSESSID` 共享 Session、登录注册和 OAuth 回调继续遵循现有 API 契约。
 - 用户中心同步整理账号安全、通知筛选和同好会动态入口。
 
 ### GalgameTool 与其它前端
@@ -162,10 +176,10 @@ Wiki 提供中文/日文双语文档、分组导航、站内检索、可视化�
 │  HTML + CSS + Vanilla JS  │ React 18 + Vite                │
 │  地图、Wiki、活动页        │ 用户中心、Column、管理工作台   │
 └───────────────────────────┬────────────────────────────────┘
-                            │ fetch() / REST / PHP Session
+                            │ fetch() / REST / PHPSESSID 共享 Session
 ┌───────────────────────────┴────────────────────────────────┐
-│                         PHP 8.x 后端                         │
-│ api/*.php 端点 · includes/*.php 公共模块 · OAuth · 迁移脚本 │
+│                         Go 后端                             │
+│ backend/ · 兼容现有 /api/*.php URL · OAuth · Worker         │
 └───────────────────────────┬────────────────────────────────┘
                             │ PDO
 ┌───────────────────────────┴────────────────────────────────┐
@@ -177,9 +191,9 @@ Wiki 提供中文/日文双语文档、分组导航、站内检索、可视化�
 | 层 | 技术 |
 |---|---|
 | 前端 | HTML、CSS、Vanilla JavaScript、React 18、Vite、D3.js 7 |
-| 后端 | PHP 8.x，使用 `__DIR__` 相对路径，无框架依赖 |
-| 数据 | SQLite / MySQL via PDO、JSON 运行时文件 |
-| 测试 | Node.js 契约测试、PHP 检查、Electron 浏览器回归 |
+| 后端 | Go 1.26，`net/http` + `database/sql`，SQLite/MySQL 双驱动 |
+| 数据 | SQLite / MySQL via Go 驱动、JSON 运行时文件 |
+| 测试 | Go 单元/集成测试、Node.js 契约测试、Electron 浏览器回归 |
 | 部署 | Docker、GitHub Actions、GHCR、Watchtower 或受控 SSH 发布 |
 | 国际化 | 中文 / 日本語双语运行时与 Wiki 种子 |
 
@@ -188,12 +202,13 @@ Wiki 提供中文/日文双语文档、分组导航、站内检索、可视化�
 ```text
 .
 ├─ admin/                  管理后台、赛事管理、Wiki 编辑
-├─ api/                    PHP API 端点
+├─ backend/                Go 服务、Worker、迁移工具和领域模块
+├─ api/                    历史 PHP URL 名称与行为基线（生产由 Go 响应）
 ├─ css/                    全站样式
 ├─ data/                   运行时数据，不进入 Git
 ├─ Game/                   游戏页面与 React 游戏原型
 ├─ images/                 站点图片资源
-├─ includes/               认证、邮件、通知、OAuth、Posts/DM 公共模块
+├─ includes/               PHP 历史公共模块（回滚/行为基线，不进入 Go runtime）
 ├─ js/                     地图、投票、项目和全站运行时脚本
 ├─ scripts/                构建、迁移、测试和同步脚本
 ├─ tools/                  GalgameTool、PDF 阅读器等公开工具
@@ -219,9 +234,9 @@ Wiki 提供中文/日文双语文档、分组导航、站内检索、可视化�
 
 ### 环境要求
 
-- PHP 8.0 或更高版本，启用 `mbstring` 和 `pdo_sqlite`。
+- Go 1.26 或更高版本；本地 SQLite 使用纯 Go 驱动，不需要 CGO。
 - Node.js 18 或更高版本，用于测试和前端构建。
-- Git。
+- Docker（推荐用于本地启动）和 Git。
 
 ### 本地运行
 
@@ -229,16 +244,16 @@ Wiki 提供中文/日文双语文档、分组导航、站内检索、可视化�
 git clone https://github.com/VNFestMap/china-visualnovelcircle-maps.git
 cd china-visualnovelcircle-maps
 npm install
-cp config.example.php config.php
-# 编辑 config.php，设置数据库路径和站点 URL
-php -S 127.0.0.1:8000
+cp .env.example .env
+# 编辑 .env；本地默认使用 SQLite
+docker compose up -d app
 ```
 
 然后访问：
 
-- 访客地图：`http://127.0.0.1:8000/index.html?guest=1`
-- 登录/注册：`http://127.0.0.1:8000/login.html`
-- Wiki 使用文档：`http://127.0.0.1:8000/wiki/guide/`
+- 访客地图：`http://127.0.0.1:8080/index.html?guest=1`
+- 登录/注册：`http://127.0.0.1:8080/login.html`
+- Wiki 使用文档：`http://127.0.0.1:8080/wiki/guide/`
 
 ### 构建 React 页面
 
@@ -263,6 +278,16 @@ npm run club-manager:build
 npm run check
 ```
 
+Go 后端检查：
+
+```bash
+cd backend
+go test -mod=mod ./... -count=1 -timeout=120s
+go vet ./...
+cd ..
+npm run test:go-route-inventory
+```
+
 常用的专项检查：
 
 ```bash
@@ -277,12 +302,12 @@ npm run club-manager:test
 
 ## 部署与数据迁移
 
-项目支持 Docker 部署，也支持在确认目标文件范围后使用 SSH 发布。详细环境变量和运维说明见 [`DEPLOY.md`](DEPLOY.md)。
+项目生产后端由 Go 容器提供静态页面、现有 API URL、OAuth 回调、上传和 Worker；PHP 只作为发布周期内的独立回滚镜像保留。详细环境变量、备份、差异回放、切换和回滚门禁见 [`DEPLOY.md`](DEPLOY.md) 与 [`GO_MIGRATION_RUNBOOK.md`](GO_MIGRATION_RUNBOOK.md)。
 
 ```bash
 docker compose up -d
 
-# 或使用包含备份和权限处理的部署脚本
+# 或使用包含快照、migration 和健康检查的 Go 发布辅助脚本
 bash scripts/deploy.sh
 ```
 
@@ -290,17 +315,18 @@ bash scripts/deploy.sh
 
 1. 确认服务器身份、网站根目录和当前文件哈希。
 2. 备份数据库、运行时数据和将被替换的文件。
-3. 只上传已经确认的入口 HTML、哈希资源或 PHP 文件，不要整目录覆盖。
-4. 安装后核对 SHA-256、所有者、权限、入口引用和 PHP 语法。
-5. 使用带 SNI 的无缓存公网请求检查页面、资源 MIME 类型和关键标记。
+3. 按 runbook 先完成 Go/PHP 差异回放、Session bridge 校验和四视口浏览器回归。
+4. 安装后核对数据库/文件 SHA-256、所有者、权限、入口引用和 Go health/readiness。
+5. 只在所有门禁通过后切换 Nginx upstream，并保留 PHP 镜像和快照用于回滚。
 6. 对需要登录的私信、上传、排序和管理员操作，再进行登录态人工验收。
 
-文档或 GitHub 发布不会自动运行生产数据库迁移。涉及 Posts/DM 或 OAuth 的变更，必须在目标服务器完成数据备份、迁移、结构检查和业务验证。
+文档或 GitHub 发布不会自动运行生产数据库迁移。涉及 Posts/DM 或 OAuth 的变更，必须在目标服务器完成数据备份、Go migration、结构检查、差异回放和业务验证；当前工作区不代表生产已经切换。
 
 ## 版本历史
 
 | 版本 | 核心主题 |
 |------|---------|
+| **v2.3.0** | PHP → Go 后端迁移基础设施、共享 Session、兼容 API、Go Worker、部署回滚、图床代理和履历书性能/图片修复 |
 | **v2.2.0** | 同好会动态 React 化、独立搜索、互关私信、图片灯箱修复、管理员 React 工作台、OAuth 凭证升级、GalgameTool Tier/MEME 与后端整理 |
 | **v2.1.0** | 独立专栏、超级管理控制台、北京 GalOnly、MakoQuiz 连携、偏好集中化、Wiki 使用文档 |
 | **v2.0.0** | 用户中心 SPA 化、Staff 招募、资料公开库、淘汰赛可视化、设计系统统一 |
