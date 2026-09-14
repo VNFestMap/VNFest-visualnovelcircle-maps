@@ -95,7 +95,11 @@ func (s *Server) notificationList(w http.ResponseWriter, r *http.Request, userID
 		if err := rows.Scan(&id, &typ, &title, &message, &link, &relatedType, &relatedID, &isRead, &created); err != nil {
 			continue
 		}
-		items = append(items, map[string]any{"id": id, "type": typ, "title": title, "message": message, "link": link, "related_type": relatedType, "related_id": relatedID, "is_read": integerValue(isRead), "created_at": databaseValueString(created)})
+		// database/sql may return MySQL TEXT/VARCHAR columns as []byte when the
+		// destination is any. Passing those byte slices to encoding/json encodes
+		// them as base64, which makes Chinese notification text look corrupted in
+		// the browser. Normalize all textual columns before building the JSON map.
+		items = append(items, map[string]any{"id": id, "type": databaseValueString(typ), "title": databaseValueString(title), "message": databaseValueString(message), "link": databaseValueString(link), "related_type": databaseValueString(relatedType), "related_id": relatedID, "is_read": integerValue(isRead), "created_at": databaseValueString(created)})
 	}
 	totalPages := (total + limit - 1) / limit
 	if totalPages < 1 {

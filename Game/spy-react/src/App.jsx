@@ -154,7 +154,7 @@ export default function App() {
     <ThemeStyleProvider appearance="dark" theme="mint" style="soft">
       <div className="proto">
         <header className="proto-bar">
-          <a className="proto-back" href="../../club_square.html">
+          <a className="proto-back" href="../../column/?tab=activity">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
             返回活动
           </a>

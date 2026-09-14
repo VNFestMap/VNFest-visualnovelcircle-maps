@@ -93,6 +93,10 @@ func TestBotPortraitAndPublicationMigrationCompatibility(t *testing.T) {
 	if err := json.Unmarshal(tokenResponse.Body.Bytes(), &tokenPayload); err != nil || tokenPayload.Token == "" {
 		t.Fatalf("bot token payload=%s", tokenResponse.Body.String())
 	}
+	listedTokens := request(http.MethodGet, "/api/bot.php?action=bot_tokens_list&club_id=7", "", "compat-admin")
+	if listedTokens.Code != http.StatusOK || !strings.Contains(listedTokens.Body.String(), `"active":true`) {
+		t.Fatalf("new bot token should remain active: status=%d body=%s", listedTokens.Code, listedTokens.Body.String())
+	}
 	clubActivity := request(http.MethodGet, "/api/bot.php?action=club_activity&token="+tokenPayload.Token, "", "")
 	if clubActivity.Code != http.StatusOK || !strings.Contains(clubActivity.Body.String(), "测试社团") {
 		t.Fatalf("club bot activity status=%d body=%s", clubActivity.Code, clubActivity.Body.String())

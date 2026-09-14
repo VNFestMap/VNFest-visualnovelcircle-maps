@@ -151,8 +151,18 @@ var Utils = window.Utils || {
   escapeHTML: (value) => String(value || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
+  normalizeMediaUrl: (value) => {
+    let url = String(value || '').trim();
+    if (!url) return '';
+    // Repair legacy records containing an escaped protocol before the browser
+    // resolves the value relative to the current page.
+    url = url.replace(/\\\//g, '/');
+    const protocol = url.match(/^\/*(https?)(?:\\+)?:(.*)$/i);
+    if (protocol) url = `${protocol[1].toLowerCase()}://${protocol[2].replace(/^[\\/]+/, '')}`;
+    return url;
+  },
   resolveMediaUrl: (value) => {
-    const url = String(value || '').trim();
+    const url = Utils.normalizeMediaUrl(value);
     if (!url) return '';
     if (/^(https?:|data:|blob:)/i.test(url)) return url;
     const cleanPath = url.replace(/^\.?\//, '');

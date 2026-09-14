@@ -44,6 +44,17 @@ async function apiPost(action, payload = {}) {
 
 const MESSAGES_API = '/api/messages.php';
 
+const VOTE_PROJECTS_API = '/api/vote_projects.php';
+
+async function voteProjectsGet(params = {}) {
+  const query = new URLSearchParams(params);
+  const res = await fetch(`${VOTE_PROJECTS_API}?${query}`, { credentials: 'same-origin' });
+  const payload = await res.json().catch(() => null);
+  if (!payload) throw new Error('活动数据解析失败');
+  if (!payload.success) throw new Error(payload.message || payload.error?.message || '活动数据加载失败');
+  return payload;
+}
+
 async function messagesApi(action, params = {}) {
   const query = new URLSearchParams({ action, ...Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')) });
   const res = await fetch(`${MESSAGES_API}?${query}`, { credentials: 'same-origin' });
@@ -119,6 +130,17 @@ function linkify(text) {
   return parts;
 }
 
+function normalizeMediaUrl(value) {
+  let url = String(value || '').trim();
+  if (!url) return '';
+  // Repair legacy records containing an escaped protocol such as
+  // `https\:/free.picui.cn/...` before assigning the value to an <img>.
+  url = url.replace(/\\\//g, '/');
+  const protocol = url.match(/^\/*(https?)(?:\\+)?:(.*)$/i);
+  if (protocol) url = `${protocol[1].toLowerCase()}://${protocol[2].replace(/^[\\/]+/, '')}`;
+  return url;
+}
+
 // ---------------------------------------------------------------- toast
 
 const toastListeners = new Set();
@@ -184,6 +206,8 @@ const PATHS = {
   club: 'M12 3 4 7.5v2.2l8-4.5 8 4.5V7.5L12 3ZM6 10.5V19m12-8.5V19M6 19h12M10.5 19v-4h3v4',
   calendar: 'M8 2.5v3m8-3v3M3.5 9.5h17M5 5h14A1.5 1.5 0 0 1 20.5 6.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6.5A1.5 1.5 0 0 1 5 5Z',
   check: 'M4.5 12.5l4.5 4.5L19.5 6.5',
+  trophy: 'M8 4h8v4a4 4 0 0 1-8 0V4Zm4 8v5m-4 3h8M5 5H3v2a4 4 0 0 0 4 4m12-6h2v2a4 4 0 0 1-4 4',
+  star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z',
   message: 'M3.5 5.5h17a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Zm.5 1.5 8.2 6.4a1 1 0 0 0 1.23 0L20 7',
   search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm9.5 3-4.9-4.9',
 };
@@ -203,7 +227,7 @@ function Avatar({ src, name, size = 48 }) {
     <img
       className="pt-avatar"
       style={{ width: size, height: size }}
-      src={src}
+      src={normalizeMediaUrl(src)}
       alt=""
       loading="lazy"
       onError={() => setFailed(true)}
@@ -283,7 +307,7 @@ function CropModal({ src, aspectRatio = null, outputWidth = 1280, outputHeight =
           </button>
         </div>
         <div className="pt-crop-container">
-          <img ref={imgRef} src={src} alt="" crossOrigin="anonymous" />
+          <img ref={imgRef} src={normalizeMediaUrl(src)} alt="" crossOrigin="anonymous" />
         </div>
         <p className="pt-crop-hint">拖动图片调整位置{aspectRatio ? '' : '，拖动裁剪框边角调整范围'}</p>
         <div className="pt-edit-actions">
@@ -296,6 +320,11 @@ function CropModal({ src, aspectRatio = null, outputWidth = 1280, outputHeight =
 }
 
 // ---------------------------------------------------------------- composer
+
+function clubDisplayName(club) {
+  const id = club?.club_id ?? club?.id;
+  return String(club?.name || club?.display_name || club?.school || (id ? `同好会 #${id}` : '同好会')).trim();
+}
 
 function Composer({ user, clubs, placeholder, replyTo, quoted, onPosted, autoFocus = false, compact = false }) {
   const [content, setContent] = useState('');
@@ -440,7 +469,7 @@ function Composer({ user, clubs, placeholder, replyTo, quoted, onPosted, autoFoc
             <div className="pt-composer-previews">
               {images.map((item) => (
                 <div key={item.id} className="pt-preview">
-                  <img src={item.url} alt="" />
+                  <img src={normalizeMediaUrl(item.url)} alt="" />
                   <button type="button" className="pt-preview-remove" onClick={() => removeImage(item)} aria-label="移除图片">
                     <Icon path={PATHS.close} size={12} />
                   </button>
@@ -462,7 +491,7 @@ function Composer({ user, clubs, placeholder, replyTo, quoted, onPosted, autoFoc
                   title="关联同好会"
                 >
                   <Icon path={PATHS.club} size={15} />
-                  <span>{selectedClub ? selectedClub.name : '关联同好会'}</span>
+                  <span>{selectedClub ? clubDisplayName(selectedClub) : '关联同好会'}</span>
                 </button>
                 {clubMenuOpen && (
                   <ClubPickerModal
@@ -521,7 +550,7 @@ function QuoteCard({ post, compact = false }) {
       {post.images.length > 0 && !compact && (
         <div className={`pt-imggrid pt-imggrid-${Math.min(post.images.length, 4)}`}>
           {post.images.slice(0, 4).map((src) => (
-            <div key={src} className="pt-imgcell"><img src={src} alt="" loading="lazy" /></div>
+            <div key={src} className="pt-imgcell"><img src={normalizeMediaUrl(src)} alt="" loading="lazy" /></div>
           ))}
         </div>
       )}
@@ -653,7 +682,7 @@ function PostCard({ post, user, onChanged, onOpen, onQuote, lightbox, onOpenUser
                 className="pt-imgcell"
                 onClick={(e) => { e.stopPropagation(); if (lightbox) lightbox(post.images, i); }}
               >
-                <img src={src} alt="" loading="lazy" />
+                <img src={normalizeMediaUrl(src)} alt="" loading="lazy" />
               </div>
             ))}
           </div>
@@ -683,7 +712,7 @@ function Lightbox({ state }) {
   return createPortal((
     <div className="pt-lightbox" onClick={onClose} role="dialog" aria-modal="true">
       <button type="button" className="pt-lightbox-close" aria-label="关闭" onClick={onClose}><Icon path={PATHS.close} size={22} /></button>
-      <img src={images[index]} alt="" onClick={(e) => e.stopPropagation()} />
+      <img src={normalizeMediaUrl(images[index])} alt="" onClick={(e) => e.stopPropagation()} />
       {images.length > 1 && (
         <div className="pt-lightbox-count">{index + 1} / {images.length}</div>
       )}
@@ -1270,7 +1299,10 @@ function SearchPage({ query, viewer, navigate, onOpenUser }) {
   }, [keyword]);
 
   const fetcher = useCallback(
-    (beforeId) => apiGet('search', { q: keyword, before_id: beforeId, limit: 20 }),
+    async (beforeId) => {
+      const data = await apiGet('search', { q: keyword, before_id: beforeId, limit: 20 });
+      return data.posts || { posts: [], next_before_id: null };
+    },
     [keyword]
   );
   const feed = useCursorFeed(fetcher, [keyword, tab]);
@@ -1363,12 +1395,213 @@ function SearchPage({ query, viewer, navigate, onOpenUser }) {
   );
 }
 
+// ---------------------------------------------------------------- activity center
+
+const ACTIVITY_CARDS = [
+  {
+    key: 'moe',
+    eyebrow: '年度评选',
+    title: '萌战',
+    description: '为喜欢的角色投票，见证年度萌王诞生。',
+    href: '/moe/index.html',
+    className: 'is-moe',
+    icon: PATHS.trophy,
+  },
+  {
+    key: 'twelve',
+    eyebrow: '作品评选',
+    title: '十二器',
+    description: '发现和推荐优秀的视觉小说作品。',
+    href: '/twelve/index.html',
+    className: 'is-twelve',
+    icon: PATHS.star,
+  },
+  {
+    key: 'spy',
+    eyebrow: '互动游戏',
+    title: '谁是卧底',
+    description: '和同好一起推理、猜词与交流。',
+    href: '/Game/spy/index.html',
+    className: 'is-spy',
+    icon: PATHS.users,
+  },
+  {
+    key: 'exam',
+    eyebrow: '同好会成长',
+    title: '同好会考核',
+    description: '完成考核，展示你的同好会风采。',
+    href: '/exam/index.html',
+    className: 'is-exam',
+    icon: PATHS.check,
+  },
+  {
+    key: 'quiz',
+    eyebrow: '答题互动',
+    title: '答题互动',
+    description: '挑战视觉小说知识，和大家比一比。',
+    href: 'https://makoquiz.vnfest.top/',
+    className: 'is-quiz',
+    icon: PATHS.message,
+    external: true,
+  },
+  {
+    key: 'portrait',
+    eyebrow: '数据观察',
+    title: '运行画像',
+    description: '了解同好会生态的公开运行数据。',
+    href: '/club-operation-portrait/index.html',
+    className: 'is-portrait',
+    icon: PATHS.map,
+  },
+  {
+    key: 'simulator',
+    eyebrow: '轻松玩法',
+    title: '同好会模拟器',
+    description: '经营一个属于你的视觉小说同好会。',
+    href: '/Game/galgame_club_sim/index.html',
+    className: 'is-simulator',
+    icon: PATHS.club,
+  },
+  {
+    key: 'tools',
+    eyebrow: '实用工具',
+    title: '自助工具',
+    description: '使用同好会运营和活动组织的小工具。',
+    href: '/tools/GalgameTool/index.html',
+    className: 'is-tools',
+    icon: PATHS.feather,
+  },
+];
+
+function activityStatusLabel(status) {
+  return ({ running: '进行中', draft: '草稿', suspended: '已暂停', archived: '已归档', completed: '已结束' }[status] || status || '活动');
+}
+
+function activityDate(value) {
+  if (!value) return '';
+  const date = new Date(String(value).replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function ActivityPage({ navigate, refreshKey = 0 }) {
+  const [state, setState] = useState({ loading: true, error: '', projects: [] });
+
+  const load = useCallback(() => {
+    let cancelled = false;
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
+    Promise.all([
+      voteProjectsGet({ action: 'list', project_type: 'moe' }),
+      voteProjectsGet({ action: 'list', project_type: 'twelve' }),
+    ]).then(([moe, twelve]) => {
+      if (cancelled) return;
+      const projects = [
+        ...(Array.isArray(moe.data) ? moe.data : []),
+        ...(Array.isArray(twelve.data) ? twelve.data : []),
+      ].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')) || Number(b.id || 0) - Number(a.id || 0));
+      setState({ loading: false, error: '', projects });
+    }).catch((error) => {
+      if (!cancelled) setState({ loading: false, error: error.message || '活动数据加载失败', projects: [] });
+    });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  useEffect(() => load(), [load]);
+
+  const running = state.projects.filter((project) => project.status === 'running');
+  const renderProject = (project) => {
+    const typeLabel = project.project_type === 'moe' ? '萌战' : '十二器';
+    const currentStage = project.current_stage;
+    return (
+      <a className="pt-activity-live-item" href={project.project_type === 'moe' ? '/moe/index.html' : '/twelve/index.html'} key={`${project.project_type}-${project.id}`}>
+        <span className={`pt-activity-live-mark ${project.project_type === 'moe' ? 'is-moe' : 'is-twelve'}`} aria-hidden="true"><Icon path={project.project_type === 'moe' ? PATHS.trophy : PATHS.star} size={17} /></span>
+        <span className="pt-activity-live-copy">
+          <strong>{project.title || typeLabel}</strong>
+          <span>{typeLabel}{currentStage?.title ? ` · ${currentStage.title}` : ''}{project.year_label ? ` · ${project.year_label}` : ''}</span>
+        </span>
+        <span className="pt-activity-live-meta">{currentStage?.ends_at ? `至 ${activityDate(currentStage.ends_at)}` : '查看活动'}<Icon path={PATHS.link} size={15} /></span>
+      </a>
+    );
+  };
+
+  return (
+    <div className="pt-page pt-activity-page">
+      <section className="pt-activity-hero">
+        <div className="pt-activity-hero-copy">
+          <span className="pt-activity-kicker">VNFEST / SPACE</span>
+          <h1>活动</h1>
+          <p>同好会企划、赛事评选与互动玩法，从这里开始。</p>
+        </div>
+        <div className="pt-activity-stats" aria-label="活动统计">
+          <div><strong>{state.loading ? '—' : state.projects.length}</strong><span>活动总数</span></div>
+          <div><strong>{state.loading ? '—' : running.length}</strong><span>进行中</span></div>
+        </div>
+      </section>
+
+      {state.error && (
+        <section className="pt-activity-state pt-activity-error" role="alert">
+          <strong>活动暂时无法加载</strong>
+          <span>{state.error}</span>
+          <button type="button" className="pt-btn pt-btn-primary pt-btn-sm" onClick={load}>重试</button>
+        </section>
+      )}
+
+      {!state.error && (
+        <>
+          <section className="pt-activity-section pt-activity-live-section">
+            <div className="pt-activity-section-head">
+              <div><span className="pt-activity-section-kicker">LIVE NOW</span><h2>正在进行</h2></div>
+              <span className="pt-activity-count">{state.loading ? '加载中…' : `${running.length} 项`}</span>
+            </div>
+            {state.loading ? (
+              <div className="pt-activity-live-list"><div className="pt-activity-skeleton" /><div className="pt-activity-skeleton" /></div>
+            ) : running.length ? (
+              <div className="pt-activity-live-list">{running.map(renderProject)}</div>
+            ) : (
+              <div className="pt-activity-empty">暂时没有进行中的活动，去看看下面的活动一览吧。</div>
+            )}
+          </section>
+
+          <section className="pt-activity-section">
+            <div className="pt-activity-section-head">
+              <div><span className="pt-activity-section-kicker">EXPLORE</span><h2>活动一览</h2></div>
+              <span className="pt-activity-count">{ACTIVITY_CARDS.length} 个入口</span>
+            </div>
+            <div className="pt-activity-grid">
+              {ACTIVITY_CARDS.map((card) => (
+                <a
+                  className={`pt-activity-card ${card.className}`}
+                  href={card.href}
+                  key={card.key}
+                  target={card.external ? '_blank' : undefined}
+                  rel={card.external ? 'noreferrer' : undefined}
+                >
+                  <span className="pt-activity-card-icon"><Icon path={card.icon} size={21} /></span>
+                  <span className="pt-activity-card-copy"><small>{card.eyebrow}</small><strong>{card.title}</strong><span>{card.description}</span></span>
+                  <Icon path={PATHS.link} size={16} className="pt-activity-card-arrow" />
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <section className="pt-activity-footer-card">
+            <div><strong>有新的活动想法？</strong><span>负责人可以在后台创建并管理萌战与十二器活动。</span></div>
+            <a className="pt-btn pt-btn-primary pt-btn-sm" href="/admin/club_manager.html?tab=vote_projects">负责人管理</a>
+          </section>
+        </>
+      )}
+      <button type="button" className="pt-activity-back" onClick={() => navigate('/column/')}><Icon path={PATHS.back} size={15} />返回动态</button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- layout
 
 function LeftNav({ user, route, navigate, onCompose, dmUnread = 0 }) {
   const profilePath = user ? `/column/user/${encodeURIComponent(user.username)}/` : '/column/my/';
   const items = [
     { key: 'feed', label: '首页', icon: PATHS.home, path: '/column/' },
+    { key: 'activity', label: '活动', icon: PATHS.trophy, path: '/column/?tab=activity' },
     { key: 'search', label: '搜索', icon: PATHS.search, path: '/column/search/' },
     { key: 'messages', label: '消息', icon: PATHS.message, path: '/column/messages/', badge: dmUnread },
     { key: 'user', label: '个人空间', icon: PATHS.profile, path: profilePath },
@@ -1430,6 +1663,7 @@ function MobileBottomNav({ route, navigate, onCompose, user, dmUnread = 0 }) {
   const profilePath = user ? `/column/user/${encodeURIComponent(user.username)}/` : '/column/my/';
   const items = [
     { key: 'feed', label: '首页', icon: PATHS.home, path: '/column/' },
+    { key: 'activity', label: '活动', icon: PATHS.trophy, path: '/column/?tab=activity' },
     { key: 'search', label: '搜索', icon: PATHS.search, path: '/column/search/' },
     { key: 'messages', label: '消息', icon: PATHS.message, path: '/column/messages/', badge: dmUnread },
     { key: 'user', label: '空间', icon: PATHS.profile, path: profilePath },
@@ -1474,7 +1708,7 @@ function RightSidebar({ user, navigate, onOpenUser }) {
         <h3 className="pt-side-title">同好会动态</h3>
         <p className="pt-side-desc">这里是 VNFest 同好会分享活动日常的地方。发布动态时可以选择署名你所在的同好会。</p>
         <div className="pt-side-links">
-          <a href="/club_square.html"><Icon path={PATHS.club} size={16} />活动广场</a>
+          <a href="/column/?tab=activity"><Icon path={PATHS.trophy} size={16} />活动</a>
           <a href="/index.html"><Icon path={PATHS.map} size={16} />返回地图</a>
         </div>
       </div>
@@ -1524,7 +1758,7 @@ function ClubPickerModal({ clubs, value, onPick, onClose }) {
     return () => document.removeEventListener('keydown', close);
   }, [onClose]);
   const keyword = query.trim().toLowerCase();
-  const filtered = keyword ? clubs.filter((c) => c.name.toLowerCase().includes(keyword)) : clubs;
+  const filtered = keyword ? clubs.filter((c) => clubDisplayName(c).toLowerCase().includes(keyword)) : clubs;
   const pick = (id) => { onPick(id); onClose(); };
   return (
     <div className="pt-modal pt-club-modal" onClick={onClose} role="dialog" aria-modal="true">
@@ -1552,7 +1786,7 @@ function ClubPickerModal({ clubs, value, onPick, onClose }) {
               onClick={() => pick(club.membership_id)}
             >
               <span className="pt-club-option-main">
-                <span className="pt-name">{club.name}</span>
+                <span className="pt-name">{clubDisplayName(club)}</span>
                 <span className="pt-handle">{club.country === 'japan' ? '日本' : '中国'} · {club.role === 'representative' ? '代表' : club.role === 'manager' ? '管理' : '成员'}</span>
               </span>
               {String(value) === String(club.membership_id) && <Icon path={PATHS.check} size={15} />}
@@ -1808,7 +2042,7 @@ function ThreadPage({ userId, viewer, navigate, refreshKey, lightbox }) {
                   {m.images && m.images.length > 0 && (
                     <div className={`pt-dm-imgs pt-dm-imgs-${Math.min(m.images.length, 4)}`}>
                       {m.images.map((src, i) => (
-                        <img key={src} src={src} alt="" loading="lazy" onClick={() => lightbox(m.images, i)} />
+                        <img key={src} src={normalizeMediaUrl(src)} alt="" loading="lazy" onClick={() => lightbox(m.images, i)} />
                       ))}
                     </div>
                   )}
@@ -1830,7 +2064,7 @@ function ThreadPage({ userId, viewer, navigate, refreshKey, lightbox }) {
           <div className="pt-thread-previews">
             {pendingImages.map((item) => (
               <span key={item.id} className="pt-thread-preview">
-                <img src={item.url} alt="" />
+                <img src={normalizeMediaUrl(item.url)} alt="" />
                 <button type="button" onClick={() => removePendingImage(item)} aria-label="移除图片">
                   <Icon path={PATHS.close} size={11} />
                 </button>
@@ -1934,8 +2168,9 @@ function QuoteModal({ post, user, clubs, onClose, onPosted }) {
 
 // ---------------------------------------------------------------- app
 
-function parseRoute(pathname) {
+function parseRoute(pathname, search = location.search) {
   const path = pathname.replace(/\/?$/, '/');
+  const params = new URLSearchParams(search || '');
   let match = path.match(/^\/column\/post\/(\d+)\/?$/);
   if (match) return { name: 'detail', id: Number(match[1]) };
   match = path.match(/^\/column\/user\/([^/]+)\/?$/);
@@ -1944,15 +2179,50 @@ function parseRoute(pathname) {
   if (dmMatch) return { name: 'thread', userId: Number(dmMatch[1]) };
   if (/^\/column\/messages\/?$/.test(path)) return { name: 'messages' };
   if (/^\/column\/search\/?$/.test(path)) {
-    return { name: 'search', query: new URLSearchParams(location.search).get('q') || '' };
+    return { name: 'search', query: params.get('q') || '' };
   }
   if (/^\/column\/my\/?$/.test(path)) return { name: 'mine' };
+  if ((path === '/column/' || path === '/column/index.html/') && params.get('tab') === 'activity') return { name: 'activity' };
   return { name: 'feed' };
 }
 
+function SpaceAccessGate({ user, access, error, onRetry }) {
+  const isLoginRequired = access?.reason === 'login_required';
+  const title = isLoginRequired
+    ? '登录后即可进入同好会空间'
+    : access?.reason === 'membership_required'
+      ? '空间仅对成员及以上身份开放'
+      : '空间权限暂时无法确认';
+  const description = isLoginRequired
+    ? '登录后可以查看动态、活动、消息和个人空间。'
+    : access?.reason === 'membership_required'
+      ? '请先获得成员及以上身份后再进入同好会空间。'
+      : (error || '请稍后重试，确认权限后再进入同好会空间。');
+
+  return (
+    <main className="pt-space-access-gate" role="main" aria-labelledby="space-access-title">
+      <div className="pt-space-access-card">
+        <div className="pt-space-access-mark" aria-hidden="true">✦</div>
+        <h1 id="space-access-title">{title}</h1>
+        <p>{description}</p>
+        <div className="pt-space-access-actions">
+          {isLoginRequired ? (
+            <a className="pt-btn pt-btn-primary" href={`/login.html?redirect=${encodeURIComponent(location.pathname + location.search)}`}>登录 / 注册</a>
+          ) : access?.reason === 'membership_required' ? (
+            <a className="pt-btn pt-btn-primary" href="/index.html?guest=1">返回地图</a>
+          ) : (
+            <button type="button" className="pt-btn pt-btn-primary" onClick={onRetry}>重试</button>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function App() {
-  const [route, setRoute] = useState(() => parseRoute(location.pathname));
-  const [boot, setBoot] = useState({ loading: true, user: null, clubs: [] });
+  const [route, setRoute] = useState(() => parseRoute(location.pathname, location.search));
+  const [boot, setBoot] = useState({ loading: true, user: null, clubs: [], spaceAccess: null, error: '' });
+  const [bootKey, setBootKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [quoteTarget, setQuoteTarget] = useState(null);
   const [lightboxState, setLightboxState] = useState(null);
@@ -1960,13 +2230,14 @@ function App() {
 
   const navigate = useCallback((path) => {
     history.pushState({}, '', path);
-    setRoute(parseRoute(path));
+    const next = new URL(path, location.href);
+    setRoute(parseRoute(next.pathname, next.search));
     setLightboxState(null);
     window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
-    const onPop = () => { setRoute(parseRoute(location.pathname)); setLightboxState(null); };
+    const onPop = () => { setRoute(parseRoute(location.pathname, location.search)); setLightboxState(null); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -1974,15 +2245,35 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     apiGet('bootstrap')
-      .then((data) => { if (!cancelled) setBoot({ loading: false, user: data.user, clubs: data.clubs || [] }); })
-      .catch(() => { if (!cancelled) setBoot({ loading: false, user: null, clubs: [] }); });
+      .then((data) => {
+        if (!cancelled) {
+          setBoot({
+            loading: false,
+            user: data.user,
+            clubs: data.clubs || [],
+            spaceAccess: data.space_access || { allowed: false, reason: 'unavailable' },
+            error: '',
+          });
+        }
+      })
+      .catch((requestError) => {
+        if (!cancelled) {
+          setBoot({
+            loading: false,
+            user: null,
+            clubs: [],
+            spaceAccess: { allowed: false, reason: 'unavailable' },
+            error: requestError?.message || '权限服务暂时不可用。',
+          });
+        }
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [bootKey]);
 
-  const { user, clubs } = boot;
+  const { user, clubs, spaceAccess } = boot;
   const [dmUnread, setDmUnread] = useState(0);
   useEffect(() => {
-    if (!user) { setDmUnread(0); return undefined; }
+    if (!user || !spaceAccess?.allowed) { setDmUnread(0); return undefined; }
     let inFlight = false;
     const tick = () => {
       if (document.hidden || inFlight) return;
@@ -1995,12 +2286,20 @@ function App() {
     tick();
     const timer = setInterval(tick, 8000);
     return () => clearInterval(timer);
-  }, [user]);
+  }, [user, spaceAccess?.allowed]);
+
+  const openUser = useCallback((username) => navigate(`/column/user/${encodeURIComponent(username)}/`), [navigate]);
+
+  if (boot.loading) {
+    return <main className="pt-space-access-gate" role="main" aria-label="正在确认空间权限"><div className="pt-empty">正在确认空间权限…</div></main>;
+  }
+  if (!boot.loading && !spaceAccess?.allowed) {
+    return <SpaceAccessGate user={user} access={spaceAccess} error={boot.error} onRetry={() => setBootKey((key) => key + 1)} />;
+  }
 
   const bump = () => setRefreshKey((k) => k + 1);
   const openLightbox = (images, index) => setLightboxState({ images, index, onClose: () => setLightboxState(null) });
   const askCompose = () => (user ? setComposeOpen(true) : showToast('请先登录后再发动态', 'warn'));
-  const openUser = useCallback((username) => navigate(`/column/user/${encodeURIComponent(username)}/`), [navigate]);
 
   // /column/my/ 兼容跳转到自己的个人空间
   const effectiveRoute = route.name === 'mine' && user
@@ -2012,6 +2311,7 @@ function App() {
     : effectiveRoute.name === 'search' ? '搜索'
     : effectiveRoute.name === 'messages' ? '消息'
     : effectiveRoute.name === 'thread' ? '私信'
+    : effectiveRoute.name === 'activity' ? '活动'
     : '同好会动态';
 
   return (
@@ -2023,7 +2323,7 @@ function App() {
           <ColumnHeader
             title={title}
             showBack={effectiveRoute.name === 'detail'}
-            indexOnly={effectiveRoute.name === 'feed' || effectiveRoute.name === 'search' || effectiveRoute.name === 'messages' || effectiveRoute.name === 'user' || effectiveRoute.name === 'mine'}
+            indexOnly={effectiveRoute.name === 'feed' || effectiveRoute.name === 'activity' || effectiveRoute.name === 'search' || effectiveRoute.name === 'messages' || effectiveRoute.name === 'user' || effectiveRoute.name === 'mine'}
             navigate={navigate}
           />
         {boot.loading ? (
@@ -2033,11 +2333,20 @@ function App() {
             {effectiveRoute.name === 'feed' && (
               <FeedPage user={user} clubs={clubs} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} />
             )}
+            {effectiveRoute.name === 'activity' && (
+              <ActivityPage navigate={navigate} />
+            )}
             {effectiveRoute.name === 'detail' && (
               <DetailPage id={effectiveRoute.id} user={user} clubs={clubs} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} />
             )}
             {effectiveRoute.name === 'user' && (
               <ProfilePage username={effectiveRoute.username} viewer={user} refreshKey={refreshKey} onQuote={(post) => user && setQuoteTarget(post)} lightbox={openLightbox} navigate={navigate} onOpenUser={openUser} onBump={bump} />
+            )}
+            {effectiveRoute.name === 'mine' && (
+              <div className="pt-empty pt-empty-error">
+                <p>登录后即可查看自己的动态。</p>
+                <a className="pt-btn pt-btn-primary" href="/login.html">前往登录</a>
+              </div>
             )}
             {effectiveRoute.name === 'search' && (
               <SearchPage query={effectiveRoute.query} viewer={user} navigate={navigate} onOpenUser={openUser} />

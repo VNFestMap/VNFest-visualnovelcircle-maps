@@ -21,14 +21,15 @@ assert.doesNotMatch(source, /<Card/, 'member rows must not be heavy antd cards')
 assert.doesNotMatch(source, /<Space wrap/, 'actions must not fall back to a Space wrap');
 assert.doesNotMatch(source, /innerHTML|dangerouslySetInnerHTML/, 'member rendering must not build HTML strings');
 
-/* ========== 字段与可见性契约不变 ========== */
-for (const label of ['昵称', '邮箱', 'QQ', '申请身份', '学生', '加入于']) {
+/* ========== 字段与可见性契约 ========== */
+for (const label of ['昵称', '邮箱', '群号 / QQ', '申请身份', '学生', '加入于']) {
   assert.ok(source.includes(`label="${label}"`), `missing ${label}`);
 }
-assert.match(source, /superAdmin && \([\s\S]*member\.email/, 'email visibility must stay super-admin only');
-assert.match(source, /superAdmin && \([\s\S]*member\.qq_account/, 'QQ visibility must stay super-admin only');
-assert.match(source, /superAdmin && \([\s\S]*member\.apply_role/, 'application role must stay super-admin only');
-assert.match(source, /superAdmin && \([\s\S]*member\.is_student !== undefined/, 'student status must stay super-admin only');
+assert.match(source, /superAdmin && member\.email/, 'email visibility must stay super-admin only');
+assert.match(source, /const canReadMemberContact = superAdmin \|\| \['manager', 'representative'\]\.includes\(myRole\);/, 'the club manager and representative must be allowed to view their own club contact accounts');
+assert.match(source, /canReadMemberContact && contactAccount && <MetaItem label="群号 \/ QQ" value=\{contactAccount\}/, 'member contact accounts must render for an authorized club manager');
+assert.match(source, /superAdmin && member\.apply_role/, 'application role must stay super-admin only');
+assert.match(source, /superAdmin && member\.is_student !== undefined/, 'student status must stay super-admin only');
 
 /* ========== 四个动作端点与权限判定不变 ========== */
 for (const action of ['set_application_email_recipient', 'change_role', 'transfer', 'kick']) {

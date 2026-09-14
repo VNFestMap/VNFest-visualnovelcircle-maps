@@ -37,7 +37,7 @@ const USER_FIVE = {
   email: 'z@example.com',
   avatar_url: '',
   role: 'visitor',
-  display_role: 'member',
+  display_role: 'manager',
   status: 'active',
   memberships: [
     { id: 61, club_id: 1, country: 'china', role: 'member', status: 'active' },
@@ -462,7 +462,7 @@ async function runSuperAdmin(baseUrl, name, size, theme) {
     const list = await page(win, `
       const cards = $$('.cm-user-table-row').map((card) => ({
         text: norm(card),
-        systemRole: norm(card.querySelector('td[data-label="系统角色"]')),
+        permissionLevel: norm(card.querySelector('td[data-label="权限等级"]')).trim().replace(/^[○●◆★✦]\s*/, '').trim(),
         tags: $$('.cm-user-membership', card).map(norm),
         more: $$('.cm-chip-more', card).map(norm),
       }));
@@ -489,12 +489,12 @@ async function runSuperAdmin(baseUrl, name, size, theme) {
     assert.ok(lisi, `${label} user 6 (lisi) must be rendered`);
     assert.ok(wangwu, `${label} user 7 must be rendered`);
     assert.ok(zhangsan.text.includes('张三') && zhangsan.text.includes('z@example.com'), `${label} user 5 must show its nickname and email`);
-    assert.equal(zhangsan.systemRole, '访客', `${label} user 5 must show its account role as 访客 while membership roles stay in the relationship column`);
+    assert.equal(zhangsan.permissionLevel, '管理员', `${label} user 5 must show its highest effective permission level`);
     assert.ok(zhangsan.tags.includes('江苏测试同好会 · 成员'), `${label} membership 61 must render as 江苏测试同好会 · 成员 (got ${JSON.stringify(zhangsan.tags)})`);
     assert.ok(zhangsan.tags.includes('北京测试同好会 · 管理员'), `${label} membership 62 must render as 北京测试同好会 · 管理员 (got ${JSON.stringify(zhangsan.tags)})`);
     assert.deepEqual(zhangsan.more, ['+1'], `${label} user 5 must collapse the third membership into +1`);
     assert.ok(lisi.text.includes('李四') && lisi.text.includes('已封禁'), `${label} user 6 must render as banned`);
-    assert.equal(lisi.systemRole, '访客', `${label} an unbound visitor must not be labelled as 成员`);
+    assert.equal(lisi.permissionLevel, '访客', `${label} an unbound visitor must be labelled as 访客`);
     assert.ok(wangwu.tags.includes('苏州测试同好会 · 成员'), `${label} user 7 must render its single membership inline`);
     assert.deepEqual(wangwu.more, [], `${label} user 7 must not show a membership overflow chip`);
     assert.equal(list.columnCount, 6, `${label} 用户管理 must keep six semantic columns`);
@@ -522,7 +522,7 @@ async function runSuperAdmin(baseUrl, name, size, theme) {
     assert.ok(/[?&]search=zhang(&|$)/.test(searched.search), `${label} the search request must carry search=zhang (got ${searched.search})`);
 
     await page(win, `
-      await openSelect(filterSelect('所有角色'));
+      await openSelect(filterSelect('所有权限等级'));
       await pickOption('访客');
       return true;
     `);
@@ -548,12 +548,12 @@ async function runSuperAdmin(baseUrl, name, size, theme) {
     const clearedUi = await page(win, `
       return {
         search: $$('.cm-filterbar input').find((node) => !node.closest('.ant-select')).value,
-        role: norm(filterSelect('所有角色')),
+        role: norm(filterSelect('所有权限等级')),
         status: norm(filterSelect('所有状态')),
       };
     `);
     assert.equal(clearedUi.search, '', `${label} 清除筛选 must empty the search box`);
-    assert.ok(clearedUi.role.includes('所有角色'), `${label} 清除筛选 must reset the role filter`);
+    assert.ok(clearedUi.role.includes('所有权限等级'), `${label} 清除筛选 must reset the permission-level filter`);
     assert.ok(clearedUi.status.includes('所有状态'), `${label} 清除筛选 must reset the status filter`);
 
     /* ---------- 4. edit user 5 and save the changed fields ---------- */
@@ -570,11 +570,11 @@ async function runSuperAdmin(baseUrl, name, size, theme) {
       };
       const result = { username: read('用户名'), email: read('邮箱'), nickname: read('昵称') };
       setValue(formItem('昵称').querySelector('input'), ${JSON.stringify(NEW_NICKNAME)});
-      await openSelect(formItem('系统角色').querySelector('.ant-select'));
+      await openSelect(formItem('权限等级').querySelector('.ant-select'));
       await pickOption('超级管理员');
       await openSelect(formItem('账号状态').querySelector('.ant-select'));
       await pickOption('已禁用');
-      result.roleValue = selectText(formItem('系统角色').querySelector('.ant-select'));
+      result.roleValue = selectText(formItem('权限等级').querySelector('.ant-select'));
       result.statusValue = selectText(formItem('账号状态').querySelector('.ant-select'));
       if (result.roleValue !== '超级管理员' || result.statusValue !== '已禁用') {
         throw new Error('the editor selects did not accept the picked values: role=' + result.roleValue + ' status=' + result.statusValue);

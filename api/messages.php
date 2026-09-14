@@ -17,6 +17,7 @@ try {
 
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         $user = getCurrentUser() ?: postsFail('login_required', '请先登录', 401);
+        postsRequireSpaceAccess($user);
         if ($action === 'list') postsJson(['success' => true, 'data' => postsDmList($user)]);
         if ($action === 'thread') postsJson(['success' => true, 'data' => postsDmThread($_GET, $user)]);
         if ($action === 'friends') postsJson(['success' => true, 'data' => ['friends' => postsDmFriends($user)]]);
@@ -27,6 +28,7 @@ try {
     postsRequireMethod('POST');
     postsRequireSameOrigin();
     $user = getCurrentUser() ?: postsFail('login_required', '请先登录', 401);
+    postsRequireSpaceAccess($user);
 
     if ($action === 'thread') postsJson(['success' => true, 'data' => postsDmThread($input, $user)]);
     if ($action === 'send') postsJson(['success' => true, 'data' => postsDmSend($input, $user)]);

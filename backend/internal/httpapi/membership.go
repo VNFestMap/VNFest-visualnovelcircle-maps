@@ -182,8 +182,13 @@ func (s *Server) membershipMembers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		item := map[string]any{"id": id, "user_id": memberID, "role": memberRole, "status": status, "joined_at": joined, "application_email_enabled": emailEnabled, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar}
+		// Reaching this endpoint already requires an active manager or
+		// representative role for this exact club. They need the member's
+		// group/QQ contact to operate the club, but application-only details
+		// remain restricted to the platform administrator.
+		item["qq_account"], item["contact_account"] = qq, contact
 		if isSuper {
-			item["qq_account"], item["contact_account"], item["apply_role"], item["is_student"], item["join_method"], item["external_club_name"], item["external_club_role"], item["apply_reason"] = qq, contact, applyRole, student, joinMethod, extName, extRole, reason
+			item["apply_role"], item["is_student"], item["join_method"], item["external_club_name"], item["external_club_role"], item["apply_reason"] = applyRole, student, joinMethod, extName, extRole, reason
 		}
 		result = append(result, item)
 	}

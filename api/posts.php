@@ -16,6 +16,7 @@ try {
     $action = strtolower(trim((string)($_GET['action'] ?? $input['action'] ?? 'bootstrap')));
     $db = postsDb();
     $currentUser = getCurrentUser();
+    $spaceAccess = postsSpaceAccess($currentUser, $db);
 
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
         if ($action === 'bootstrap') {
@@ -24,6 +25,7 @@ try {
                 'data' => [
                     'user' => postsUserPayload($currentUser),
                     'clubs' => $currentUser ? postsSelectableClubs((int)$currentUser['id']) : [],
+                    'space_access' => $spaceAccess,
                     'limits' => [
                         'content_max' => POSTS_CONTENT_MAX,
                         'images_max' => POSTS_IMAGES_MAX,
@@ -31,6 +33,7 @@ try {
                 ],
             ]);
         }
+        postsRequireSpaceAccess($currentUser, $db);
         if ($action === 'feed') postsJson(['success' => true, 'data' => postsListFeed($_GET, $currentUser)]);
         if ($action === 'detail') {
             $id = max(0, (int)($_GET['id'] ?? 0));
@@ -85,6 +88,7 @@ try {
     postsRequireMethod('POST');
     postsRequireSameOrigin();
     $user = $currentUser ?: postsFail('login_required', '请先登录', 401);
+    postsRequireSpaceAccess($user, $db);
 
     if ($action === 'create') postsJson(['success' => true, 'data' => postsCreate($input, $user)]);
     if ($action === 'delete') postsJson(['success' => true, 'data' => postsDelete($input, $user)]);

@@ -176,6 +176,19 @@
     };
   }
 
+  function ensureUniqueCardIds(target) {
+    const seen = new Set();
+    const lists = [
+      ...target.board.cells.map(cell => cell.cards),
+      target.board.unranked
+    ];
+    lists.forEach(cards => cards.forEach(card => {
+      const id = text(card.id);
+      if (!id || seen.has(id)) card.id = uid('card');
+      seen.add(card.id);
+    }));
+  }
+
   function normalizeMeme(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     const sourceBoard = source.board && typeof source.board === 'object' ? source.board : source;
@@ -198,6 +211,7 @@
     result.settings.showTitles = sourceSettings.showTitles !== false;
     result.settings.showPopup = sourceSettings.showPopup !== false;
     ensureCellCount(result.board.cells.length || 24, result);
+    ensureUniqueCardIds(result);
     return result;
   }
 
@@ -385,6 +399,17 @@
     return !!key && allCards().some(entry => cardKey(entry.card) === key);
   }
 
+  function targetCell(targetCellId) {
+    return targetCellId && state.board.cells.find(cell => cell.id === targetCellId);
+  }
+
+  function canAddCard(card, targetCellId = pendingCellId) {
+    const target = targetCell(targetCellId);
+    // The素材池 remains deduplicated, but a board card is a placement. The
+    // same work/character may therefore be placed in different category cells.
+    return target ? !target.cards.some(item => cardKey(item) === cardKey(card)) : !hasCard(card);
+  }
+
   function takeCard(cardId) {
     for (const cell of state.board.cells) {
       const index = cell.cards.findIndex(card => card.id === cardId);
@@ -399,17 +424,19 @@
     const { silent = false, deferRender = false } = options;
     const card = normalizeCard(raw);
     if (!card) return false;
-    if (hasCard(card)) {
-      if (!silent) showToast('这张卡片已经在素材池或看板中', 'error');
+    const target = targetCell(targetCellId);
+    if (!canAddCard(card, targetCellId)) {
+      if (!silent) showToast(target ? '这张卡片已经在当前分类格中' : '这张卡片已经在素材池或看板中', 'error');
       return false;
     }
-    const target = targetCellId && state.board.cells.find(cell => cell.id === targetCellId);
     const destination = target ? target.cards : state.board.unranked;
     if (destination.length >= MEME_MAX_CARDS_PER_LIST) {
       if (!silent) showToast(`每个素材列表最多保存 ${MEME_MAX_CARDS_PER_LIST} 项`, 'error');
       return false;
     }
-    destination.push(card);
+    // Search results keep their source ID so they can be matched and
+    // deduplicated, but every board placement needs its own draggable ID.
+    destination.push({ ...card, id: uid('card') });
     pendingCellId = null;
     if (!deferRender) {
       persist();
@@ -765,6 +792,7 @@
     pendingCellId = cellId;
     $('#memeSearchInput')?.focus();
     document.querySelector('[data-pool-tab="search"]')?.click();
+    renderSearchResults();
     showToast('搜索结果会直接加入当前分类格');
   }
 
@@ -783,7 +811,8 @@
     results.forEach(result => {
       const card = document.createElement('article');
       card.className = 'meme-pool-result';
-      if (hasCard(result)) card.classList.add('is-added');
+      const canAdd = canAddCard(result);
+      if (!canAdd) card.classList.add('is-added');
       card.appendChild(makeImage(result.image, result.title, result.kind));
       const media = card.firstElementChild;
       media.className = 'meme-pool-result-media';
@@ -798,8 +827,8 @@
       const add = document.createElement('button');
       add.type = 'button';
       add.className = 'meme-button meme-button-secondary';
-      add.textContent = hasCard(result) ? '已添加' : '添加';
-      add.disabled = hasCard(result);
+      add.textContent = canAdd ? '添加' : (pendingCellId ? '此格已添加' : '已添加');
+      add.disabled = !canAdd;
       add.addEventListener('click', () => addCard(result));
       card.appendChild(add);
       container.appendChild(card);

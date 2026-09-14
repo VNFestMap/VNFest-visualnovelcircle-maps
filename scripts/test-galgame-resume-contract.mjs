@@ -17,7 +17,7 @@ assert.match(html, /href="\.\/galgame-tool\.css\?v=/, 'tool HTML should use the 
 assert.match(html, /src="\.\/galgame-tool\.js\?v=/, 'tool HTML should use the split application script');
 assert.match(html, /id="resumeSyncStatus"/, 'tool HTML should expose cloud sync status');
 assert.match(html, /id="exportProgress"/, 'tool HTML should expose export progress');
-assert.match(clubSquare, /href="\.\/tools\/GalgameTool\/index\.html"[^>]*aria-label="自助工具/, 'club square should retain the tool entry');
+assert.match(clubSquare, /column\/\?tab=activity/, 'legacy club square should redirect to the activity tab');
 
 assert.match(js, /bishoujo_resume_data:guest/, 'guest drafts should be isolated');
 assert.match(js, /bishoujo_resume_data:user:/, 'account drafts should be isolated by user id');

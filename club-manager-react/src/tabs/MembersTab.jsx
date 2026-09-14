@@ -19,6 +19,10 @@ export default function MembersTab() {
   const myMembership = useMemo(() => (auth.memberships || []).find((item) =>
     Number(item.club_id) === selected.clubId && (item.country || 'china') === selected.country && item.status === 'active'), [auth, selected]);
   const myRole = myMembership?.role || '';
+  // The API has already restricted this roster to a club the current account
+  // manages. The group/contact account is needed for that roster workflow;
+  // personal email and application details remain super-admin-only below.
+  const canReadMemberContact = superAdmin || ['manager', 'representative'].includes(myRole);
 
   const load = useCallback(async () => {
     if (selected.clubId <= 0) { setMembers([]); setLoading(false); return; }
@@ -58,12 +62,13 @@ export default function MembersTab() {
                 <MetaItem label="加入于" value={formatDate(member.joined_at)} />
               </MetaLine>
             );
-            const memberDetails = superAdmin && (
+            const contactAccount = member.contact_account || member.qq_account || '';
+            const memberDetails = (canReadMemberContact || superAdmin) && (
               <MetaLine className="cm-member-meta-secondary">
-                {member.email && <MetaItem label="邮箱" value={member.email} />}
-                {member.qq_account && <MetaItem label="QQ" value={member.qq_account} />}
-                {member.apply_role && <MetaItem label="申请身份" value={applyRoleText(member.apply_role)} />}
-                {member.is_student !== undefined && <MetaItem label="学生" value={Number(member.is_student) === 1 ? '是' : '否'} />}
+                {superAdmin && member.email && <MetaItem label="邮箱" value={member.email} />}
+                {canReadMemberContact && contactAccount && <MetaItem label="群号 / QQ" value={contactAccount} />}
+                {superAdmin && member.apply_role && <MetaItem label="申请身份" value={applyRoleText(member.apply_role)} />}
+                {superAdmin && member.is_student !== undefined && <MetaItem label="学生" value={Number(member.is_student) === 1 ? '是' : '否'} />}
               </MetaLine>
             );
             const memberSettings = canEmail && (

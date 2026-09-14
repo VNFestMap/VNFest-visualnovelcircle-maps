@@ -227,6 +227,16 @@ func TestSQLiteAuthPostsAndMessagesChain(t *testing.T) {
 	)`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`CREATE TABLE club_memberships (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		club_id INTEGER NOT NULL,
+		country TEXT NOT NULL DEFAULT 'china',
+		role TEXT NOT NULL DEFAULT 'member',
+		status TEXT NOT NULL DEFAULT 'active'
+	)`); err != nil {
+		t.Fatal(err)
+	}
 	if err := sqlstore.Apply(context.Background(), db, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +257,7 @@ func TestSQLiteAuthPostsAndMessagesChain(t *testing.T) {
 		{2, "bob", "Bob"},
 	} {
 		if _, err := db.Exec(`INSERT INTO users(id,username,nickname,avatar_url,role,status,email,password_hash)
-			VALUES(?,?,?,?,?,?,?,?)`, row.id, row.username, row.nickname, "", "visitor", "active", row.username+"@example.com", string(hash)); err != nil {
+			VALUES(?,?,?,?,?,?,?,?)`, row.id, row.username, row.nickname, "", "member", "active", row.username+"@example.com", string(hash)); err != nil {
 			t.Fatal(err)
 		}
 	}

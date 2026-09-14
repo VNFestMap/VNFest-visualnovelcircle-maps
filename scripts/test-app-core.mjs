@@ -32,6 +32,19 @@ if (webUrl !== 'uploads/avatar.png') {
   throw new Error(`web media URL should stay relative, got ${webUrl}`);
 }
 
+const escapedPicUi = core.Utils.resolveMediaUrl(String.raw`https\:/free.picui.cn/free/example.webp`);
+if (escapedPicUi !== 'https://free.picui.cn/free/example.webp') {
+  throw new Error(`escaped external media URL should be repaired, got ${escapedPicUi}`);
+}
+const escapedWithLeadingSlash = core.Utils.resolveMediaUrl(String.raw`/https\:/free.picui.cn/free/example.webp`);
+if (escapedWithLeadingSlash !== 'https://free.picui.cn/free/example.webp') {
+  throw new Error(`leading-slash escaped media URL should be repaired, got ${escapedWithLeadingSlash}`);
+}
+const escapedDoubleSlash = core.Utils.resolveMediaUrl(String.raw`https\://free.picui.cn/free/example.webp`);
+if (escapedDoubleSlash !== 'https://free.picui.cn/free/example.webp') {
+  throw new Error(`escaped double-slash media URL should be repaired, got ${escapedDoubleSlash}`);
+}
+
 const fileCore = loadCore('file:');
 const bundledUrl = fileCore.Utils.resolveMediaUrl('./uploads/avatar.png');
 if (bundledUrl !== 'https://www.map.vnfest.top/uploads/avatar.png') {

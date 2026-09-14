@@ -82,7 +82,7 @@ func (s *Server) userList(w http.ResponseWriter, r *http.Request) {
 	if role != "" {
 		if role == "visitor" {
 			where = append(where, "u.role = 'visitor' AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')")
-		} else if role == "member" || role == "manager" || role == "representative" {
+		} else if role == "external" || role == "member" || role == "manager" || role == "representative" {
 			where = append(where, "EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = ? AND cm.status = 'active')")
 			args = append(args, role)
 		} else {
@@ -103,15 +103,55 @@ func (s *Server) userList(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	result := make([]map[string]any, 0)
+	userIDs := make([]int64, 0)
 	for rows.Next() {
 		var id, audit int64
 		var username, nickname, email, avatar, userRole, userStatus string
 		var created, updated, login any
 		if rows.Scan(&id, &username, &nickname, &email, &avatar, &userRole, &userStatus, &audit, &created, &updated, &login) == nil {
-			result = append(result, map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": userRole, "status": userStatus, "is_audit": audit, "created_at": created, "updated_at": updated, "last_login_at": login})
+			result = append(result, map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": userRole, "status": userStatus, "is_audit": audit, "created_at": created, "updated_at": updated, "last_login_at": login, "memberships": []map[string]any{}})
+			userIDs = append(userIDs, id)
 		}
 	}
-	writeJSON(w, map[string]any{"success": true, "users": result, "pagination": map[string]any{"page": page, "per_page": perPage, "total": total, "total_pages": (total + perPage - 1) / perPage}})
+	if len(userIDs) > 0 {
+		placeholders := strings.TrimRight(strings.Repeat("?,", len(userIDs)), ",")
+		membershipRows, membershipErr := s.db.QueryContext(r.Context(), "SELECT user_id, id, club_id, COALESCE(country, 'china'), role, status, joined_at FROM club_memberships WHERE user_id IN ("+placeholders+") AND status = 'active' ORDER BY joined_at DESC", int64Args(userIDs)...)
+		if membershipErr == nil {
+			defer membershipRows.Close()
+			byUser := make(map[int64][]map[string]any, len(userIDs))
+			for membershipRows.Next() {
+				var userID, membershipID, clubID int64
+				var country, membershipRole, membershipStatus string
+				var joined any
+				if membershipRows.Scan(&userID, &membershipID, &clubID, &country, &membershipRole, &membershipStatus, &joined) == nil {
+					byUser[userID] = append(byUser[userID], map[string]any{"id": membershipID, "club_id": clubID, "country": country, "role": membershipRole, "status": membershipStatus, "joined_at": joined})
+				}
+			}
+			for _, item := range result {
+				memberships := byUser[integerValue(item["id"])]
+				if memberships == nil {
+					memberships = []map[string]any{}
+				}
+				item["memberships"] = memberships
+				item["display_role"] = displayRole(stringValue(item["role"]), memberships)
+			}
+		}
+	}
+	/* Even an empty membership query must expose a stable effective level. */
+	for _, item := range result {
+		if _, ok := item["display_role"]; !ok {
+			item["display_role"] = displayRole(stringValue(item["role"]), nil)
+		}
+	}
+	writeJSON(w, map[string]any{"success": true, "users": result, "total": total, "page": page, "per_page": perPage, "pagination": map[string]any{"page": page, "per_page": perPage, "total": total, "total_pages": (total + perPage - 1) / perPage}})
+}
+
+func int64Args(values []int64) []any {
+	args := make([]any, len(values))
+	for index, value := range values {
+		args[index] = value
+	}
+	return args
 }
 
 func (s *Server) userGet(w http.ResponseWriter, r *http.Request) {
@@ -237,21 +277,39 @@ func (s *Server) userMembershipRows(r *http.Request, id int64) []map[string]any 
 	return result
 }
 func displayRole(role string, memberships []map[string]any) string {
-	if role == "super_admin" {
-		return role
+	bestRole := role
+	bestLevel := permissionRoleLevel(role)
+	if bestLevel < 0 {
+		bestRole, bestLevel = "visitor", permissionRoleLevel("visitor")
 	}
 	for _, membership := range memberships {
-		if membership["status"] == "active" && membership["role"] == "representative" {
-			return "representative"
+		if membership["status"] != "active" {
+			continue
+		}
+		candidate := stringValue(membership["role"])
+		candidateLevel := permissionRoleLevel(candidate)
+		if candidateLevel > bestLevel {
+			bestRole, bestLevel = candidate, candidateLevel
 		}
 	}
-	for _, membership := range memberships {
-		if membership["status"] == "active" && membership["role"] == "manager" {
-			return "manager"
-		}
+	return bestRole
+}
+
+func permissionRoleLevel(role string) int {
+	switch role {
+	case "visitor":
+		return 0
+	case "external":
+		return 1
+	case "member":
+		return 2
+	case "manager":
+		return 3
+	case "representative":
+		return 4
+	case "super_admin":
+		return 5
+	default:
+		return -1
 	}
-	if role == "member" {
-		return role
-	}
-	return "visitor"
 }

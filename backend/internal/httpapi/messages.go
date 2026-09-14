@@ -20,9 +20,8 @@ func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
 	if action == "" {
 		action = "list"
 	}
-	userID, ok := s.loggedInUserID(r)
+	userID, ok := s.requireSpaceAccess(w, r)
 	if !ok {
-		postsError(w, "login_required", "请先登录", http.StatusUnauthorized, nil)
 		return
 	}
 	if r.Method == http.MethodGet {

@@ -319,7 +319,7 @@ func normalizeBangumiCharacters(raw []byte) []map[string]any {
 		if !ok {
 			continue
 		}
-		result = append(result, map[string]any{"character_id": int64Value(row["id"]), "name": stringValue(row["name"]), "name_cn": stringValue(row["name_cn"]), "image_url": bangumiProxyImageURL(stringValue(row["image_url"])), "summary": truncateString(stringValue(row["summary"]), 240), "relation": stringValue(row["relation"]), "type": row["type"]})
+		result = append(result, map[string]any{"character_id": int64Value(row["id"]), "name": stringValue(row["name"]), "name_cn": stringValue(row["name_cn"]), "image_url": bangumiImageURLForRow(row), "summary": truncateString(stringValue(row["summary"]), 240), "relation": stringValue(row["relation"]), "type": row["type"]})
 	}
 	return result
 }
@@ -335,17 +335,44 @@ func normalizeBangumiLegacySearch(raw []byte) []map[string]any {
 		if !ok {
 			continue
 		}
-		result = append(result, map[string]any{"bangumi_id": int64Value(row["id"]), "title": stringValue(row["name"]), "title_cn": stringValue(row["name_cn"]), "image_url": bangumiProxyImageURL(stringValue(row["image_url"])), "rating": bangumiRatingScore(row["rating"]), "summary": truncateString(stringValue(row["summary"]), 200), "air_date": stringValue(row["air_date"])})
+		result = append(result, map[string]any{"bangumi_id": int64Value(row["id"]), "title": stringValue(row["name"]), "title_cn": stringValue(row["name_cn"]), "image_url": bangumiImageURLForRow(row), "rating": bangumiRatingScore(row["rating"]), "summary": truncateString(stringValue(row["summary"]), 200), "air_date": stringValue(row["air_date"])})
 	}
 	return result
 }
 
 func bangumiProxyImageURL(value string) string {
-	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil || parsed.Scheme != "https" || !strings.EqualFold(parsed.Hostname(), "lain.bgm.tv") {
+	value = strings.TrimSpace(value)
+	// PHP and Go share the recommendation/moe-king tables. Preserve a proxy
+	// path written by the PHP runtime instead of treating it as an unsupported
+	// raw Bangumi URL and returning an empty image.
+	if strings.HasPrefix(value, "/api/image_proxy.php?") {
+		return value
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || !strings.EqualFold(parsed.Hostname(), "lain.bgm.tv") || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return ""
 	}
-	return "/api/image_proxy.php?url=" + url.QueryEscape(value)
+	// The legacy Bangumi subject search API still returns HTTP cover URLs.
+	// Normalize them before proxying so they are not dropped by the HTTPS-only
+	// image proxy contract while keeping the upstream host allowlist intact.
+	parsed.Scheme = "https"
+	return "/api/image_proxy.php?url=" + url.QueryEscape(parsed.String())
+}
+
+func bangumiImageURLForRow(row map[string]any) string {
+	if image := bangumiProxyImageURL(stringValue(row["image_url"])); image != "" {
+		return image
+	}
+	if image := bangumiProxyImageURL(stringValue(row["image"])); image != "" {
+		return image
+	}
+	images, _ := row["images"].(map[string]any)
+	for _, key := range []string{"medium", "large", "small", "grid", "common"} {
+		if image := bangumiProxyImageURL(stringValue(images[key])); image != "" {
+			return image
+		}
+	}
+	return ""
 }
 
 func bangumiRatingScore(value any) any {

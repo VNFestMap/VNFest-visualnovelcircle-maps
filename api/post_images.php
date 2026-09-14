@@ -25,6 +25,7 @@ try {
     postsRequireMethod('POST');
     postsRequireSameOrigin();
     $user = getCurrentUser() ?: postsImageJson(['success' => false, 'error' => ['code' => 'login_required', 'message' => '请先登录']], 401);
+    postsRequireSpaceAccess($user);
     $db = postsDb();
 
     if (strtolower(trim((string)($_GET['action'] ?? 'upload'))) === 'delete') {

@@ -937,9 +937,12 @@ switch ($action) {
         $db = botDb();
         if (!$db) botRespond(['success' => false, 'error' => 'database unavailable'], 500);
         botEnsureClubTokenTable($db);
+        // Explicitly write NULL so an older deployment whose revoked_at column
+        // accidentally had a non-null default cannot revoke a new token at
+        // insert time.
         $stmt = $db->prepare(
-            "INSERT INTO club_bot_tokens (club_id, country, name, token_prefix, token_hash, permissions, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO club_bot_tokens (club_id, country, name, token_prefix, token_hash, permissions, created_by, revoked_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NULL)"
         );
         $stmt->execute([
             $clubId,

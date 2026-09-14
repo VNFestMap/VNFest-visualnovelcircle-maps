@@ -152,7 +152,7 @@ export default function Results({ snapshot, act, onLeave, view }) {
               </div>
               <div className="row row--tight">
                 <Button variant="primary" rounded="pill" onClick={goLobby}>返回大厅</Button>
-                <a href="../../club_square.html"><Button variant="text" rounded="pill" suffixIcon={<IconArrow />}>返回活动</Button></a>
+                <a href="../../column/?tab=activity"><Button variant="text" rounded="pill" suffixIcon={<IconArrow />}>返回活动</Button></a>
               </div>
             </div>
             {awards.length > 0 && (

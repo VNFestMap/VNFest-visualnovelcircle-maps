@@ -113,6 +113,57 @@ function postsCanManage(?array $user): bool
     return (bool)$user && ($user['role'] ?? '') === 'super_admin';
 }
 
+/**
+ * Resolve whether a user may enter the club space.  Keep the role ordering in
+ * auth.php as the single source of truth and include active club memberships
+ * because a visitor-level account may still have earned a club membership.
+ */
+function postsSpaceAccessFor(PDO $db, ?array $user): array
+{
+    if (!$user) return ['allowed' => false, 'reason' => 'login_required'];
+
+    $level = ROLE_HIERARCHY[(string)($user['role'] ?? 'visitor')] ?? 0;
+    $stmt = $db->prepare(
+        "SELECT role FROM club_memberships
+         WHERE user_id = ? AND status = 'active'
+           AND role IN ('member', 'manager', 'representative')"
+    );
+    $stmt->execute([(int)($user['id'] ?? 0)]);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $role) {
+        $level = max($level, ROLE_HIERARCHY[(string)$role] ?? 0);
+    }
+
+    return [
+        'allowed' => $level >= (ROLE_HIERARCHY['member'] ?? 1),
+        'reason' => $level >= (ROLE_HIERARCHY['member'] ?? 1) ? 'ok' : 'membership_required',
+    ];
+}
+
+function postsSpaceAccess(?array $user, ?PDO $db = null): array
+{
+    if (!$user) return ['allowed' => false, 'reason' => 'login_required'];
+    try {
+        return postsSpaceAccessFor($db ?: postsDb(), $user);
+    } catch (Throwable $e) {
+        error_log('space access lookup failed: ' . $e->getMessage());
+        return ['allowed' => false, 'reason' => 'unavailable'];
+    }
+}
+
+function postsRequireSpaceAccess(?array $user, ?PDO $db = null): array
+{
+    $access = postsSpaceAccess($user, $db);
+    if ($access['allowed']) return $access;
+
+    if ($access['reason'] === 'login_required') {
+        postsFail('login_required', '请先登录后进入同好会空间', 401);
+    }
+    if ($access['reason'] === 'membership_required') {
+        postsFail('membership_required', '空间仅对成员及以上身份开放', 403);
+    }
+    postsFail('space_access_unavailable', '空间权限暂时无法确认，请稍后重试', 503);
+}
+
 function postsAudit(string $action, ?int $targetId = null, array $details = []): void
 {
     try {

@@ -80,6 +80,10 @@ func TestVotingProjectNominationCastAndResultsCompatibility(t *testing.T) {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM vote_stages WHERE project_id=?`, created.ID).Scan(&stageCount); err != nil || stageCount != 4 {
 		t.Fatalf("default stages count=%d err=%v", stageCount, err)
 	}
+	flow := request("vote-admin", http.MethodGet, "/api/vote_stages.php?action=flow_status&project_id="+strconv.FormatInt(created.ID, 10), "")
+	if flow.Code != http.StatusOK || !strings.Contains(flow.Body.String(), `"project_id":`+strconv.FormatInt(created.ID, 10)) || !strings.Contains(flow.Body.String(), `"pools"`) {
+		t.Fatalf("project flow status=%d body=%s", flow.Code, flow.Body.String())
+	}
 	openNomination := request("vote-admin", http.MethodPost, "/api/vote_stages.php?action=open&stage_id=1", "")
 	if openNomination.Code != http.StatusOK {
 		t.Fatalf("open nomination status=%d body=%s", openNomination.Code, openNomination.Body.String())

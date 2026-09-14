@@ -83,7 +83,7 @@ export default function ResultsMobile({ win, winner, Ico, reveal, words, votesBy
       <section className="section">
         <div className="recap-m__actions">
           <button type="button" className="recap-m__btn recap-m__btn--primary" onClick={onLeave}>返回大厅</button>
-          <a href="../../club_square.html" style={{ display: 'contents' }}>
+          <a href="../../column/?tab=activity" style={{ display: 'contents' }}>
             <button type="button" className="recap-m__btn">
               返回活动 <IconArrow size={12} />
             </button>

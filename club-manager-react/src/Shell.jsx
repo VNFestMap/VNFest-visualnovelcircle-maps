@@ -18,7 +18,7 @@ const SLIDER_HEIGHT = 20;
 const iconMap = {
   pending: <ClockCircleOutlined />, diplomatic: <GlobalOutlined />, approved: <CheckCircleOutlined />,
   members: <TeamOutlined />, settings: <SettingOutlined />, codes: <KeyOutlined />,
-  bot_tokens: <CodeOutlined />, recommendations: <TrophyOutlined />, projects: <ApartmentOutlined />,
+  bot_tokens: <CodeOutlined />, recommendations: <TrophyOutlined />, projects: <ApartmentOutlined />, vote_projects: <TrophyOutlined />,
   recognition: <SafetyCertificateOutlined />, jiangsu: <DashboardOutlined />, users: <UserOutlined />,
 };
 

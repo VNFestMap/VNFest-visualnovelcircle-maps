@@ -4,7 +4,7 @@ import Shell from './Shell.jsx';
 import { ClubManagerContext } from './context.jsx';
 import { api, normalizeError } from './api.js';
 import {
-  ROLE_LEVEL, ROLE_NAMES, TAB_KEYS, clubKey, getEffectiveLevel, initialTab,
+  DEFAULT_TAB, ROLE_LEVEL, ROLE_NAMES, TAB_KEYS, clubKey, getEffectiveLevel, initialTab,
   isSuperAdmin, parseClubKey, syncTabUrl,
 } from './model.js';
 
@@ -15,6 +15,7 @@ const CodesTab = lazy(() => import('./tabs/CodesTab.jsx'));
 const BotTokensTab = lazy(() => import('./tabs/BotTokensTab.jsx'));
 const RecommendationsTab = lazy(() => import('./tabs/RecommendationsTab.jsx'));
 const ProjectsTab = lazy(() => import('./tabs/ProjectsTab.jsx'));
+const VoteProjectsTab = lazy(() => import('./tabs/VoteProjectsTab.jsx'));
 const RecognitionTab = lazy(() => import('./tabs/RecognitionTab.jsx'));
 const JiangsuTab = lazy(() => import('./tabs/JiangsuTab.jsx'));
 const UsersTab = lazy(() => import('./tabs/UsersTab.jsx'));
@@ -22,7 +23,7 @@ const UsersTab = lazy(() => import('./tabs/UsersTab.jsx'));
 const renderers = {
   pending: MembershipsTab, diplomatic: MembershipsTab, approved: MembershipsTab,
   members: MembersTab, settings: SettingsTab, codes: CodesTab, bot_tokens: BotTokensTab,
-  recommendations: RecommendationsTab, projects: ProjectsTab, recognition: RecognitionTab,
+  recommendations: RecommendationsTab, projects: ProjectsTab, vote_projects: VoteProjectsTab, recognition: RecognitionTab,
   jiangsu: JiangsuTab, users: UsersTab,
 };
 
@@ -131,7 +132,7 @@ export default function App() {
         return;
       }
       const requestedTab = initialTab();
-      const allowedTab = (!isSuperAdmin(identity) && (requestedTab === 'users' || requestedTab === 'jiangsu')) ? 'pending' : requestedTab;
+      const allowedTab = (!isSuperAdmin(identity) && (requestedTab === 'users' || requestedTab === 'jiangsu')) ? DEFAULT_TAB : requestedTab;
       if (allowedTab !== requestedTab) messageApi.warning('该功能仅限超级管理员使用');
       setAuth(identity);
       setDirectory(nameMap);
@@ -173,10 +174,10 @@ export default function App() {
   }), [memberCount, scopedMemberships]);
 
   const switchTab = useCallback((next) => {
-    if (!TAB_KEYS.includes(next)) next = 'pending';
+    if (!TAB_KEYS.includes(next)) next = DEFAULT_TAB;
     if (!isSuperAdmin(auth) && (next === 'users' || next === 'jiangsu')) {
       messageApi.error('仅超级管理员可用');
-      next = 'pending';
+      next = DEFAULT_TAB;
     }
     setActiveTab(next);
     syncTabUrl(next);

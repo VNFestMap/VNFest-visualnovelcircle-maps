@@ -2,7 +2,7 @@
 // includes/oauth_account.php - QQ/Discord 账号完成、绑定与身份转移
 //
 // OAuth provider 只负责证明第三方身份。本文件负责把该身份安全地接入
-// VNFest 账号体系，避免在邮箱和密码完成前创建半成品 users 记录。
+// VNFest 账号体系；社交身份可以立即创建可登录账号，邮箱和密码按需补充。
 
 function oauthAccountProviderMeta(string $provider): array {
     if ($provider === 'qq') {
@@ -344,6 +344,68 @@ function oauthAccountGenerateUsername(PDO $db, string $provider, array $profile)
         }
         $username = $baseUsername . $suffix;
         $suffix++;
+    }
+}
+
+function oauthAccountCreateSocialUser(PDO $db, string $provider, array $profile): array {
+    $meta = oauthAccountProviderMeta($provider);
+    $subject = trim((string)($profile[$meta['subject_key']] ?? ''));
+    if ($subject === '') {
+        return ['success' => false, 'code' => 'OAUTH_PROVIDER_ID_MISSING', 'message' => '第三方身份无效'];
+    }
+
+    try {
+        $db->beginTransaction();
+
+        $owner = oauthAccountFindProviderOwner($db, $provider, $subject, true);
+        if ($owner) {
+            $db->rollBack();
+            return ['success' => false, 'code' => 'PROVIDER_CONFLICT', 'message' => '该第三方账号已绑定其他账号'];
+        }
+
+        $username = oauthAccountGenerateUsername($db, $provider, $profile);
+        $nickname = trim((string)($profile['username'] ?? '')) ?: $username;
+        $avatarUrl = trim((string)($profile['avatar_url'] ?? ''));
+        $unionid = $provider === 'qq' ? trim((string)($profile['unionid'] ?? '')) : '';
+
+        if ($provider === 'qq') {
+            $stmt = $db->prepare(
+                "INSERT INTO users
+                    (username, nickname, qq_openid, qq_unionid, role, status, avatar_url,
+                     email, email_verified_at, password_hash, credentials_completed_at,
+                     created_at, updated_at, last_login_at)
+                 VALUES (?, ?, ?, ?, 'visitor', 'active', ?, NULL, NULL, NULL, NULL,
+                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            );
+            $stmt->execute([$username, $nickname, $subject, $unionid !== '' ? $unionid : null, $avatarUrl]);
+        } else {
+            $stmt = $db->prepare(
+                "INSERT INTO users
+                    (username, nickname, discord_id, role, status, avatar_url,
+                     email, email_verified_at, password_hash, credentials_completed_at,
+                     created_at, updated_at, last_login_at)
+                 VALUES (?, ?, ?, 'visitor', 'active', ?, NULL, NULL, NULL, NULL,
+                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            );
+            $stmt->execute([$username, $nickname, $subject, $avatarUrl]);
+        }
+
+        $userId = (int)$db->lastInsertId();
+        $db->commit();
+        return ['success' => true, 'user_id' => $userId, 'username' => $username, 'created' => true];
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) $db->rollBack();
+
+        // Provider 身份的唯一约束可能在并发请求之间先被另一请求占用。
+        try {
+            if (oauthAccountFindProviderOwner($db, $provider, $subject)) {
+                return ['success' => false, 'code' => 'PROVIDER_CONFLICT', 'message' => '该第三方账号已绑定其他账号'];
+            }
+        } catch (Throwable $conflictCheckError) {
+            // 保留原始错误的通用处理，不把数据库细节返回给客户端。
+        }
+        error_log('OAuth social-only account creation failed: ' . $error->getMessage());
+        return ['success' => false, 'code' => 'OAUTH_ACCOUNT_CREATE_FAILED', 'message' => '账号创建失败，请稍后再试'];
     }
 }
 
@@ -724,9 +786,34 @@ function oauthAccountProcessCallback(string $provider, array $profile): void {
             exit();
         }
 
-        oauthAccountCreateChallenge($db, $provider, $profile, 'new_login', null, $returnTo);
-        logAction('user.oauth_pending', null, null, ['provider' => $provider, 'flow' => 'new_login']);
-        header('Location: ' . oauthAccountPendingRedirect());
+        $created = oauthAccountCreateSocialUser($db, $provider, $profile);
+        if ($created['success']) {
+            $userId = (int)$created['user_id'];
+            createSession($userId);
+            logAction('user.register', 'user', $userId, ['provider' => $provider, 'result' => 'social_only']);
+            logAction('user.login', 'user', $userId, ['provider' => $provider]);
+            if (function_exists('backfillAnnouncements')) backfillAnnouncements($userId);
+            header('Location: ' . oauthAccountCallbackRedirect($returnTo, 'success', $meta['login_message']));
+            exit();
+        }
+
+        if (($created['code'] ?? '') === 'PROVIDER_CONFLICT') {
+            // 并发 OAuth 回调可能在首次查询后才创建账号。重新读取后按普通登录处理。
+            $owner = oauthAccountFindProviderOwner($db, $provider, $subject);
+            if ($owner && ($owner['status'] ?? '') === 'active') {
+                createSession((int)$owner['id']);
+                $db->prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?')->execute([(int)$owner['id']]);
+                logAction('user.login', 'user', (int)$owner['id'], ['provider' => $provider]);
+                header('Location: ' . oauthAccountCallbackRedirect($returnTo, 'success', $meta['login_message']));
+                exit();
+            }
+            if ($owner) {
+                header('Location: ' . oauthAccountCallbackRedirect($returnTo, 'error', '该' . $meta['label'] . '账号当前不可登录'));
+                exit();
+            }
+        }
+
+        header('Location: ' . oauthAccountCallbackRedirect($returnTo, 'error', (string)($created['message'] ?? '账号创建失败，请稍后重试')));
         exit();
     } catch (Throwable $error) {
         error_log('OAuth account callback failed: ' . $error->getMessage());

@@ -731,8 +731,120 @@ async function inspectLegacyRedirect() {
   return finalUrl;
 }
 
+async function inspectMemeRepeatedRanking() {
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: false,
+      sandbox: false,
+      backgroundThrottling: false
+    }
+  });
+  const storageKey = 'vnfest_galgame_meme_data:guest';
+  const previous = await (async () => {
+    await win.loadURL(`${targetUrl}&meme-repeat-prepare=${Date.now()}`);
+    await pause(700);
+    return win.webContents.executeJavaScript(`localStorage.getItem(${JSON.stringify(storageKey)})`);
+  })();
+  const seedCard = {
+    id: 'seed-card',
+    kind: 'work',
+    source: 'bangumi',
+    sourceId: 'bgm_vn_42',
+    bangumiId: 42,
+    title: '重复作品',
+    subtitle: '',
+    image: ''
+  };
+  const seed = {
+    schema_version: 1,
+    board: {
+      title: 'MEME regression',
+      colsMode: 'fixed',
+      cols: 6,
+      rows: 4,
+      cells: Array.from({ length: 24 }, (_, index) => ({
+        id: `cell-${index + 1}`,
+        title: `分类 ${index + 1}`,
+        cards: index === 0 ? [seedCard] : []
+      })),
+      unranked: []
+    },
+    settings: { cardSize: 'md', showTitles: true, showPopup: true }
+  };
+
+  try {
+    await win.webContents.executeJavaScript(`(() => {
+      localStorage.setItem(${JSON.stringify(storageKey)}, ${JSON.stringify(JSON.stringify(seed))});
+      location.reload();
+      return true;
+    })()`);
+    await pause(1000);
+    const result = await win.webContents.executeJavaScript(`(async () => {
+      switchToolView('meme', false);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const originalFetch = window.fetch;
+      window.fetch = (input, init) => {
+        if (String(input || '').includes('/api/bangumi_proxy.php')) {
+          return Promise.resolve(new Response(JSON.stringify({
+            success: true,
+            data: [{ id: 42, title_cn: '重复作品', title: 'Repeat Work', image_url: '' }]
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        return originalFetch(input, init);
+      };
+      try {
+        const cellAdd = document.querySelector('.meme-cell[data-cell-id="cell-2"] .meme-cell-add');
+        cellAdd.click();
+        const source = document.getElementById('memeSearchSource');
+        source.value = 'bangumi';
+        source.dispatchEvent(new Event('change', { bubbles: true }));
+        const input = document.getElementById('memeSearchInput');
+        input.value = '重复作品';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await new Promise(resolve => setTimeout(resolve, 650));
+        const add = document.querySelector('#memeSearchResults .meme-pool-result button');
+        const before = {
+          present: Boolean(add),
+          disabled: Boolean(add?.disabled),
+          cellCounts: [...document.querySelectorAll('.meme-cell')].slice(0, 2).map(cell => cell.querySelectorAll('.meme-card').length)
+        };
+        add?.click();
+        await new Promise(resolve => setTimeout(resolve, 90));
+        const firstTwo = [...document.querySelectorAll('.meme-cell')].slice(0, 2);
+        return {
+          before,
+          afterCellCounts: firstTwo.map(cell => cell.querySelectorAll('.meme-card').length),
+          afterCardIds: firstTwo.map(cell => cell.querySelector('.meme-card')?.dataset.cardId || '')
+        };
+      } finally {
+        window.fetch = originalFetch;
+      }
+    })()`);
+    assert.equal(result.before.present, true, 'MEME repeated-ranking search should return the seeded work');
+    assert.equal(result.before.disabled, false, 'a work already ranked in another cell should remain addable');
+    assert.deepEqual(result.before.cellCounts, [1, 0], 'regression fixture should start with one ranked card');
+    assert.deepEqual(result.afterCellCounts, [1, 1], 'the same work should be addable to a second category cell');
+    assert.notEqual(result.afterCardIds[0], result.afterCardIds[1], 'repeated placements should have independent card IDs');
+    return result;
+  } finally {
+    await win.webContents.executeJavaScript(`(() => {
+      const previous = ${JSON.stringify(previous)};
+      if (previous === null) localStorage.removeItem(${JSON.stringify(storageKey)});
+      else localStorage.setItem(${JSON.stringify(storageKey)}, previous);
+      return true;
+    })()`).catch(() => {});
+    win.destroy();
+  }
+}
+
 app.whenReady().then(async () => {
   try {
+    if (process.env.GALGAME_TOOL_MEME_ONLY === '1') {
+      const memeRepeatedRanking = await inspectMemeRepeatedRanking();
+      console.log(JSON.stringify({ memeRepeatedRanking }, null, 2));
+      return;
+    }
     const viewports = [];
     for (const [width, height] of [[390, 844], [360, 780], [1366, 900]]) {
       viewports.push(await inspectViewport(width, height));
@@ -742,8 +854,9 @@ app.whenReady().then(async () => {
     const accountType = await inspectAccountTypePersistence();
     const attributeList = await inspectAttributeListSubmission();
     const editorAndExport = await inspectEditorAndExport();
+    const memeRepeatedRanking = await inspectMemeRepeatedRanking();
     const legacyRedirect = await inspectLegacyRedirect();
-    console.log(JSON.stringify({ viewports, bangumi, characterSearchSources, accountType, attributeList, editorAndExport, legacyRedirect }, null, 2));
+    console.log(JSON.stringify({ viewports, bangumi, characterSearchSources, accountType, attributeList, editorAndExport, memeRepeatedRanking, legacyRedirect }, null, 2));
   } catch (error) {
     console.error(error.stack || error.message);
     process.exitCode = 1;

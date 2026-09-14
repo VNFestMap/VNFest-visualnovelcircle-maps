@@ -5,6 +5,44 @@
   var path = window.location.pathname || '';
   if (/\/(?:user-v2\.html|canvas-design\.html|docs|Game|club-operation-portrait|tools\/pdf-reader|node_modules)(?:\/|$)/i.test(path)) return;
 
+  // Keep links into the protected space hidden until the shared auth endpoint
+  // confirms a member-level identity. The space page itself owns its React
+  // access gate, so internal navigation is not altered here.
+  function gateSpaceEntries() {
+    if (/^\/column(?:\/|$)/i.test(path)) return;
+    var hierarchy = { visitor: 0, external: 0.5, member: 1, manager: 2, representative: 3, super_admin: 4 };
+    var entries = Array.prototype.filter.call(document.querySelectorAll('a[href]'), function (node) {
+      try {
+        var target = new URL(node.getAttribute('href'), window.location.href).pathname;
+        return /^\/column(?:\/|$)/i.test(target);
+      } catch (_) {
+        return false;
+      }
+    });
+    if (!entries.length) return;
+    entries.forEach(function (entry) {
+      entry.setAttribute('data-space-entry', 'true');
+      entry.style.display = 'none';
+      entry.setAttribute('aria-hidden', 'true');
+    });
+    fetch('/api/auth.php?action=me', { credentials: 'same-origin' })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        var level = data && data.logged_in && data.user ? (hierarchy[data.user.role] || 0) : 0;
+        (data && data.memberships || []).forEach(function (membership) {
+          if (membership.status === 'active') level = Math.max(level, hierarchy[membership.role] || 0);
+        });
+        var allowed = Boolean(data && data.logged_in && level >= hierarchy.member);
+        entries.forEach(function (entry) {
+          entry.style.display = allowed ? '' : 'none';
+          entry.setAttribute('aria-hidden', allowed ? 'false' : 'true');
+        });
+      })
+      .catch(function () { /* fail closed: keep space links hidden */ });
+  }
+
+  gateSpaceEntries();
+
   var headerSelectors = [
     '[data-page-header]',
     '.starmap-topbar',

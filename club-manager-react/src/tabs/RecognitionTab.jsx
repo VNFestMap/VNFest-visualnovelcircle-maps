@@ -55,7 +55,17 @@ export default function RecognitionTab() {
 
   const openProgram = async (program = null, template = null) => {
     let detail = program;
-    if (program?.id) { try { const result = await api.get(`recognition_programs.php?action=detail&id=${program.id}`); detail = result.program || result.data || program; } catch (err) { message.error(normalizeError(err)); return; } }
+    if (program?.id) {
+      try {
+        const result = await api.get(`recognition_programs.php?action=detail&id=${program.id}`);
+        const returnedProgram = result.program || result.data || program;
+        // The detail API keeps versioned content under version.content. Older
+        // fixtures/clients returned program.content, so accept both shapes and
+        // present one normalized object to the editor.
+        const versionContent = result.version?.content || result.data?.version?.content || {};
+        detail = { ...returnedProgram, content: returnedProgram.content || versionContent || program.content || {} };
+      } catch (err) { message.error(normalizeError(err)); return; }
+    }
     const content = typeof detail?.content === 'string' ? JSON.parse(detail.content || '{}') : detail?.content || {};
     const chosenType = template?.type || detail?.type || 'assessment'; const settings = content.quiz?.settings || {};
     setQuestions(content.quiz?.questions || []); setTier((detail?.tier || 'standard')); setEditor(detail || {});

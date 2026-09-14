@@ -14,8 +14,8 @@ const loginPage = read('login.html');
 const userSource = read('user-v2-react/src/App.jsx');
 const oauthHelper = read('includes/oauth_account.php');
 
-assert.doesNotMatch(qqCallback, /INSERT\s+INTO\s+users/i, 'QQ callback must not create an incomplete user directly');
-assert.doesNotMatch(discordCallback, /INSERT\s+INTO\s+users/i, 'Discord callback must not create an incomplete user directly');
+assert.doesNotMatch(qqCallback, /INSERT\s+INTO\s+users/i, 'QQ callback must use the shared account layer');
+assert.doesNotMatch(discordCallback, /INSERT\s+INTO\s+users/i, 'Discord callback must use the shared account layer');
 assert.match(qqCallback, /oauthAccountProcessCallback/, 'QQ callback should use the shared OAuth finalizer');
 assert.match(discordCallback, /oauthAccountProcessCallback/, 'Discord callback should use the shared OAuth finalizer');
 
@@ -41,5 +41,13 @@ assert.match(migration, /credentials_completed_at/, 'migration should add creden
 assert.match(loginPage, /oauthSetupForm/, 'login page should contain the OAuth credential setup view');
 assert.match(userSource, /setPassword/, 'user center should expose the optional legacy password upgrade');
 assert.match(oauthHelper, /function\s+oauthAccountProcessCallback/, 'shared OAuth account helper should own callback routing');
+assert.match(oauthHelper, /function\s+oauthAccountCreateSocialUser/, 'shared OAuth account helper should own direct social account creation');
+assert.match(oauthHelper, /oauthAccountCreateSocialUser\(\$db,\s*\$provider,\s*\$profile\)/, 'OAuth callback should call the direct social account creation helper');
+assert.match(oauthHelper, /email,\s*email_verified_at,\s*password_hash,\s*credentials_completed_at/, 'direct social account insert should declare all optional credential fields');
+assert.match(oauthHelper, /VALUES \(\?, \?, \?, \?, 'visitor', 'active', \?, NULL, NULL, NULL, NULL,/, 'direct social accounts should start without email, password, or credential completion');
+assert.match(oauthHelper, /if \(\$created\['success'\]\)[\s\S]*createSession\(\$userId\)[\s\S]*logAction\('user\.register'[\s\S]*social_only[\s\S]*logAction\('user\.login'/, 'direct social creation should establish a session and audit registration/login');
+assert.match(oauthHelper, /if \(\(\$owner\['status'\] \?\? ''\) !== 'active'\)[\s\S]*当前不可登录/, 'disabled provider accounts should still be rejected during OAuth login');
+assert.match(userSource, /已绑定的第三方登录方式保持不变/, 'credential completion should preserve social login methods');
+assert.match(userSource, /不能解绑最后一个第三方登录身份/, 'user center should explain last social login protection');
 
 console.log('OAuth credential flow contract checks passed');

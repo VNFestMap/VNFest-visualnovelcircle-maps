@@ -396,24 +396,63 @@ func (s *Server) voteStageFlowCompatibility(w http.ResponseWriter, r *http.Reque
 		methodNotAllowed(w, http.MethodGet+", "+http.MethodPost)
 		return
 	}
-	stageID := voteProjectID(r.URL.Query().Get("stage_id"), r.URL.Query().Get("id"))
-	stage, err := s.voteFetchStage(r.Context(), stageID)
-	if err != nil || stage == nil {
-		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "阶段不存在"})
+	stageID := voteProjectID(r.URL.Query().Get("stage_id"), r.URL.Query().Get("pool_id"), r.URL.Query().Get("id"))
+	projectID := voteProjectID(r.URL.Query().Get("project_id"), r.URL.Query().Get("contest_id"))
+	var stage map[string]any
+	var project *voteProjectView
+	var err error
+	if stageID > 0 {
+		stage, err = s.voteFetchStage(r.Context(), stageID)
+		if err != nil || stage == nil {
+			writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "阶段不存在"})
+			return
+		}
+		projectID = integerValue(stage["project_id"])
+	}
+	if projectID <= 0 {
+		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "请提供 project_id 或 stage_id"})
 		return
 	}
-	project, _ := s.voteProject(r.Context(), integerValue(stage["project_id"]))
+	project, err = s.voteProject(r.Context(), projectID)
+	if err != nil || project == nil {
+		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "企划不存在"})
+		return
+	}
 	viewerID, _ := s.optionalSessionUser(r)
 	var viewer *user
 	if viewerID != nil {
 		viewer, _ = s.findUser(r.Context(), *viewerID)
 	}
+	if !s.voteCanRead(r.Context(), viewer, project) {
+		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权查看该企划"})
+		return
+	}
 	if action != "flow_status" && !s.voteCanManage(r.Context(), viewer, project) {
 		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权管理该阶段"})
 		return
 	}
+	if action == "flow_status" {
+		pools := make([]map[string]any, 0)
+		for _, current := range s.voteStages(r.Context(), projectID, s.voteCanManage(r.Context(), viewer, project)) {
+			currentID := integerValue(current["id"])
+			if currentID <= 0 {
+				continue
+			}
+			pools = append(pools, map[string]any{
+				"id": currentID, "stage_id": currentID, "status": stringValue(current["status"]),
+				"entry_count": s.voteStageEntryCount(r.Context(), currentID),
+				"vote_count": 0, "match_count": 0, "result_count": 0, "runtime": map[string]any{},
+			})
+		}
+		writeJSON(w, map[string]any{"success": true, "project_id": projectID, "pools": pools, "flow": nil, "action": action})
+		return
+	}
+	if stage == nil {
+		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "该操作需要 stage_id"})
+		return
+	}
 	count := s.voteStageEntryCount(r.Context(), stageID)
-	writeJSON(w, map[string]any{"success": true, "stage_id": stageID, "status": stringValue(stage["status"]), "entry_count": count, "flow": nil, "action": action})
+	writeJSON(w, map[string]any{"success": true, "project_id": projectID, "stage_id": stageID, "status": stringValue(stage["status"]), "entry_count": count, "flow": nil, "action": action})
 }
 
 func (s *Server) voteFetchStage(ctx context.Context, id int64) (map[string]any, error) {

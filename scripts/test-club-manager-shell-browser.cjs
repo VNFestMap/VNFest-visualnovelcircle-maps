@@ -248,6 +248,7 @@ function inspectScript() {
         sliderColor: navWrap ? parseColor(getComputedStyle(navWrap, '::before').backgroundColor) : null,
         expectedPrimary: hexToRgb(primaryToken),
         clubSelectLabel: clubSelect ? (clubSelect.closest('.ant-select')?.querySelector('.ant-select-selection-item')?.textContent || '') : '',
+        activeLabel: activeItem?.innerText.replace(/\s+/g, ' ').trim() || '',
         statValues: Array.from(document.querySelectorAll('.cm-stats .ant-statistic')).map((node) => ({
           title: node.querySelector('.ant-statistic-title')?.textContent?.trim() || '',
           value: node.querySelector('.ant-statistic-content-value')?.textContent?.trim() || '',
@@ -389,6 +390,7 @@ async function main() {
           assertTabs(result, label, { superAdmin: true });
           assertStats(result, { 待审核: '3', 已通过: '2', 成员: '—', 总计: '5' }, `${label} 所有同好会`);
           assert.ok(result.clubSelectLabel.includes('所有同好会'), `${label} the default club must be 所有同好会 (got ${result.clubSelectLabel})`);
+          assert.ok(result.activeLabel.includes('已通过'), `${label} an unparameterized club-manager URL must land on 已通过 (got ${result.activeLabel})`);
           assert.equal(consoleErrors.length, 0, `${label} must not log errors or warnings: ${consoleErrors.join('; ')}`);
           chromeLuminance[name] = chromeLuminance[name] || {};
           chromeLuminance[name][theme] = result.headerLuminance;
@@ -403,7 +405,7 @@ async function main() {
 
     /* ---------- club switching must key on club_id + country ---------- */
     {
-      const { win, consoleErrors } = await openShell(baseUrl, viewportSizes.desktop, 'dark');
+      const { win, consoleErrors } = await openShell(baseUrl, viewportSizes.desktop, 'dark', '&tab=pending');
       try {
         const scoped = await win.webContents.executeJavaScript(`
           (async () => {
@@ -482,7 +484,7 @@ async function main() {
         `);
         assert.equal(state.hasJiangsuTable, false, `${name}/manager ?tab=jiangsu must never render the Jiangsu table`);
         assert.equal(state.bodyText.includes('未设置（自动匹配）'), false, `${name}/manager ?tab=jiangsu must not render Jiangsu content`);
-        assert.ok(state.selectedTab.includes('待审核'), `${name}/manager ?tab=jiangsu must fall back to 待审核 (got ${state.selectedTab})`);
+        assert.ok(state.selectedTab.includes('已通过'), `${name}/manager ?tab=jiangsu must fall back to 已通过 (got ${state.selectedTab})`);
         assert.equal(deepLink.consoleErrors.length, 0, `${name}/manager deep link must not log errors: ${deepLink.consoleErrors.join('; ')}`);
         console.log(`OK ${name}/manager ?tab=jiangsu -> ${state.selectedTab}`);
       } finally {

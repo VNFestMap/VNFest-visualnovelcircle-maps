@@ -186,7 +186,7 @@ function resolveMediaUrl(url) {
 const quickAccessItems = [
   { icon: <CalendarOutlined />, title: '活动投稿', desc: '提交活动到日历', href: './submit_event.html', always: true },
   { icon: <TagOutlined />, title: 'GalOnly 通道', desc: '高校专属摊位申请', href: './Galgame_events/galgameonly_list.html', always: true },
-  { icon: <TeamOutlined />, title: '同好会广场', desc: '十二器、萌战与大型企划', href: './club_square.html', always: true },
+  { icon: <TeamOutlined />, title: '同好会空间', desc: '十二器、萌战与大型企划', href: './column/?tab=activity', spaceMemberOnly: true },
   { icon: <SettingOutlined />, title: '同好会管理', desc: '负责人可用', href: './admin/club_manager.html', managerOnly: true },
   { icon: <FundOutlined />, title: '企划管理', desc: '负责人可用', href: './admin/club_project_manager.html', managerOnly: true },
   { icon: <BookOutlined />, title: '刊物管理', desc: '负责人可用', href: './wiki/publication-manage.html', managerOnly: true },
@@ -233,6 +233,8 @@ export default function App() {
   const antdLocale = language === 'ja' ? jaJP : zhCN;
   const activeMemberships = data.memberships.filter((m) => m.status === 'active');
   const isManager = canManageClub(data.user, activeMemberships);
+  const canEnterSpace = (roleLevelMap[data.user?.role] || 0) >= roleLevelMap.member
+    || activeMemberships.some((membership) => (roleLevelMap[membership.role] || 0) >= roleLevelMap.member);
   const completion = completionScore(data.user, activeMemberships);
 
   const reloadData = useCallback(async (options = {}) => {
@@ -743,6 +745,7 @@ export default function App() {
                   data={data}
                   activeMemberships={activeMemberships}
                   isManager={isManager}
+                  canEnterSpace={canEnterSpace}
                   completion={completion}
                   themeTokens={t}
                   onSwitchTab={handleTabChange}
@@ -812,7 +815,7 @@ export default function App() {
   );
 }
 
-function OverviewPage({ data, activeMemberships, isManager, completion, themeTokens, onSwitchTab, onCopyShare }) {
+function OverviewPage({ data, activeMemberships, isManager, canEnterSpace, completion, themeTokens, onSwitchTab, onCopyShare }) {
   const user = data.user || {};
   const eventCount = data.eventRegistrations.filter((item) => Number(item.user_id) === Number(user.id)).length;
 
@@ -920,7 +923,7 @@ function OverviewPage({ data, activeMemberships, isManager, completion, themeTok
         <div className="vn-qa-label">Quick Access</div>
         <div className="vn-qa-grid" style={{ marginTop: 10 }}>
           {quickAccessItems
-            .filter((item) => item.always || !item.managerOnly || isManager)
+            .filter((item) => (item.spaceMemberOnly ? canEnterSpace : (item.always || !item.managerOnly || isManager)))
             .map((item) => (
               <a className="vn-qa-card" href={item.href} key={item.title}>
                 <span className="vn-qa-icon">{item.icon}</span>
@@ -1486,14 +1489,14 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
               type="info"
               showIcon
               message="可选完善登录凭证"
-              description="这是旧的 QQ/Discord 账号。请先在上方绑定并验证邮箱，随后即可设置密码；不完善也不影响继续使用第三方登录。"
+              description="这是一个可以继续使用已绑定第三方登录的账号。你可以先在上方绑定并验证邮箱，随后设置密码；不完善也不影响继续使用第三方登录。"
             />
           )}
           {user?.can_set_password && (
             <div className="vn-account-divider" style={{ paddingTop: 14 }}>
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>完善登录凭证（可选）</Text>
               <Text type="secondary" style={{ display: 'block', marginBottom: 10 }}>
-                当前邮箱已验证。设置密码后可以使用邮箱/用户名密码登录，QQ/Discord 登录方式保持不变。
+                当前邮箱已验证。设置密码后可以使用邮箱/用户名密码登录，已绑定的第三方登录方式保持不变。
               </Text>
               <Space direction="vertical" style={{ width: '100%' }} size={8}>
                 <Text className="vn-field-label">设置密码</Text>
@@ -1562,6 +1565,9 @@ function AccountTab({ user, memberships, clubs, clubDirectoryAvailability, theme
             bindUrl="./api/auth.php?action=bangumi_auth&mode=bind"
             onUnbind={() => actions.unbindProvider('bangumi')}
           />
+          <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.7 }}>
+            未设置其他登录方式时，不能解绑最后一个第三方登录身份。
+          </Text>
         </div>
       </Card>
       </div>

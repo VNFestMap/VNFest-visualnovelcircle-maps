@@ -48,8 +48,9 @@ assert.match(app, /bodyPadding: 14/, 'card body padding must be 14');
 assert.match(app, /cellPaddingBlock: 8/, 'table rows must be tightened');
 assert.match(app, /itemMarginBottom: 14/, 'form items must be tightened');
 assert.match(model, /visitor:\s*'访客'/, 'visitor must have a distinct display label');
-assert.doesNotMatch(users, /const displayRole = user\.display_role \|\| user\.role;/, 'users system role must not use effective membership display_role');
-assert.match(users, /const displayRole = user\.role;/, 'users system role must use the account role');
+assert.match(users, /const displayRole = user\.display_role \|\| getPermissionRole\(user\);/, 'users must display the effective permission level');
+assert.match(users, /label: '所有权限等级'/, 'users filter must use the permission-level label');
+assert.match(model, /label: '活动人员'/, 'activity personnel must have a dedicated permission-level label');
 assert.doesNotMatch(shellHtml, /page-background\.js/, 'club manager must not load the wallpaper runtime');
 
 /* ========== 骨架间距由父级 gap 驱动，不再双份 ========== */

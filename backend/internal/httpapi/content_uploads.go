@@ -37,9 +37,8 @@ func (s *Server) userBanner(w http.ResponseWriter, r *http.Request) {
 		postsError(w, "cross_origin", "拒绝跨站写入请求", http.StatusForbidden, nil)
 		return
 	}
-	userID, ok := s.loggedInUserID(r)
+	userID, ok := s.requireSpaceAccess(w, r)
 	if !ok {
-		postsError(w, "login_required", "请先登录", http.StatusUnauthorized, nil)
 		return
 	}
 	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("action")), "remove") {
@@ -97,9 +96,8 @@ func (s *Server) postImages(w http.ResponseWriter, r *http.Request) {
 		postsError(w, "cross_origin", "拒绝跨站写入请求", http.StatusForbidden, nil)
 		return
 	}
-	userID, ok := s.loggedInUserID(r)
+	userID, ok := s.requireSpaceAccess(w, r)
 	if !ok {
-		postsError(w, "login_required", "请先登录", http.StatusUnauthorized, nil)
 		return
 	}
 	if s.db == nil || s.files == nil {

@@ -16,16 +16,19 @@
 
   function resolveMediaUrl(value) {
     if (!value) return '';
+    var normalized = String(value).trim().replace(/\\\//g, '/');
+    var protocol = normalized.match(/^\/*(https?)(?:\\+)?:(.*)$/i);
+    if (protocol) normalized = protocol[1].toLowerCase() + '://' + protocol[2].replace(/^[\\/]+/, '');
     try {
-      if (/^(https?:)?\/\//i.test(value) || /^data:image\//i.test(value)) {
-        return new URL(value, window.location.href).toString();
+      if (/^(https?:)?\/\//i.test(normalized) || /^data:image\//i.test(normalized)) {
+        return new URL(normalized, window.location.href).toString();
       }
-      if (/^(\.\.?\/|\/)/.test(value)) {
-        return new URL(value, window.location.href).toString();
+      if (/^(\.\.?\/|\/)/.test(normalized)) {
+        return new URL(normalized, window.location.href).toString();
       }
-      return new URL(value, siteRoot).toString();
+      return new URL(normalized, siteRoot).toString();
     } catch (error) {
-      return resolveSiteUrl(value);
+      return resolveSiteUrl(normalized);
     }
   }
 

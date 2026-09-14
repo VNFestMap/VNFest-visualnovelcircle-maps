@@ -5,7 +5,7 @@ import { api, normalizeError } from '../api.js';
 import {
   ActionCluster, Chip, EmptyPanel, ErrorPanel, Identity, LoadingPanel, PageHeading, ProfileAvatar,
 } from '../components.jsx';
-import { applyRoleText, getClubName } from '../model.js';
+import { applyRoleText, getClubName, getPermissionRole, permissionLevelMeta } from '../model.js';
 import { useClubManager } from '../context.jsx';
 
 const PAGE_SIZE = 20;
@@ -15,6 +15,20 @@ const statusLabel = (status) => (status === 'active' ? '正常' : status === 'di
 function UserStatus({ status }) {
   const tone = status === 'active' ? 'success' : status === 'disabled' ? 'warning' : 'danger';
   return <Chip tone={tone}>{statusLabel(status)}</Chip>;
+}
+
+function PermissionLevel({ role }) {
+  const meta = permissionLevelMeta(role);
+  return (
+    <span
+      className={`cm-chip cm-permission-level cm-permission-level--${meta.key}`}
+      title={`权限等级：${meta.label}`}
+      aria-label={`权限等级：${meta.label}`}
+    >
+      <span className="cm-permission-level-mark" aria-hidden="true">{meta.mark}</span>
+      {meta.label}
+    </span>
+  );
 }
 
 function MembershipSummary({ memberships, directory }) {
@@ -51,7 +65,11 @@ export default function UsersTab() {
     if (filters.search) params.set('search', filters.search);
     if (filters.role) params.set('role', filters.role);
     if (filters.status) params.set('status', filters.status);
-    try { const result = await api.get(`users.php?${params}`); setUsers(result.users || []); setTotal(Number(result.total || 0)); }
+    try {
+      const result = await api.get(`users.php?${params}`);
+      setUsers(result.users || []);
+      setTotal(Number(result.total ?? result.pagination?.total ?? 0));
+    }
     catch (loadError) { setError(normalizeError(loadError)); }
     finally { setLoading(false); }
   }, [filters, refreshVersion]);
@@ -90,7 +108,7 @@ export default function UsersTab() {
       <Card className="cm-toolbar">
         <Space wrap className="cm-filterbar" size={8}>
           <Input size="small" value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} onPressEnter={() => setFilters((value) => ({ ...value, search: queryDraft, page: 1 }))} prefix={<SearchOutlined />} placeholder="搜索用户名、昵称、邮箱" allowClear style={{ width: 220 }} />
-          <Select size="small" value={filters.role} onChange={(role) => setFilters((value) => ({ ...value, role, page: 1 }))} options={[{ value: '', label: '所有角色' }, { value: 'visitor', label: '访客' }, { value: 'member', label: '成员' }, { value: 'manager', label: '管理员' }, { value: 'representative', label: '负责人' }, { value: 'super_admin', label: '超级管理员' }]} />
+          <Select size="small" value={filters.role} onChange={(role) => setFilters((value) => ({ ...value, role, page: 1 }))} options={[{ value: '', label: '所有权限等级' }, { value: 'visitor', label: '访客' }, { value: 'member', label: '成员' }, { value: 'manager', label: '管理员' }, { value: 'representative', label: '负责人' }, { value: 'super_admin', label: '超级管理员' }, { value: 'external', label: '活动人员' }]} />
           <Select size="small" value={filters.status} onChange={(status) => setFilters((value) => ({ ...value, status, page: 1 }))} options={[{ value: '', label: '所有状态' }, { value: 'active', label: '正常' }, { value: 'disabled', label: '禁用' }, { value: 'banned', label: '封禁' }]} />
           <Button size="small" type="primary" onClick={() => setFilters((value) => ({ ...value, search: queryDraft, page: 1 }))}>搜索</Button>
           <Button size="small" onClick={() => { setQueryDraft(''); setFilters({ search: '', role: '', status: '', page: 1 }); }}>清除筛选</Button>
@@ -114,7 +132,7 @@ export default function UsersTab() {
                 <tr>
                   <th scope="col">用户</th>
                   <th scope="col">账号信息</th>
-                  <th scope="col">系统角色</th>
+                  <th scope="col">权限等级</th>
                   <th scope="col">同好会关系</th>
                   <th scope="col">状态</th>
                   <th scope="col" className="cm-user-table-actions-heading">操作</th>
@@ -122,7 +140,7 @@ export default function UsersTab() {
               </thead>
               <tbody>
                 {users.map((user) => {
-                  const displayRole = user.role;
+                  const displayRole = user.display_role || getPermissionRole(user);
                   const memberships = user.memberships || [];
                   return (
                     <tr className="cm-user-table-row" key={user.id}>
@@ -139,7 +157,7 @@ export default function UsersTab() {
                           <span className="cm-user-muted" title={user.email || '未填写邮箱'}>{user.email || '未填写邮箱'}</span>
                         </div>
                       </td>
-                      <td data-label="系统角色"><Chip tone={displayRole === 'super_admin' ? 'brand' : undefined}>{applyRoleText(displayRole)}</Chip></td>
+                      <td data-label="权限等级"><PermissionLevel role={displayRole} /></td>
                       <td data-label="同好会关系"><MembershipSummary memberships={memberships} directory={directory} /></td>
                       <td data-label="状态"><UserStatus status={user.status} /></td>
                       <td data-label="操作" className="cm-user-table-actions">
@@ -167,7 +185,7 @@ export default function UsersTab() {
             <Form.Item label="用户名"><Input value={editing.username} disabled /></Form.Item>
             <Form.Item label="邮箱"><Input value={editing.email || ''} disabled /></Form.Item>
             <Form.Item name="nickname" label="昵称"><Input /></Form.Item>
-            <Form.Item name="role" label="系统角色"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'visitor', label: '访客' }, { value: 'super_admin', label: '超级管理员' }]} /></Form.Item>
+            <Form.Item name="role" label="权限等级" extra="管理员、负责人、活动人员由有效同好会关系自动计算。"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'visitor', label: '访客' }, { value: 'super_admin', label: '超级管理员' }]} /></Form.Item>
             <Form.Item name="status" label="账号状态"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'active', label: '正常' }, { value: 'disabled', label: '已禁用' }, { value: 'banned', label: '已封禁' }]} /></Form.Item>
           </Form>
           {(editing.memberships || []).map((membership) => (

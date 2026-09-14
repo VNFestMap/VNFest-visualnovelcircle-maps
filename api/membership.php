@@ -477,7 +477,9 @@ switch ($action) {
             $m['is_student'] = isset($m['is_student']) ? (int)$m['is_student'] : 0;
             $m['application_email_enabled'] = isset($m['application_email_enabled']) ? (int)$m['application_email_enabled'] : 1;
             if ($currentUser['role'] !== 'super_admin') {
-                unset($m['qq_account'], $m['contact_account'], $m['apply_role'], $m['is_student'], $m['email'], $m['apply_reason']);
+                // 该名单已经由 canManageClubInCountry 限定为当前负责人/管理员所在同好会。
+                // 保留群号/QQ 供日常管理联络；仅隐藏与成员管理无关的敏感申请资料。
+                unset($m['apply_role'], $m['is_student'], $m['email'], $m['apply_reason']);
             }
         }
 

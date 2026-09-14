@@ -126,6 +126,40 @@ try {
     oauthTestAssert((string)$challenge->fetchColumn() !== '', '完成账号后挑战应立即消费');
     oauthAccountClearPending();
 
+    // 新 QQ 身份现在可以直接创建可登录的社交账号；邮箱和密码保持为空。
+    $directBeforeCount = (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    $directQQProfile = [
+        'openid' => 'qq-social-only',
+        'unionid' => 'qq-social-only-union',
+        'username' => '社交 QQ 用户',
+        'avatar_url' => 'https://example.com/social-qq.png',
+    ];
+    $directQQ = oauthAccountCreateSocialUser($db, 'qq', $directQQProfile);
+    oauthTestAssert($directQQ['success'] === true && $directQQ['created'] === true, '未绑定 QQ 身份应能直接创建社交账号');
+    $directQQUser = oauthAccountFindUser($db, (int)$directQQ['user_id']);
+    oauthTestAssert($directQQUser && $directQQUser['status'] === 'active' && $directQQUser['role'] === 'visitor', '直接创建的 QQ 账号状态或角色不正确');
+    oauthTestAssert($directQQUser['qq_openid'] === 'qq-social-only' && $directQQUser['qq_unionid'] === 'qq-social-only-union', '直接创建的 QQ 身份未写入');
+    oauthTestAssert($directQQUser['nickname'] === '社交 QQ 用户' && $directQQUser['avatar_url'] === 'https://example.com/social-qq.png', '直接创建的 QQ 昵称或头像未写入');
+    oauthTestAssert($directQQUser['username'] !== '' && $directQQUser['email'] === null && $directQQUser['password_hash'] === null, '直接创建的 QQ 账号应生成用户名且不写入邮箱或密码');
+    oauthTestAssert($directQQUser['email_verified_at'] === null && $directQQUser['credentials_completed_at'] === null, '直接创建的 QQ 账号不应标记凭证已完成');
+    oauthTestAssert((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn() === $directBeforeCount + 1, '直接创建 QQ 账号应只增加一条 users 记录');
+
+    $directDuplicate = oauthAccountCreateSocialUser($db, 'qq', $directQQProfile);
+    oauthTestAssert($directDuplicate['success'] === false && $directDuplicate['code'] === 'PROVIDER_CONFLICT', '同一个 QQ 身份不得重复创建账号');
+    oauthTestAssert((int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn() === $directBeforeCount + 1, '重复 QQ 身份不得增加 users 记录');
+
+    // Discord 也走同一集中式直接创建辅助层，且不会因为已有邮箱账号而自动合并。
+    $directDiscord = oauthAccountCreateSocialUser($db, 'discord', [
+        'discord_id' => 'discord-social-only',
+        'username' => '社交 Discord 用户',
+        'avatar_url' => 'https://example.com/social-discord.png',
+    ]);
+    oauthTestAssert($directDiscord['success'] === true && $directDiscord['created'] === true, '未绑定 Discord 身份应能直接创建社交账号');
+    $directDiscordUser = oauthAccountFindUser($db, (int)$directDiscord['user_id']);
+    oauthTestAssert($directDiscordUser && $directDiscordUser['status'] === 'active' && $directDiscordUser['role'] === 'visitor', '直接创建的 Discord 账号状态或角色不正确');
+    oauthTestAssert($directDiscordUser['discord_id'] === 'discord-social-only' && $directDiscordUser['nickname'] === '社交 Discord 用户', '直接创建的 Discord 身份或昵称未写入');
+    oauthTestAssert($directDiscordUser['email'] === null && $directDiscordUser['password_hash'] === null && $directDiscordUser['email_verified_at'] === null, '直接创建的 Discord 账号不应自动合并邮箱或凭证');
+
     // Discord 使用同一辅助层完成，确保不会落回旧的空密码创建路径。
     $newDiscord = oauthAccountCreateChallenge($db, 'discord', [
         'discord_id' => 'discord-new',

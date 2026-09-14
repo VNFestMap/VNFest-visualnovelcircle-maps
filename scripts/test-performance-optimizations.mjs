@@ -40,7 +40,8 @@ assert.ok(
 const listNavRowStart = index.indexOf('<div class="list-nav-row"', listTopRowEnd);
 const listNavRowEnd = index.indexOf('</div>', listNavRowStart);
 const listNavRowMarkup = index.slice(listNavRowStart, listNavRowEnd);
-assert.ok(listNavRowMarkup.includes('data-action="project-hub"') && listNavRowMarkup.includes('data-action="forum"'), 'list navigation should keep project hub and forum reachable');
+assert.ok(listNavRowMarkup.includes('data-action="project-hub"') && !listNavRowMarkup.includes('data-action="forum"'), 'list navigation should keep project hub while the duplicate forum entry moves to the space action');
+assert.equal((index.match(/href="\.\/column\/"/g) || []).length, 2, 'map and list account actions should expose two Space links');
 
 const styles = read('css/styles.css');
 assert.ok(styles.includes(':root.mobile-list-mode-active .list-mode-inner'), 'mobile list mode should have isolated inner layout rules');

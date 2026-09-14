@@ -1,6 +1,19 @@
 export const ROLE_LEVEL = { visitor: 0, external: 0.5, member: 1, manager: 2, representative: 3, super_admin: 4 };
 export const ROLE_NAMES = { visitor: '访客', external: '外交成员（IEM）', member: '成员', manager: '管理员', representative: '负责人', super_admin: '超级管理员' };
 
+/*
+ * 权限等级是用户列表里的统一展示口径：账号角色与有效同好会关系取最高等级。
+ * external 在同好会业务里仍保留 IEM 语义，但在权限徽章中显示为“活动人员”。
+ */
+export const PERMISSION_LEVEL_META = {
+  visitor: { key: 'visitor', label: '访客', mark: '○' },
+  member: { key: 'member', label: '成员', mark: '●' },
+  manager: { key: 'manager', label: '管理员', mark: '◆' },
+  representative: { key: 'representative', label: '负责人', mark: '★' },
+  super_admin: { key: 'super-admin', label: '超级管理员', mark: '✦' },
+  external: { key: 'external', label: '活动人员', mark: '✦' },
+};
+
 export const TAB_META = [
   { key: 'pending', label: '待审核' },
   { key: 'diplomatic', label: '外交申请' },
@@ -11,21 +24,23 @@ export const TAB_META = [
   { key: 'bot_tokens', label: 'Bot 接入' },
   { key: 'recommendations', label: '神器榜' },
   { key: 'projects', label: '企划枢纽' },
+  { key: 'vote_projects', label: '赛事活动' },
   { key: 'recognition', label: '考核设置' },
   { key: 'jiangsu', label: '江苏专项', superAdmin: true },
   { key: 'users', label: '用户管理', superAdmin: true },
 ];
 
 export const TAB_KEYS = TAB_META.map((item) => item.key);
+export const DEFAULT_TAB = 'approved';
 
 export function initialTab() {
   const requested = new URLSearchParams(window.location.search).get('tab');
-  return TAB_KEYS.includes(requested) ? requested : 'pending';
+  return TAB_KEYS.includes(requested) ? requested : DEFAULT_TAB;
 }
 
 export function syncTabUrl(tab) {
   const url = new URL(window.location.href);
-  if (tab === 'pending') url.searchParams.delete('tab');
+  if (tab === DEFAULT_TAB) url.searchParams.delete('tab');
   else url.searchParams.set('tab', tab);
   window.history.replaceState(null, '', url);
 }
@@ -63,6 +78,27 @@ export function formatDate(value) {
 
 export function applyRoleText(role) {
   return ROLE_NAMES[role] || '成员';
+}
+
+export function permissionLevelMeta(role) {
+  return PERMISSION_LEVEL_META[role] || PERMISSION_LEVEL_META.visitor;
+}
+
+export function permissionLevelText(role) {
+  return permissionLevelMeta(role).label;
+}
+
+export function getPermissionRole(user) {
+  let bestRole = Object.prototype.hasOwnProperty.call(ROLE_LEVEL, user?.role) ? user.role : 'visitor';
+  let bestLevel = ROLE_LEVEL[bestRole];
+  for (const membership of user?.memberships || []) {
+    if (membership.status !== 'active' || !Object.prototype.hasOwnProperty.call(ROLE_LEVEL, membership.role)) continue;
+    if (ROLE_LEVEL[membership.role] > bestLevel) {
+      bestRole = membership.role;
+      bestLevel = ROLE_LEVEL[membership.role];
+    }
+  }
+  return bestRole;
 }
 
 export function getClubName(directory, clubId, country = 'china') {

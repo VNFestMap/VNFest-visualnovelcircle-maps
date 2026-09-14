@@ -62,9 +62,8 @@ func (s *Server) posts(w http.ResponseWriter, r *http.Request) {
 		postsError(w, "cross_origin", "拒绝跨站写入请求", http.StatusForbidden, nil)
 		return
 	}
-	userID, ok := s.loggedInUserID(r)
+	userID, ok := s.requireSpaceAccess(w, r)
 	if !ok {
-		postsError(w, "login_required", "请先登录", http.StatusUnauthorized, nil)
 		return
 	}
 	var input map[string]any
@@ -75,7 +74,9 @@ func (s *Server) posts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) postsGet(w http.ResponseWriter, r *http.Request, action string) {
-	viewerID, _ := s.loggedInUserID(r)
+	viewerIDPtr, systemRole := s.optionalSessionUser(r)
+	viewerID := valueOrZero(viewerIDPtr)
+	allowed, reason := s.spaceAccess(r.Context(), viewerIDPtr, systemRole)
 	if action == "bootstrap" {
 		var payload any
 		if viewerID > 0 {
@@ -85,7 +86,11 @@ func (s *Server) postsGet(w http.ResponseWriter, r *http.Request, action string)
 		if viewerID > 0 {
 			clubs = s.postSelectableClubs(r, viewerID)
 		}
-		writeJSON(w, map[string]any{"success": true, "data": map[string]any{"user": payload, "clubs": clubs, "limits": map[string]any{"content_max": postsContentMax, "images_max": postsImagesMax}}})
+		writeJSON(w, map[string]any{"success": true, "data": map[string]any{"user": payload, "clubs": clubs, "space_access": map[string]any{"allowed": allowed, "reason": reason}, "limits": map[string]any{"content_max": postsContentMax, "images_max": postsImagesMax}}})
+		return
+	}
+	if !allowed {
+		writeSpaceAccessError(w, reason)
 		return
 	}
 	switch action {
@@ -299,7 +304,13 @@ func (s *Server) serializePost(r *http.Request, p *postRecord, viewerID int64) m
 	if viewerID > 0 && s.db.QueryRowContext(r.Context(), "SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ? LIMIT 1", p.ID, viewerID).Scan(&marker) == nil {
 		liked = true
 	}
-	return map[string]any{"id": p.ID, "content": p.Content, "images": images, "reply_to_id": nullInt(p.ReplyToID), "quoted_post_id": nullInt(p.QuotedPostID), "status": p.Status, "like_count": p.LikeCount, "reply_count": p.ReplyCount, "repost_count": p.RepostCount, "created_at": p.CreatedAt, "author": map[string]any{"id": p.AuthorID, "username": p.AuthorUsername, "handle": "@" + p.AuthorUsername, "nickname": firstNonEmpty(p.AuthorNickname, p.AuthorUsername), "avatar_url": p.AuthorAvatar}, "club": nil, "liked": liked, "capabilities": map[string]any{"delete": viewerID > 0 && (viewerID == p.AuthorID || s.isSuperAdmin(r, viewerID))}}
+	var club any
+	if p.ClubID > 0 {
+		country := firstNonEmpty(p.ClubCountry, "china")
+		name := s.clubCodeClubName(r.Context(), p.ClubID, country)
+		club = map[string]any{"id": p.ClubID, "club_id": p.ClubID, "country": country, "name": name, "display_name": name}
+	}
+	return map[string]any{"id": p.ID, "content": p.Content, "images": images, "reply_to_id": nullInt(p.ReplyToID), "quoted_post_id": nullInt(p.QuotedPostID), "status": p.Status, "like_count": p.LikeCount, "reply_count": p.ReplyCount, "repost_count": p.RepostCount, "created_at": p.CreatedAt, "author": map[string]any{"id": p.AuthorID, "username": p.AuthorUsername, "handle": "@" + p.AuthorUsername, "nickname": firstNonEmpty(p.AuthorNickname, p.AuthorUsername), "avatar_url": p.AuthorAvatar}, "club": club, "liked": liked, "capabilities": map[string]any{"delete": viewerID > 0 && (viewerID == p.AuthorID || s.isSuperAdmin(r, viewerID))}}
 }
 
 func nullInt(value sql.NullInt64) any {
@@ -450,7 +461,7 @@ func (s *Server) postSelectableClubs(r *http.Request, id int64) []map[string]any
 		var mid, cid int64
 		var country, role string
 		if rows.Scan(&mid, &cid, &country, &role) == nil {
-			out = append(out, map[string]any{"membership_id": mid, "club_id": cid, "country": country, "role": role})
+			out = append(out, map[string]any{"membership_id": mid, "club_id": cid, "country": country, "role": role, "name": s.clubCodeClubName(r.Context(), cid, country)})
 		}
 	}
 	return out

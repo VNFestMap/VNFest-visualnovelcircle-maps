@@ -115,6 +115,11 @@ function hasRole(minRole) {
 }
 
 function updateUserUI() {
+    document.querySelectorAll('[data-space-entry]').forEach((entry) => {
+        const allowed = hasRole('member');
+        entry.style.display = allowed ? '' : 'none';
+        entry.setAttribute('aria-hidden', allowed ? 'false' : 'true');
+    });
     // 更新顶层用户信息框
     const top = getTopEls();
     if (!top.name || !top.loginBtn || !top.accountBtn) return;
@@ -3449,7 +3454,7 @@ function bindListModeControls() {
           return; // 不重新渲染
         case 'column':
         case 'forum':
-          window.location.href = './column/index.html';
+          window.location.href = './column/';
           return;
         case 'publication':
         case 'project-hub':
@@ -4408,7 +4413,7 @@ function showClubDetail(club) {
         data.data.map(item => `
           <div class="rec-card" title="${esc(item.title)}">
             ${item.image_url
-              ? `<img src="${esc(item.image_url)}" alt="${esc(item.title)}" class="rec-cover" loading="lazy">`
+              ? `<img src="${esc(Utils.resolveMediaUrl(item.image_url))}" alt="${esc(item.title)}" class="rec-cover" loading="lazy">`
               : `<div class="rec-cover-placeholder">${vnIconHtml('spark')}</div>`
             }
             <div class="rec-info">
@@ -4438,7 +4443,7 @@ function showClubDetail(club) {
       const title = item.name_cn || item.name || ('角色 #' + item.character_id);
       container.innerHTML =
         '<div class="moe-king-card">' +
-          (item.image_url ? '<img src="' + esc(item.image_url) + '" alt="' + esc(title) + '" loading="lazy">' : '<div class="moe-king-avatar">王</div>') +
+          (item.image_url ? '<img src="' + esc(Utils.resolveMediaUrl(item.image_url)) + '" alt="' + esc(title) + '" loading="lazy">' : '<div class="moe-king-avatar">王</div>') +
           '<div class="moe-king-info">' +
             '<div class="moe-king-label">本同好会萌王</div>' +
             '<div class="moe-king-name">' + esc(title) + '</div>' +
@@ -7359,7 +7364,7 @@ function openPublicationEditor(publication = null) {
     const pubImgUrl = document.getElementById('pubImageUrl');
     const pubImgRemoveBtn = document.getElementById('pubImageRemoveBtn');
     if (publication.image_url) {
-      if (pubImgPreview) { pubImgPreview.src = publication.image_url; pubImgPreview.style.display = ''; }
+      if (pubImgPreview) { pubImgPreview.src = Utils.resolveMediaUrl(publication.image_url); pubImgPreview.style.display = ''; }
       if (pubImgUrl) pubImgUrl.value = publication.image_url;
       if (pubImgRemoveBtn) pubImgRemoveBtn.style.display = '';
     } else {
@@ -7656,7 +7661,7 @@ function openPublicationDetail(pub) {
   const desc = document.getElementById('pubDetailDesc');
 
   if (pub.image_url) {
-    cover.innerHTML = `<img src="${Utils.escapeHTML(pub.image_url)}" alt="封面" loading="lazy">`;
+    cover.innerHTML = `<img src="${Utils.escapeHTML(Utils.resolveMediaUrl(pub.image_url))}" alt="封面" loading="lazy">`;
     cover.style.display = '';
   } else {
     cover.style.display = 'none';
@@ -7829,7 +7834,7 @@ function initTopUserBar() {
           break;
         case 'column':
         case 'forum':
-          window.location.href = './column/index.html';
+          window.location.href = './column/';
           break;
         case 'publication':
         case 'project-hub':

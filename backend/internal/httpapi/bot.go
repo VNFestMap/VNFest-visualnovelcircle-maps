@@ -203,7 +203,9 @@ func (s *Server) botTokenAction(w http.ResponseWriter, r *http.Request, action s
 			permissions = append(permissions, "approve_membership")
 		}
 		encoded, _ := json.Marshal(permissions)
-		result, err := s.db.ExecContext(r.Context(), "INSERT INTO club_bot_tokens(club_id,country,name,token_prefix,token_hash,permissions,created_by) VALUES(?,?,?,?,?,?,?)", clubID, country, name, token[:22], stringMustHash(token), string(encoded), *userID)
+		// Explicit NULL keeps new tokens active even if a legacy table was created
+		// with an accidental default on revoked_at.
+		result, err := s.db.ExecContext(r.Context(), "INSERT INTO club_bot_tokens(club_id,country,name,token_prefix,token_hash,permissions,created_by,revoked_at) VALUES(?,?,?,?,?,?,?,NULL)", clubID, country, name, token[:22], stringMustHash(token), string(encoded), *userID)
 		if err != nil {
 			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "error": "create token failed"})
 			return
@@ -258,7 +260,9 @@ func (s *Server) botListTokens(w http.ResponseWriter, r *http.Request, clubID in
 		var rowCountry, name, prefix, permissions string
 		var created, last, revoked any
 		if rows.Scan(&id, &rowClub, &rowCountry, &name, &prefix, &permissions, &createdBy, &created, &last, &revoked) == nil {
-			result = append(result, map[string]any{"id": id, "club_id": rowClub, "country": rowCountry, "name": name, "token_prefix": prefix, "permissions": botPermissions(permissions), "created_by": createdBy, "created_at": databaseValueString(created), "last_used_at": databaseValueString(last), "revoked_at": databaseValueString(revoked), "active": databaseValueString(revoked) == ""})
+			revokedAt := databaseValueString(revoked)
+			active := revokedAt == nil || strings.TrimSpace(fmt.Sprint(revokedAt)) == ""
+			result = append(result, map[string]any{"id": id, "club_id": rowClub, "country": rowCountry, "name": name, "token_prefix": prefix, "permissions": botPermissions(permissions), "created_by": createdBy, "created_at": databaseValueString(created), "last_used_at": databaseValueString(last), "revoked_at": revokedAt, "active": active})
 		}
 	}
 	writeJSON(w, map[string]any{"success": true, "tokens": result})

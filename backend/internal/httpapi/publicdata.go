@@ -63,7 +63,10 @@ func (s *Server) clubList(w http.ResponseWriter, r *http.Request, fileName, coun
 		protected := boolValue(item["protected"])
 		rawContact := stringValue(item["info"])
 		canSeeAll := roleLevel >= 1
-		canSeeProtected := roleLevel >= 3
+		// A manager and a representative are both responsible for contact
+		// coordination. Keep protected group information hidden from ordinary
+		// members while allowing either management role to read it.
+		canSeeProtected := roleLevel >= 2
 		infoHidden := false
 		if protected {
 			infoHidden = !isMember && !hasPending && !canSeeProtected

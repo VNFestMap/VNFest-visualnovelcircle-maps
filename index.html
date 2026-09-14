@@ -1142,8 +1142,8 @@
 
         <button id="topLoginBtn" class="top-login-btn">登录 / 注册</button>
         <a id="topAccountBtn" class="top-account-btn" href="./user.html" style="display:none;">账号</a>
-        <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">管理</a>
-        <a class="top-admin-btn" href="./club_square.html">活动</a>
+        <a id="topAdminBtn" class="top-admin-btn" href="admin/club_manager.html?tab=pending" style="display:none;">管理</a>
+        <a class="top-admin-btn" href="./column/" data-space-entry="true" style="display:none;">空间</a>
         <div class="display-switch-container">
           <div class="mode-switch" id="modeSwitch" role="tablist" aria-label="视图模式">
             <button class="mode-tab active" data-mode="map" role="tab" aria-selected="true" title="地图模式">
@@ -1164,7 +1164,6 @@
         <button class="user-nav-btn" data-action="overseas">海外同好会</button>
         <button class="user-nav-btn" data-action="calendar">活动日历</button>
         <button class="user-nav-btn" data-action="project-hub">企划枢纽</button>
-        <button class="user-nav-btn" data-action="forum">同好会动态</button>
       </div>
     </div>
 
@@ -1313,8 +1312,8 @@
                 <div class="list-account-actions">
                   <button id="listLoginBtn" class="top-login-btn">登录 / 注册</button>
                   <a id="listAccountBtn" class="top-account-btn" href="./user.html" style="display:none;">账号</a>
-                  <a id="listAdminBtn" class="top-admin-btn" href="admin/club_manager.html" style="display:none;">管理</a>
-                  <a class="top-admin-btn" href="./club_square.html">活动</a>
+                  <a id="listAdminBtn" class="top-admin-btn" href="admin/club_manager.html?tab=pending" style="display:none;">管理</a>
+                  <a class="top-admin-btn" href="./column/" data-space-entry="true" style="display:none;">空间</a>
                 </div>
                 <button id="listMenuBtn" class="list-menu-btn" type="button" aria-label="菜单"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-menu"></use></svg></span></button>
                 <div class="display-switch-container">
@@ -1330,7 +1329,6 @@
                 <button class="user-nav-btn" data-action="overseas">海外同好会</button>
                 <button class="user-nav-btn" data-action="calendar">活动日历</button>
                 <button class="user-nav-btn" data-action="project-hub">企划枢纽</button>
-                <button class="user-nav-btn" data-action="forum">同好会动态</button>
               </div>
             </div>
 
@@ -2313,11 +2311,11 @@
             'https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js'
         ];
         var appScripts = [
-            { src: './js/app-core.js' },
+            { src: './js/app-core.js?v=20260914-media-url-v1' },
             { src: './js/china.js?v=20260814-announce-v1' },
             { src: './js/jiangsu.js?v=20260814-announce-v1' },
             { src: './js/japan.js' },
-            { src: './js/app.js?v=20260827-mobile-nolist-v1' },
+            { src: './js/app.js?v=20260914-media-url-v1' },
             { src: './js/calendar.js?v=20260530' },
             { src: './js/project-hub.js?v=20260702-hub-switch' },
             {

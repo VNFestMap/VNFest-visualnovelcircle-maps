@@ -82,8 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // 新增：已提交绑定申请（pending）的用户可临时查看联系方式
         $isProtected = !empty($item['protected']);
         if ($isProtected) {
-            // 保护模式：成员、待审核申请人或 负责人级别及以上 可见
-            $canSeeProtected = $effectiveLevel >= ROLE_HIERARCHY['representative'];
+            // 保护模式：成员、待审核申请人或本会管理角色可见。
+            // 管理员和负责人都需要在地图上核对所有同好会的群号/联系方式。
+            $canSeeProtected = $effectiveLevel >= ROLE_HIERARCHY['manager'];
             $item['info_hidden'] = !$isMember && !$hasPending && !$canSeeProtected;
         } else {
             $item['info_hidden'] = !$isMember && !$hasPending && !$visibleByDefault && !$canSeeAllInfo;

@@ -67,7 +67,7 @@ switch ($action) {
             $params[] = $like;
             $params[] = $like;
         }
-        $validRoleFilters = ['visitor', 'member', 'manager', 'representative', 'super_admin'];
+        $validRoleFilters = ['visitor', 'external', 'member', 'manager', 'representative', 'super_admin'];
         if ($roleFilter !== '' && in_array($roleFilter, $validRoleFilters)) {
             if ($roleFilter === 'super_admin') {
                 $where[] = 'u.role = ?';
@@ -75,7 +75,7 @@ switch ($action) {
             } elseif ($roleFilter === 'visitor') {
                 $where[] = "u.role = 'visitor' AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')";
             } else {
-                // member / manager / representative → 通过 club_memberships 过滤
+                // external / member / manager / representative → 通过 club_memberships 过滤
                 $where[] = "EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = ? AND cm.status = 'active')";
                 $params[] = $roleFilter;
             }
@@ -352,15 +352,14 @@ switch ($action) {
 }
 
 /**
- * 根据系统角色和俱乐部成员关系计算显示用角色
+ * 根据账号角色和有效同好会关系计算权限等级
  */
 function computeDisplayRole(string $systemRole, array $memberships): string {
-    if ($systemRole === 'super_admin') return 'super_admin';
-    if (empty($memberships)) return 'visitor';
-    $hierarchy = ['member' => 1, 'manager' => 2, 'representative' => 3];
-    $highest = 'visitor';
-    $highestLevel = 0;
+    $hierarchy = ['visitor' => 0, 'external' => 1, 'member' => 2, 'manager' => 3, 'representative' => 4, 'super_admin' => 5];
+    $highest = array_key_exists($systemRole, $hierarchy) ? $systemRole : 'visitor';
+    $highestLevel = $hierarchy[$highest];
     foreach ($memberships as $m) {
+        if (($m['status'] ?? 'active') !== 'active') continue;
         $level = $hierarchy[$m['role']] ?? 0;
         if ($level > $highestLevel) {
             $highestLevel = $level;

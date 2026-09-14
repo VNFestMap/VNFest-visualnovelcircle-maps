@@ -46,6 +46,7 @@ for (const key of expected) {
 assert.match(app, /syncTabUrl\(next\)/);
 assert.match(nav, /url\.searchParams\.delete\('tab'\)/);
 assert.match(nav, /url\.searchParams\.set\('tab', tab\)/);
+assert.match(nav, /export const DEFAULT_TAB = 'approved';/, 'club manager must land on approved records instead of opening the pending review queue');
 
 /* ========== 全宽第一层顶栏 + 第二层工作区 ========== */
 assert.match(shellJsx, /<header[\s\S]*<Layout className="cm-workspace">/);
@@ -77,7 +78,9 @@ assert.match(shellJsx, /className="cm-pending-badge"/, 'pending navigation count
 for (const [name, source] of [['memberships', memberships], ['members', members], ['users', users]]) {
   assert.match(source, /<ProfileAvatar/, `${name} must use the safe avatar component`);
 }
-assert.match(users, /const displayRole = user\.role;/, 'user table system role must remain separate from membership role');
+assert.match(users, /const displayRole = user\.display_role \|\| getPermissionRole\(user\);/, 'user table must display the effective permission level');
+assert.match(users, /data-label="权限等级"/, 'user table must rename the system role column to 权限等级');
+assert.match(users, /<PermissionLevel role=\{displayRole\}/, 'user table must use the semantic permission-level badge');
 assert.match(recommendations, /className="cm-character-avatar"/, 'Moe King avatars must have a dedicated crop hook');
 assert.match(recommendations, /data-rank=\{index \+ 1\}/, 'recommendation slots must expose their rank for visual hierarchy');
 assert.match(css, /\.cm-character-avatar img\s*\{[^}]*object-position: center top;/, 'character avatars must crop from the top');

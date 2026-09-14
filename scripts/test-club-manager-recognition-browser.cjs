@@ -184,6 +184,11 @@ function apiResponse(pathname, action, searchParams, body) {
             title: program.title,
             type: program.type || 'assessment',
             status: program.status || 'draft',
+          },
+          version: {
+            id: 101,
+            version_no: 'v0.1',
+            status: 'draft',
             content: {
               quiz: {
                 questions: [{ id: 'q1', type: 'single', question: '1+1=?', score: 10, options: ['1', '2'], answer: [1] }],
@@ -528,6 +533,7 @@ function programsScript() {
     await waitFor(() => questionCards(editModal).length === 1, 'preloaded question');
     const preloadedText = questionCards(editModal)[0].querySelector('textarea.ant-input').value;
     const preloadedCards = questionCards(editModal).length;
+    if (preloadedText !== '1+1=?') throw new Error('existing assessment question was not loaded from version.content');
     await pickSelect(editModal, '奖励徽章', '入门徽章');
     click(findText('button', '添加题目', editModal), 'add question (edit)');
     await waitFor(() => questionCards(editModal).length === 2, 'second question card');
