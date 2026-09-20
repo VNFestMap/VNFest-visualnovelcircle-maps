@@ -179,6 +179,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Request-ID", hex.EncodeToString(requestID))
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if snapshot := s.auditRequestSnapshot(r); snapshot != nil {
+		response := &auditResponseWriter{ResponseWriter: w}
+		s.mux.ServeHTTP(response, r)
+		s.finishAutomaticAudit(r, snapshot, response)
+		return
+	}
 	s.mux.ServeHTTP(w, r)
 }
 
