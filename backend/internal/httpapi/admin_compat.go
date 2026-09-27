@@ -283,11 +283,12 @@ func nullInt64Value(value sqlNullInt64) any {
 }
 
 func auditTypeCondition(value string) string {
+	authActions := "'user.register','user.login','user.logout','user.send_register_code','user.send_password_reset_code','user.reset_password','user.change_password','user.send_code','user.bind_email','user.unbind_email','user.bind_qq','user.unbind_qq','user.bind_discord','user.unbind_discord'"
 	conditions := map[string]string{
 		"review":      "al.action LIKE 'galonly.%' OR al.action LIKE 'galonly_staff.%' OR al.action LIKE 'review.%'",
-		"auth":        "al.action LIKE 'user.login' OR al.action LIKE 'user.logout' OR al.action LIKE 'user.register' OR al.action LIKE 'user.%code%'",
-		"user":        "(al.action LIKE 'user.%' OR al.action LIKE 'users.%')",
-		"club":        "al.action LIKE 'membership.%' OR al.action LIKE 'club.%' OR al.action LIKE 'star_union.%'",
+		"auth":        "al.action IN (" + authActions + ")",
+		"user":        "(al.action LIKE 'user.%' OR al.action LIKE 'users.%') AND al.action NOT IN (" + authActions + ")",
+		"club":        "al.action LIKE 'membership.%' OR al.action LIKE 'club.%' OR al.action LIKE 'club_moe_king.%' OR al.action LIKE 'star_union.%' OR al.action IN ('generate_club_code','revoke_club_code','redeem_club_code','delete_club_comment','add_recommendation','remove_recommendation','reorder_recommendations')",
 		"announce":    "al.action LIKE 'announcement.%' OR al.action LIKE 'announce.%'",
 		"vote":        "al.action LIKE 'vote.%' OR al.action LIKE 'vote_%'",
 		"recognition": "al.action LIKE 'recog.%' OR al.action LIKE 'recog_%'",
@@ -295,5 +296,13 @@ func auditTypeCondition(value string) string {
 		"forum":       "al.action LIKE 'forum.%' OR al.action LIKE 'forum_%'",
 		"integration": "al.action LIKE 'bot.%' OR al.action LIKE 'bot_%'",
 	}
-	return conditions[strings.ToLower(strings.TrimSpace(value))]
+	typeName := strings.ToLower(strings.TrimSpace(value))
+	if typeName == "system" {
+		known := make([]string, 0, len(conditions))
+		for _, condition := range conditions {
+			known = append(known, "("+condition+")")
+		}
+		return "NOT (" + strings.Join(known, " OR ") + ")"
+	}
+	return conditions[typeName]
 }

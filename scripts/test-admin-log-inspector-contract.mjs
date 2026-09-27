@@ -33,7 +33,10 @@ inlineScripts.forEach((source, index) => new vm.Script(source, { filename: `revi
 for (const token of [
   'id="logSearch"', 'id="logTypeFilter"', 'id="logDateFrom"', 'id="logDateTo"',
   'id="logHighRiskCount"', 'id="logContextCount"', 'id="logPrevPage"', 'id="logNextPage"',
-  'function showLogDetail', 'function detectLogOutcome', 'function detectClient', 'function getLogActionDefinition'
+  'function showLogDetail', 'function detectLogOutcome', 'function detectClient', 'function getLogActionDefinition',
+  'function startLogAutoRefresh', 'function stopLogAutoRefresh', 'setInterval(function()', '15000',
+  "document.addEventListener('visibilitychange'", "window.addEventListener('focus'",
+  'new AbortController()', 'logRequestSequence', 'currentModule === \'logs\'', 'document.hidden'
 ]) {
   assert(reviews.includes(token), `reviews.html missing log inspector contract: ${token}`);
 }
