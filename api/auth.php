@@ -571,7 +571,7 @@ switch ($action) {
         $db->prepare("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
             ->execute([$newHash, $user['id']]);
         authOAuthCredentialStateUpdate($db, (int)$user['id']);
-        $db->prepare("UPDATE sessions SET is_valid = 0 WHERE user_id = ?")->execute([$user['id']]);
+        invalidateUserSessions((int)$user['id']);
 
         $codes[$matchedIndex]['used'] = true;
         $codes[$matchedIndex]['used_at'] = time();

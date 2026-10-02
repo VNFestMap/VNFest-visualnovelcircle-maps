@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_オンラインアクセス-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-2ecc71?style=flat-square">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
@@ -35,6 +35,10 @@
 > 新規登録なしでゲストモードにて地図とサークル情報を閲覧できます。
 
 ---
+
+## v2.4.0 更新履歴
+
+複数端末ログイン、メールと OAuth 修正、React 同好会詳細、GalOnly 出展・マップ、画面、画像・操作ログ、Wiki・日報を更新。[リリースノート](RELEASE_NOTES_2.4.0.md)と[サイトの更新履歴](https://www.map.vnfest.top/wiki/guide/?lang=ja#/updates/2-4-0)をご覧ください。ソース公開と本番の業務機能反映は別々に検証します。
 
 ## 機能詳細
 
@@ -295,6 +299,7 @@ bash scripts/deploy.sh
 
 | バージョン | コアテーマ |
 |------|---------|
+| **v2.4.0** | 複数端末、アカウント、同好会詳細、GalOnly、画面、操作ログ、Wiki・日報 |
 | **v2.3.0** | PHP から Go へのバックエンド移行基盤、共有 Session、既存 API 互換、Go Worker、デプロイ/ロールバック、画像プロキシと GalgameTool の修正 |
 | **v2.2.0** | 同好会フィードの React 化、独立検索、相互フォローメッセージ、React 管理画面、OAuth 認証情報の更新、GalgameTool Tier/MEME |
 | **v2.1.0** | 独立コラム、スーパー管理コンソール、北京 GalOnly、MakoQuiz 連携、設定集約、Wiki 利用ガイド |

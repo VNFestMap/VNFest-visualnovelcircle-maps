@@ -65,6 +65,8 @@ check(!react.includes("pt-side-search"), 'right sidebar search box must stay rem
 check(react.includes('space_access'), 'column bootstrap must consume the space access result');
 check(react.includes('SpaceAccessGate'), 'non-members must render the access gate');
 check(react.includes('!spaceAccess?.allowed'), 'business UI must not render when space access is denied');
+check(react.includes("apiGet('follow_list', { username, type })"), 'follow list must request the selected profile and list type');
+check(react.includes('setUsers(data.users || [])'), 'follow list must consume the shared users response contract');
 
 const styles = read('column-react/src/styles.css');
 for (const token of ['--pt-accent', 'var(--vn-primary)', 'prefers-reduced-motion', '@media (max-width: 680px)', '.pt-space-access-gate']) {

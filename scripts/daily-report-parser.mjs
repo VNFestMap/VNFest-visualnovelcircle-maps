@@ -84,6 +84,22 @@ function preferredUrlOf(lines) {
   return urls.find((item) => /store\.steampowered\.com/.test(item)) || urls[0] || ''
 }
 
+function sourceDateOf(lines, reportDate) {
+  const text = lines.join(' ')
+  const explicit = text.match(DATE_TOKEN_RE)?.[0]
+  if (explicit) return explicit
+  const chinese = text.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*日/)
+  if (!chinese || (!chinese[1] && !/^\d{4}-\d{2}-\d{2}$/.test(reportDate))) return ''
+  let year = Number(chinese[1] || reportDate.slice(0, 4))
+  const month = Number(chinese[2])
+  const day = Number(chinese[3])
+  // 无年份的来源日期归属报告所在周期，处理跨年的十二月新闻。
+  if (!chinese[1] && reportDate.slice(5, 7) === '01' && month === 12) year -= 1
+  const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const parsed = new Date(`${date}T00:00:00Z`)
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().startsWith(date) ? date : ''
+}
+
 export function hasTopSection(blocks) {
   return blocks.some((block) => isTopHeading(blockText(block)))
 }
@@ -93,7 +109,7 @@ function isTopHeading(text) {
     /\bTOP(?:\d+)?\b|头条|精选/i.test(text)
 }
 
-export function parseTopItems(blocks, { fallbackUrl = '' } = {}) {
+export function parseTopItems(blocks, { fallbackUrl = '', reportDate = '' } = {}) {
   const start = blocks.findIndex((block) => isTopHeading(blockText(block)))
   if (start === -1) return []
   const startLevel = headingLevel(blocks[start].type) || 1
@@ -107,21 +123,25 @@ export function parseTopItems(blocks, { fallbackUrl = '' } = {}) {
     if (level && level <= startLevel) break
     if (level === itemLevel) {
       if (current) sections.push(current)
-      current = { headline: blockText(block), lines: [] }
+      current = { headline: blockText(block), lines: [], urls: [] }
     } else if (block.type === 'numbered_list_item' && /^\d+[.、）)]\s*/.test(blockText(block))) {
       if (current) sections.push(current)
-      current = { headline: blockText(block), lines: [] }
+      current = { headline: blockText(block), lines: [], urls: [] }
     } else if (current) {
       current.lines.push(blockText(block))
+      for (const part of block[block.type]?.rich_text || []) {
+        const url = part.href || part.text?.link?.url
+        if (/^https?:\/\//.test(url || '')) current.urls.push(url)
+      }
     }
   }
   if (current) sections.push(current)
 
-  return sections.map(({ headline, lines }) => {
+  return sections.map(({ headline, lines, urls }) => {
     const sourceLine = sourceLineOf(lines)
     const factLine = factLineOf(lines)
-    const date = lines.join(' ').match(DATE_TOKEN_RE)?.[0] || ''
-    const directUrl = preferredUrlOf(lines)
+    const date = sourceDateOf(lines, reportDate)
+    const directUrl = preferredUrlOf([...lines, ...urls])
     const url = directUrl || fallbackUrl
     const organization = organizationOf(sourceLine)
     return {

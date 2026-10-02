@@ -73,7 +73,9 @@ switch ($action) {
                 $where[] = 'u.role = ?';
                 $params[] = 'super_admin';
             } elseif ($roleFilter === 'visitor') {
-                $where[] = "u.role = 'visitor' AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')";
+                $where[] = "u.role = 'visitor' AND COALESCE(u.is_audit, 0) = 0 AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')";
+            } elseif ($roleFilter === 'external') {
+                $where[] = "(COALESCE(u.is_audit, 0) = 1 OR EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = 'external' AND cm.status = 'active'))";
             } else {
                 // external / member / manager / representative → 通过 club_memberships 过滤
                 $where[] = "EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = ? AND cm.status = 'active')";
@@ -118,8 +120,20 @@ switch ($action) {
         // 批量获取 club_memberships 并计算 display_role
         $userIds = array_column($users, 'id');
         $userMemberships = [];
+        $activityReviewerIds = [];
         if (!empty($userIds)) {
             $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            try {
+                $reviewerStmt = $db->prepare(
+                    "SELECT DISTINCT user_id FROM galonly_reviewers WHERE user_id IN ($placeholders)"
+                );
+                $reviewerStmt->execute($userIds);
+                foreach ($reviewerStmt->fetchAll(PDO::FETCH_COLUMN) as $reviewerId) {
+                    $activityReviewerIds[(int)$reviewerId] = true;
+                }
+            } catch (Exception $e) {
+                // 旧库可能尚未创建活动审核分配表；is_audit 仍是有效身份来源。
+            }
             $memStmt = $db->prepare(
                 "SELECT cm.user_id, cm.id, cm.club_id, cm.country, cm.role, cm.status, cm.joined_at
                  FROM club_memberships cm
@@ -144,7 +158,8 @@ switch ($action) {
             $uid = $u['id'];
             $memberships = $userMemberships[$uid] ?? [];
             $u['memberships'] = $memberships;
-            $u['display_role'] = computeDisplayRole($u['role'], $memberships);
+            $u['activity_reviewer'] = (int)($u['is_audit'] ?? 0) === 1 || isset($activityReviewerIds[$uid]);
+            $u['display_role'] = computeDisplayRole($u['role'], $memberships, !empty($u['activity_reviewer']));
         }
         unset($u);
 
@@ -200,7 +215,15 @@ switch ($action) {
             $m['club_id'] = (int)$m['club_id'];
         }
         $user['memberships'] = $memberships;
-        $user['display_role'] = computeDisplayRole($user['role'], $memberships);
+        $user['activity_reviewer'] = (int)($user['is_audit'] ?? 0) === 1;
+        try {
+            $reviewerStmt = $db->prepare("SELECT 1 FROM galonly_reviewers WHERE user_id = ? LIMIT 1");
+            $reviewerStmt->execute([$id]);
+            $user['activity_reviewer'] = $user['activity_reviewer'] || (bool)$reviewerStmt->fetchColumn();
+        } catch (Exception $e) {
+            // 旧库可能尚未创建活动审核分配表；is_audit 仍是有效身份来源。
+        }
+        $user['display_role'] = computeDisplayRole($user['role'], $memberships, !empty($user['activity_reviewer']));
 
         echo json_encode(['success' => true, 'user' => $user], JSON_UNESCAPED_UNICODE);
         exit();
@@ -354,7 +377,7 @@ switch ($action) {
 /**
  * 根据账号角色和有效同好会关系计算权限等级
  */
-function computeDisplayRole(string $systemRole, array $memberships): string {
+function computeDisplayRole(string $systemRole, array $memberships, bool $activityReviewer = false): string {
     $hierarchy = ['visitor' => 0, 'external' => 1, 'member' => 2, 'manager' => 3, 'representative' => 4, 'super_admin' => 5];
     $highest = array_key_exists($systemRole, $hierarchy) ? $systemRole : 'visitor';
     $highestLevel = $hierarchy[$highest];
@@ -365,6 +388,10 @@ function computeDisplayRole(string $systemRole, array $memberships): string {
             $highestLevel = $level;
             $highest = $m['role'];
         }
+    }
+    if ($activityReviewer && $hierarchy['external'] > $highestLevel) {
+        $highestLevel = $hierarchy['external'];
+        $highest = 'external';
     }
     return $highest;
 }

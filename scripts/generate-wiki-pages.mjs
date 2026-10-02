@@ -121,6 +121,7 @@ function renderPage(content, club, lang = 'zh') {
   <link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header">
   <script defer src="../../js/site-header.js?v=20260827-site-header"></script>
   <link rel="stylesheet" href="../wiki.css?v=20260817-editor-workbench">
+  <link rel="stylesheet" href="../../css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body>
   <header class="wiki-header vn-topbar" data-page-header>
@@ -379,6 +380,7 @@ function renderWikiHome(manifest, libraryDocs, featureSlots) {
   <script defer src="../js/analytics.js?v=20260905-analytics"></script>
   <title>VNFest WIKI</title>
   <link rel="stylesheet" href="./wiki.css">
+  <link rel="stylesheet" href="../css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body class="wiki-index-body">
   <header class="wiki-header wiki-site-header">

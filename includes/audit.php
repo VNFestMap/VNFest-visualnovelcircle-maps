@@ -3,6 +3,27 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
+// 客户端 IP：生产由宝塔 Nginx 反代，REMOTE_ADDR 是 127.0.0.1。
+// 仅当直连对端是回环或内网时才采信转发头，防止外部直连伪造。
+function auditClientIP(): string {
+    $remote = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    $isTrusted = filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_LOOPBACK | FILTER_FLAG_PRIVATE) !== false;
+    if ($isTrusted) {
+        $real = trim((string)($_SERVER['HTTP_X_REAL_IP'] ?? ''));
+        if ($real !== '') {
+            return $real;
+        }
+        $forwarded = trim((string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
+        if ($forwarded !== '') {
+            $first = trim(explode(',', $forwarded)[0]);
+            if ($first !== '') {
+                return $first;
+            }
+        }
+    }
+    return $remote;
+}
+
 function logAction(string $action, ?string $targetType = null, ?int $targetId = null, ?array $details = null): void {
     $user = getCurrentUser();
     $db = getDB();
@@ -38,6 +59,6 @@ function logAction(string $action, ?string $targetType = null, ?int $targetId = 
         $targetType,
         $targetId,
         json_encode($details, $jsonFlags),
-        $_SERVER['REMOTE_ADDR'] ?? ''
+        auditClientIP()
     ]);
 }

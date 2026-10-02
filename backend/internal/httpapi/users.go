@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -67,6 +68,11 @@ func (s *Server) userList(w http.ResponseWriter, r *http.Request) {
 	if perPage > 100 {
 		perPage = 100
 	}
+	hasReviewerTable, err := s.db.TableExists(r.Context(), "galonly_reviewers")
+	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
 	search, role, status := strings.TrimSpace(r.URL.Query().Get("search")), strings.TrimSpace(r.URL.Query().Get("role")), strings.TrimSpace(r.URL.Query().Get("status"))
 	where := []string{"1=1"}
 	args := []any{}
@@ -81,8 +87,21 @@ func (s *Server) userList(w http.ResponseWriter, r *http.Request) {
 	}
 	if role != "" {
 		if role == "visitor" {
-			where = append(where, "u.role = 'visitor' AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')")
-		} else if role == "external" || role == "member" || role == "manager" || role == "representative" {
+			visitorPredicate := "u.role = 'visitor' AND COALESCE(u.is_audit, 0) = 0 AND NOT EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.status = 'active')"
+			if hasReviewerTable {
+				visitorPredicate += " AND NOT EXISTS (SELECT 1 FROM galonly_reviewers gr WHERE gr.user_id = u.id)"
+			}
+			where = append(where, visitorPredicate)
+		} else if role == "external" {
+			externalPredicates := []string{
+				"COALESCE(u.is_audit, 0) = 1",
+				"EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = 'external' AND cm.status = 'active')",
+			}
+			if hasReviewerTable {
+				externalPredicates = append(externalPredicates, "EXISTS (SELECT 1 FROM galonly_reviewers gr WHERE gr.user_id = u.id)")
+			}
+			where = append(where, "("+strings.Join(externalPredicates, " OR ")+")")
+		} else if role == "member" || role == "manager" || role == "representative" {
 			where = append(where, "EXISTS (SELECT 1 FROM club_memberships cm WHERE cm.user_id = u.id AND cm.role = ? AND cm.status = 'active')")
 			args = append(args, role)
 		} else {
@@ -108,39 +127,72 @@ func (s *Server) userList(w http.ResponseWriter, r *http.Request) {
 		var id, audit int64
 		var username, nickname, email, avatar, userRole, userStatus string
 		var created, updated, login any
-		if rows.Scan(&id, &username, &nickname, &email, &avatar, &userRole, &userStatus, &audit, &created, &updated, &login) == nil {
-			result = append(result, map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": userRole, "status": userStatus, "is_audit": audit, "created_at": created, "updated_at": updated, "last_login_at": login, "memberships": []map[string]any{}})
-			userIDs = append(userIDs, id)
+		if err := rows.Scan(&id, &username, &nickname, &email, &avatar, &userRole, &userStatus, &audit, &created, &updated, &login); err != nil {
+			_ = rows.Close()
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+			return
 		}
+		result = append(result, map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": userRole, "status": userStatus, "is_audit": audit, "created_at": created, "updated_at": updated, "last_login_at": login, "memberships": []map[string]any{}})
+		userIDs = append(userIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
+	if err := rows.Close(); err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
+	activityReviewers, err := s.userActivityReviewerFlags(r.Context(), userIDs, hasReviewerTable)
+	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
 	}
 	if len(userIDs) > 0 {
 		placeholders := strings.TrimRight(strings.Repeat("?,", len(userIDs)), ",")
-		membershipRows, membershipErr := s.db.QueryContext(r.Context(), "SELECT user_id, id, club_id, COALESCE(country, 'china'), role, status, joined_at FROM club_memberships WHERE user_id IN ("+placeholders+") AND status = 'active' ORDER BY joined_at DESC", int64Args(userIDs)...)
-		if membershipErr == nil {
-			defer membershipRows.Close()
-			byUser := make(map[int64][]map[string]any, len(userIDs))
-			for membershipRows.Next() {
-				var userID, membershipID, clubID int64
-				var country, membershipRole, membershipStatus string
-				var joined any
-				if membershipRows.Scan(&userID, &membershipID, &clubID, &country, &membershipRole, &membershipStatus, &joined) == nil {
-					byUser[userID] = append(byUser[userID], map[string]any{"id": membershipID, "club_id": clubID, "country": country, "role": membershipRole, "status": membershipStatus, "joined_at": joined})
-				}
+		membershipRows, err := s.db.QueryContext(r.Context(), "SELECT user_id, id, club_id, COALESCE(country, 'china'), role, status, joined_at FROM club_memberships WHERE user_id IN ("+placeholders+") AND status = 'active' ORDER BY joined_at DESC", int64Args(userIDs)...)
+		if err != nil {
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+			return
+		}
+		byUser := make(map[int64][]map[string]any, len(userIDs))
+		for membershipRows.Next() {
+			var userID, membershipID, clubID int64
+			var country, membershipRole, membershipStatus string
+			var joined any
+			if err := membershipRows.Scan(&userID, &membershipID, &clubID, &country, &membershipRole, &membershipStatus, &joined); err != nil {
+				_ = membershipRows.Close()
+				writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+				return
 			}
-			for _, item := range result {
-				memberships := byUser[integerValue(item["id"])]
-				if memberships == nil {
-					memberships = []map[string]any{}
-				}
-				item["memberships"] = memberships
-				item["display_role"] = displayRole(stringValue(item["role"]), memberships)
+			byUser[userID] = append(byUser[userID], map[string]any{"id": membershipID, "club_id": clubID, "country": country, "role": membershipRole, "status": membershipStatus, "joined_at": joined})
+		}
+		if err := membershipRows.Err(); err != nil {
+			_ = membershipRows.Close()
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+			return
+		}
+		if err := membershipRows.Close(); err != nil {
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+			return
+		}
+		for _, item := range result {
+			memberships := byUser[integerValue(item["id"])]
+			if memberships == nil {
+				memberships = []map[string]any{}
 			}
+			item["memberships"] = memberships
+			activityReviewer := integerValue(item["is_audit"]) != 0 || activityReviewers[integerValue(item["id"])]
+			item["activity_reviewer"] = activityReviewer
+			item["display_role"] = displayRoleWithActivityReviewer(stringValue(item["role"]), memberships, activityReviewer)
 		}
 	}
 	/* Even an empty membership query must expose a stable effective level. */
 	for _, item := range result {
+		activityReviewer := integerValue(item["is_audit"]) != 0 || activityReviewers[integerValue(item["id"])]
+		item["activity_reviewer"] = activityReviewer
 		if _, ok := item["display_role"]; !ok {
-			item["display_role"] = displayRole(stringValue(item["role"]), nil)
+			item["display_role"] = displayRoleWithActivityReviewer(stringValue(item["role"]), nil, activityReviewer)
 		}
 	}
 	writeJSON(w, map[string]any{"success": true, "users": result, "total": total, "page": page, "per_page": perPage, "pagination": map[string]any{"page": page, "per_page": perPage, "total": total, "total_pages": (total + perPage - 1) / perPage}})
@@ -152,6 +204,35 @@ func int64Args(values []int64) []any {
 		args[index] = value
 	}
 	return args
+}
+
+// userActivityReviewerFlags keeps the effective identity calculation compatible
+// with older databases where the reviewer assignment table may not exist yet.
+// The canonical global flag remains users.is_audit; an existing event reviewer
+// assignment is also treated as activity personnel so legacy assignments do not
+// disappear from the user-management view.
+func (s *Server) userActivityReviewerFlags(ctx context.Context, userIDs []int64, hasReviewerTable bool) (map[int64]bool, error) {
+	flags := make(map[int64]bool, len(userIDs))
+	if len(userIDs) == 0 || !hasReviewerTable {
+		return flags, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(userIDs)), ",")
+	rows, err := s.db.QueryContext(ctx, "SELECT DISTINCT user_id FROM galonly_reviewers WHERE user_id IN ("+placeholders+")", int64Args(userIDs)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID int64
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		flags[userID] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return flags, nil
 }
 
 func (s *Server) userGet(w http.ResponseWriter, r *http.Request) {
@@ -171,8 +252,23 @@ func (s *Server) userGet(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "用户不存在"})
 		return
 	}
-	memberships := s.userMembershipRows(r, id)
-	writeJSON(w, map[string]any{"success": true, "user": map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": role, "status": status, "is_audit": audit, "created_at": created, "updated_at": updated, "last_login_at": login, "memberships": memberships, "display_role": displayRole(role, memberships)}})
+	memberships, err := s.userMembershipRows(r, id)
+	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
+	hasReviewerTable, err := s.db.TableExists(r.Context(), "galonly_reviewers")
+	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
+	activityReviewers, err := s.userActivityReviewerFlags(r.Context(), []int64{id}, hasReviewerTable)
+	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "查询失败"})
+		return
+	}
+	activityReviewer := audit != 0 || activityReviewers[id]
+	writeJSON(w, map[string]any{"success": true, "user": map[string]any{"id": id, "username": username, "nickname": nickname, "email": email, "avatar_url": avatar, "role": role, "status": status, "is_audit": audit, "activity_reviewer": activityReviewer, "created_at": created, "updated_at": updated, "last_login_at": login, "memberships": memberships, "display_role": displayRoleWithActivityReviewer(role, memberships, activityReviewer)}})
 }
 
 func (s *Server) userUpdate(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +289,7 @@ func (s *Server) userUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updates, args := []string{}, []any{}
+	revokeActivityReviewer := false
 	for _, field := range []string{"nickname", "profile_bio", "language_preference", "role", "status"} {
 		if value, ok := input[field]; ok {
 			if field == "nickname" && len([]rune(mapString(input, field))) > 30 {
@@ -204,8 +301,10 @@ func (s *Server) userUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if value, ok := input["is_audit"]; ok {
+		auditValue := mapBoolInt(map[string]any{"value": value}, "value", false)
+		revokeActivityReviewer = auditValue == 0
 		updates = append(updates, "is_audit = ?")
-		args = append(args, mapBoolInt(map[string]any{"value": value}, "value", false))
+		args = append(args, auditValue)
 	}
 	if len(updates) == 0 {
 		writeJSON(w, map[string]any{"success": false, "message": "没有可更新的字段"})
@@ -213,13 +312,42 @@ func (s *Server) userUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	updates = append(updates, "updated_at = CURRENT_TIMESTAMP")
 	args = append(args, id)
-	result, err := s.db.ExecContext(r.Context(), "UPDATE users SET "+strings.Join(updates, ", ")+" WHERE id = ?", args...)
+	hasReviewerTable := false
+	if revokeActivityReviewer {
+		var err error
+		hasReviewerTable, err = s.db.TableExists(r.Context(), "galonly_reviewers")
+		if err != nil {
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "用户信息更新失败"})
+			return
+		}
+	}
+	tx, err := s.db.BeginTx(r.Context(), nil)
 	if err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "用户信息更新失败"})
+		return
+	}
+	result, err := tx.ExecContext(r.Context(), "UPDATE users SET "+strings.Join(updates, ", ")+" WHERE id = ?", args...)
+	if err != nil {
+		_ = tx.Rollback()
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "用户信息更新失败"})
 		return
 	}
 	if mustRowsAffected(result) != 1 {
+		_ = tx.Rollback()
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "用户不存在"})
+		return
+	}
+	if revokeActivityReviewer && hasReviewerTable {
+		// Turning off the global reviewer identity also revokes event-level
+		// reviewer assignments, matching the legacy PHP endpoint behaviour.
+		if _, err := tx.ExecContext(r.Context(), "DELETE FROM galonly_reviewers WHERE user_id = ?", id); err != nil {
+			_ = tx.Rollback()
+			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "用户信息更新失败"})
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "用户信息更新失败"})
 		return
 	}
 	writeJSON(w, map[string]any{"success": true, "message": "用户信息已更新"})
@@ -259,10 +387,10 @@ func (s *Server) userDelete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"success": true, "message": "用户已封禁"})
 }
 
-func (s *Server) userMembershipRows(r *http.Request, id int64) []map[string]any {
+func (s *Server) userMembershipRows(r *http.Request, id int64) ([]map[string]any, error) {
 	rows, err := s.db.QueryContext(r.Context(), "SELECT id, club_id, COALESCE(country, 'china'), role, status, joined_at FROM club_memberships WHERE user_id = ? ORDER BY joined_at DESC", id)
 	if err != nil {
-		return []map[string]any{}
+		return nil, err
 	}
 	defer rows.Close()
 	result := []map[string]any{}
@@ -270,13 +398,24 @@ func (s *Server) userMembershipRows(r *http.Request, id int64) []map[string]any 
 		var membershipID, clubID int64
 		var country, role, status string
 		var joined any
-		if rows.Scan(&membershipID, &clubID, &country, &role, &status, &joined) == nil {
-			result = append(result, map[string]any{"id": membershipID, "club_id": clubID, "country": country, "role": role, "status": status, "joined_at": joined})
+		if err := rows.Scan(&membershipID, &clubID, &country, &role, &status, &joined); err != nil {
+			return nil, err
 		}
+		result = append(result, map[string]any{"id": membershipID, "club_id": clubID, "country": country, "role": role, "status": status, "joined_at": joined})
 	}
-	return result
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 func displayRole(role string, memberships []map[string]any) string {
+	return displayRoleWithActivityReviewer(role, memberships, false)
+}
+
+func displayRoleWithActivityReviewer(role string, memberships []map[string]any, activityReviewer bool) string {
 	bestRole := role
 	bestLevel := permissionRoleLevel(role)
 	if bestLevel < 0 {
@@ -291,6 +430,9 @@ func displayRole(role string, memberships []map[string]any) string {
 		if candidateLevel > bestLevel {
 			bestRole, bestLevel = candidate, candidateLevel
 		}
+	}
+	if activityReviewer && permissionRoleLevel("external") > bestLevel {
+		bestRole, bestLevel = "external", permissionRoleLevel("external")
 	}
 	return bestRole
 }

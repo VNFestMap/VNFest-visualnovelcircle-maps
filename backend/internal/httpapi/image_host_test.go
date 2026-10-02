@@ -62,6 +62,10 @@ func TestPublicImageFallsBackAndRecordsRetryWithoutLosingLocalFile(t *testing.T)
 	if result.Storage != "local" || !result.Fallback || result.URL != "data/avatars/a.png" {
 		t.Fatalf("unexpected fallback result: %#v", result)
 	}
+	fields := storedImageFields(result)
+	if fields["fallback_reason"] != "provider_error" || fields["storage"] != "local" {
+		t.Fatalf("fallback response does not explain local URL: %#v", fields)
+	}
 	if _, err := os.Stat(filepath.Join(dataRoot, "avatars", "a.png")); err != nil {
 		t.Fatalf("local fallback file missing: %v", err)
 	}

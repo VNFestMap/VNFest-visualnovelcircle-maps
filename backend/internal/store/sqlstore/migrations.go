@@ -1116,6 +1116,112 @@ func Migrations(db *DB) []Migration {
 				return nil
 			},
 		},
+		{
+			Version: 18,
+			Name:    "GalOnly Beijing map documents and user state",
+			Apply: func(ctx context.Context, tx *sql.Tx) error {
+				mysql := []string{
+					`CREATE TABLE IF NOT EXISTS galonly_map_documents (id INT PRIMARY KEY AUTO_INCREMENT, event_id INT NOT NULL, revision INT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'draft', schema_version INT NOT NULL, payload_json LONGTEXT NOT NULL, checksum_sha256 CHAR(64) NOT NULL, source_name VARCHAR(255) NOT NULL DEFAULT '', created_by INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, published_by INT NULL, published_at DATETIME NULL, UNIQUE KEY uq_galonly_map_revision (event_id,revision), INDEX idx_galonly_map_status (event_id,status,revision), CONSTRAINT fk_galonly_map_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_map_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL, CONSTRAINT fk_galonly_map_published_by FOREIGN KEY (published_by) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`CREATE TABLE IF NOT EXISTS galonly_map_user_state (event_id INT NOT NULL, user_id INT NOT NULL, favorite_booths_json TEXT NOT NULL, selected_booth_id VARCHAR(32) NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (event_id,user_id), CONSTRAINT fk_galonly_map_state_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_map_state_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+				}
+				sqlite := []string{
+					`CREATE TABLE IF NOT EXISTS galonly_map_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, revision INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','archived')), schema_version INTEGER NOT NULL, payload_json TEXT NOT NULL, checksum_sha256 TEXT NOT NULL, source_name TEXT NOT NULL DEFAULT '', created_by INTEGER NULL REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, published_by INTEGER NULL REFERENCES users(id) ON DELETE SET NULL, published_at TEXT NULL, UNIQUE(event_id,revision))`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_map_status ON galonly_map_documents(event_id,status,revision)`,
+					`CREATE TABLE IF NOT EXISTS galonly_map_user_state (event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, favorite_booths_json TEXT NOT NULL DEFAULT '[]', selected_booth_id TEXT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id,user_id))`,
+				}
+				statements := mysql
+				if db.Driver == "sqlite" {
+					statements = sqlite
+				}
+				for _, statement := range statements {
+					if _, err := tx.ExecContext(ctx, statement); err != nil {
+						return err
+					}
+				}
+				if db.Driver == "mysql" {
+					if _, err := tx.ExecContext(ctx, "CREATE INDEX idx_galonly_map_state_user ON galonly_map_user_state(user_id)"); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version: 19,
+			Name:    "GalOnly booth owner portal",
+			Apply: func(ctx context.Context, tx *sql.Tx) error {
+				mysql := []string{
+					`CREATE TABLE IF NOT EXISTS galonly_booth_profiles (event_id INT NOT NULL, booth_id VARCHAR(32) NOT NULL, profile_json LONGTEXT NOT NULL, profile_version INT NOT NULL DEFAULT 1, updated_by_type VARCHAR(16) NOT NULL DEFAULT 'seed', updated_by_user_id INT NULL, updated_by_account_id BIGINT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id,booth_id), INDEX idx_galonly_booth_profiles_booth (booth_id), CONSTRAINT fk_galonly_booth_profiles_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_booth_profiles_user FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_accounts (id BIGINT PRIMARY KEY AUTO_INCREMENT, event_id INT NOT NULL, booth_id VARCHAR(32) NOT NULL, username VARCHAR(96) NOT NULL, username_normalized VARCHAR(96) NOT NULL, password_hash VARCHAR(255) NOT NULL, initial_password_ciphertext TEXT NULL, status VARCHAR(16) NOT NULL DEFAULT 'active', credential_version INT NOT NULL DEFAULT 1, failed_attempts INT NOT NULL DEFAULT 0, locked_until DATETIME NULL, last_login_at DATETIME NULL, password_changed_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_galonly_booth_account_booth (event_id,booth_id), UNIQUE KEY uq_galonly_booth_account_username (event_id,username_normalized), INDEX idx_galonly_booth_accounts_event_status (event_id,status), CONSTRAINT fk_galonly_booth_accounts_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_sessions (token_hash CHAR(64) PRIMARY KEY, account_id BIGINT NOT NULL, credential_version INT NOT NULL, expires_at DATETIME NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, revoked_at DATETIME NULL, INDEX idx_galonly_booth_sessions_account (account_id,revoked_at), INDEX idx_galonly_booth_sessions_expiry (expires_at), CONSTRAINT fk_galonly_booth_sessions_account FOREIGN KEY (account_id) REFERENCES galonly_booth_accounts(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_metric_events (event_uuid CHAR(36) PRIMARY KEY, event_id INT NOT NULL, booth_id VARCHAR(32) NOT NULL, metric_type VARCHAR(24) NOT NULL, visitor_hash CHAR(64) NOT NULL, product_id VARCHAR(96) NULL, day_key DATE NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_galonly_booth_metrics_rollup (event_id,booth_id,metric_type,day_key), INDEX idx_galonly_booth_metrics_visitor (event_id,booth_id,visitor_hash), CONSTRAINT fk_galonly_booth_metrics_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_favorites (event_id INT NOT NULL, booth_id VARCHAR(32) NOT NULL, visitor_hash CHAR(64) NOT NULL, user_id INT NULL, active TINYINT NOT NULL DEFAULT 1, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id,booth_id,visitor_hash), INDEX idx_galonly_booth_favorites_count (event_id,booth_id,active), INDEX idx_galonly_booth_favorites_user (event_id,user_id,active), CONSTRAINT fk_galonly_booth_favorites_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_booth_favorites_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+				}
+				sqlite := []string{
+					`CREATE TABLE IF NOT EXISTS galonly_booth_profiles (event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, booth_id TEXT NOT NULL, profile_json TEXT NOT NULL, profile_version INTEGER NOT NULL DEFAULT 1, updated_by_type TEXT NOT NULL DEFAULT 'seed', updated_by_user_id INTEGER NULL REFERENCES users(id) ON DELETE SET NULL, updated_by_account_id INTEGER NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id,booth_id))`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_profiles_booth ON galonly_booth_profiles(booth_id)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, booth_id TEXT NOT NULL, username TEXT NOT NULL, username_normalized TEXT NOT NULL, password_hash TEXT NOT NULL, initial_password_ciphertext TEXT NULL, status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','disabled')), credential_version INTEGER NOT NULL DEFAULT 1, failed_attempts INTEGER NOT NULL DEFAULT 0, locked_until TEXT NULL, last_login_at TEXT NULL, password_changed_at TEXT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(event_id,booth_id), UNIQUE(event_id,username_normalized))`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_accounts_event_status ON galonly_booth_accounts(event_id,status)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_sessions (token_hash TEXT PRIMARY KEY, account_id INTEGER NOT NULL REFERENCES galonly_booth_accounts(id) ON DELETE CASCADE, credential_version INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, revoked_at TEXT NULL)`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_sessions_account ON galonly_booth_sessions(account_id,revoked_at)`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_sessions_expiry ON galonly_booth_sessions(expires_at)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_metric_events (event_uuid TEXT PRIMARY KEY, event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, booth_id TEXT NOT NULL, metric_type TEXT NOT NULL, visitor_hash TEXT NOT NULL, product_id TEXT NULL, day_key TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_metrics_rollup ON galonly_booth_metric_events(event_id,booth_id,metric_type,day_key)`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_metrics_visitor ON galonly_booth_metric_events(event_id,booth_id,visitor_hash)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_favorites (event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, booth_id TEXT NOT NULL, visitor_hash TEXT NOT NULL, user_id INTEGER NULL REFERENCES users(id) ON DELETE SET NULL, active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (event_id,booth_id,visitor_hash))`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_favorites_count ON galonly_booth_favorites(event_id,booth_id,active)`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_favorites_user ON galonly_booth_favorites(event_id,user_id,active)`,
+				}
+				statements := mysql
+				if db.Driver == "sqlite" {
+					statements = sqlite
+				}
+				for _, statement := range statements {
+					if _, err := tx.ExecContext(ctx, statement); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Version: 20,
+			Name:    "GalOnly Beijing booth assignments and public profile lifecycle",
+			Apply: func(ctx context.Context, tx *sql.Tx) error {
+				// This migration deliberately adds relationships and lifecycle state only.
+				// It does not infer a historical application-to-table relationship from
+				// names or table labels: that decision stays with the chief reviewer.
+				mysql := []string{
+					`ALTER TABLE galonly_booth_profiles ADD COLUMN visibility_state VARCHAR(32) NOT NULL DEFAULT 'active'`,
+					`CREATE INDEX idx_galonly_booth_profiles_visibility ON galonly_booth_profiles(event_id,visibility_state)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_assignments (id BIGINT PRIMARY KEY AUTO_INCREMENT, event_id INT NOT NULL, application_id INT NOT NULL, booth_id VARCHAR(32) NOT NULL, assignment_status VARCHAR(32) NOT NULL DEFAULT 'active', table_ids_json TEXT NOT NULL, created_by INT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, UNIQUE KEY uq_galonly_booth_assignment_application (event_id,application_id), UNIQUE KEY uq_galonly_booth_assignment_booth (event_id,booth_id), INDEX idx_galonly_booth_assignment_status (event_id,assignment_status), CONSTRAINT fk_galonly_booth_assignment_event FOREIGN KEY (event_id) REFERENCES galonly_events(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_booth_assignment_application FOREIGN KEY (application_id) REFERENCES galonly_applications(id) ON DELETE CASCADE, CONSTRAINT fk_galonly_booth_assignment_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+					`INSERT INTO galonly_booth_profiles (event_id,booth_id,profile_json,profile_version,visibility_state,updated_by_type,created_at,updated_at) SELECT ge.id,'C07','{"name":"黄昏的津冀之邀","circleName":"黄昏的津冀之邀","tagline":"黄昏的津冀之邀","description":"黄昏的津冀之邀参展摊位，使用 C05–C08 四个桌位。","avatarText":"黄昏","announcement":"","tags":[],"status":"preparing","color":"#4d7cc7","contact":{"label":"","url":null},"products":[]}',1,'active','migration_c07',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM galonly_events ge WHERE ge.event_code='beijing' AND EXISTS (SELECT 1 FROM galonly_map_documents d WHERE d.event_id=ge.id AND d.payload_json LIKE '%"id":"C07"%') ON DUPLICATE KEY UPDATE profile_json=VALUES(profile_json),profile_version=profile_version+1,visibility_state='active',updated_by_type='migration_c07',updated_at=CURRENT_TIMESTAMP`,
+				}
+				sqlite := []string{
+					`ALTER TABLE galonly_booth_profiles ADD COLUMN visibility_state TEXT NOT NULL DEFAULT 'active'`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_profiles_visibility ON galonly_booth_profiles(event_id,visibility_state)`,
+					`CREATE TABLE IF NOT EXISTS galonly_booth_assignments (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id INTEGER NOT NULL REFERENCES galonly_events(id) ON DELETE CASCADE, application_id INTEGER NOT NULL REFERENCES galonly_applications(id) ON DELETE CASCADE, booth_id TEXT NOT NULL, assignment_status TEXT NOT NULL DEFAULT 'active', table_ids_json TEXT NOT NULL, created_by INTEGER NULL REFERENCES users(id) ON DELETE SET NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(event_id,application_id), UNIQUE(event_id,booth_id))`,
+					`CREATE INDEX IF NOT EXISTS idx_galonly_booth_assignment_status ON galonly_booth_assignments(event_id,assignment_status)`,
+					`INSERT INTO galonly_booth_profiles (event_id,booth_id,profile_json,profile_version,visibility_state,updated_by_type,created_at,updated_at) SELECT ge.id,'C07','{"name":"黄昏的津冀之邀","circleName":"黄昏的津冀之邀","tagline":"黄昏的津冀之邀","description":"黄昏的津冀之邀参展摊位，使用 C05–C08 四个桌位。","avatarText":"黄昏","announcement":"","tags":[],"status":"preparing","color":"#4d7cc7","contact":{"label":"","url":null},"products":[]}',1,'active','migration_c07',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM galonly_events ge WHERE ge.event_code='beijing' AND EXISTS (SELECT 1 FROM galonly_map_documents d WHERE d.event_id=ge.id AND d.payload_json LIKE '%"id":"C07"%') ON CONFLICT(event_id,booth_id) DO UPDATE SET profile_json=excluded.profile_json,profile_version=galonly_booth_profiles.profile_version+1,visibility_state='active',updated_by_type='migration_c07',updated_at=CURRENT_TIMESTAMP`,
+				}
+				statements := mysql
+				if db.Driver == "sqlite" {
+					statements = sqlite
+				}
+				for _, statement := range statements {
+					if _, err := tx.ExecContext(ctx, statement); err != nil {
+						// Existing production databases can already have a manually-added
+						// lifecycle column or index. Keep migration replay-safe.
+						message := strings.ToLower(err.Error())
+						if strings.Contains(message, "duplicate column") || strings.Contains(message, "duplicate key") || strings.Contains(message, "already exists") {
+							continue
+						}
+						return err
+					}
+				}
+				return nil
+			},
+		},
 	}
 }
 
@@ -1245,7 +1351,7 @@ func Pending(ctx context.Context, db *DB) ([]Migration, error) {
 }
 
 func Verify(ctx context.Context, db *DB) error {
-	for _, table := range []string{"users", "sessions", "vnfest_schema_migrations", "vnfest_session_bridge", "bangumi_bindings", "club_verification_codes", "club_recommendations", "club_comments", "club_moe_kings", "analytics_pageviews", "analytics_historical_pv", "recognition_programs", "recognition_program_versions", "recognition_badges", "recognition_connectors", "recognition_events", "recognition_attempts", "recognition_submissions", "recognition_reviews", "recognition_credentials", "recognition_outbox", "recognition_identity_links", "recognition_claim_codes", "recognition_club_roles", "vote_projects", "vote_stages", "vote_entries", "vote_nominations", "vote_votes", "vote_stage_entries", "vote_matches", "vote_results", "vote_flow_runs", "vote_flow_pools", "vote_flow_pool_entries", "vote_flow_results", "vote_flow_matches", "vote_flow_events", "galonly_events", "galonly_applications", "galonly_application_clubs", "galonly_votes", "galonly_public_votes", "galonly_reviewers", "galonly_staff_applications", "galonly_merchandise_revisions", "spy_rooms", "spy_seats", "spy_words", "spy_word_pairs", "spy_sentences", "spy_votes", "spy_night_actions", "spy_blank_guesses", "spy_round_outcomes", "spy_events", "spy_results", "spy_idempotency", "quiz_shares", "club_bot_tokens"} {
+	for _, table := range []string{"users", "sessions", "vnfest_schema_migrations", "vnfest_session_bridge", "bangumi_bindings", "club_verification_codes", "club_recommendations", "club_comments", "club_moe_kings", "analytics_pageviews", "analytics_historical_pv", "recognition_programs", "recognition_program_versions", "recognition_badges", "recognition_connectors", "recognition_events", "recognition_attempts", "recognition_submissions", "recognition_reviews", "recognition_credentials", "recognition_outbox", "recognition_identity_links", "recognition_claim_codes", "recognition_club_roles", "vote_projects", "vote_stages", "vote_entries", "vote_nominations", "vote_votes", "vote_stage_entries", "vote_matches", "vote_results", "vote_flow_runs", "vote_flow_pools", "vote_flow_pool_entries", "vote_flow_results", "vote_flow_matches", "vote_flow_events", "galonly_events", "galonly_applications", "galonly_application_clubs", "galonly_votes", "galonly_public_votes", "galonly_reviewers", "galonly_staff_applications", "galonly_merchandise_revisions", "galonly_map_documents", "galonly_map_user_state", "galonly_booth_profiles", "galonly_booth_accounts", "galonly_booth_sessions", "galonly_booth_metric_events", "galonly_booth_favorites", "spy_rooms", "spy_seats", "spy_words", "spy_word_pairs", "spy_sentences", "spy_votes", "spy_night_actions", "spy_blank_guesses", "spy_round_outcomes", "spy_events", "spy_results", "spy_idempotency", "quiz_shares", "club_bot_tokens"} {
 		exists, err := db.TableExists(ctx, table)
 		if err != nil {
 			return fmt.Errorf("verify table %s: %w", table, err)
@@ -1258,7 +1364,7 @@ func Verify(ctx context.Context, db *DB) error {
 	if err := db.QueryRowContext(ctx, "SELECT COALESCE(MAX(version), 0) FROM vnfest_schema_migrations").Scan(&version); err != nil {
 		return fmt.Errorf("verify migration version: %w", err)
 	}
-	if version < 17 {
+	if version < 19 {
 		return fmt.Errorf("compatibility schema migration is not applied; current version is %d", version)
 	}
 	return nil

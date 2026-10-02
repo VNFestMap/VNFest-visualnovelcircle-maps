@@ -338,10 +338,14 @@ func (s *Server) oauthCompleteAccount(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusUnprocessableEntity, map[string]any{"success": false, "code": "OAUTH_EMAIL_VERIFICATION_REQUIRED", "message": "请先验证邮箱验证码"})
 		return
 	}
-	var input struct{ Email, Password, PasswordConfirmation string }
-	_ = decodeJSON(r, &input, 1<<20)
+	var input struct {
+		Email                string `json:"email"`
+		Password             string `json:"password"`
+		PasswordConfirmation string `json:"password_confirmation"`
+	}
+	decodeErr := decodeJSON(r, &input, 1<<20)
 	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
-	if input.Email != stringValue(pending["email"]) || len(input.Password) < 6 || len(input.Password) > 128 || input.Password != input.PasswordConfirmation {
+	if decodeErr != nil || input.Email != stringValue(pending["email"]) || len(input.Password) < 6 || len(input.Password) > 128 || input.Password != input.PasswordConfirmation {
 		writeJSONStatus(w, http.StatusUnprocessableEntity, map[string]any{"success": false, "code": "PASSWORD_INVALID", "message": "账号信息无效"})
 		return
 	}
@@ -665,23 +669,7 @@ func (s *Server) oauthClearContext(ctx context.Context, session *sessionstore.Se
 	_ = s.sessions.Store.Save(ctx, session)
 }
 func (s *Server) loginExistingOAuth(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int64) error {
-	if s.sessions == nil || s.sessions.Store == nil {
-		return errors.New("session store unavailable")
-	}
-	id, err := randomToken(32)
-	if err != nil {
-		return err
-	}
-	session := &sessionstore.Session{ID: id, UserID: &userID, Payload: map[string]any{"user_id": userID}, ExpiresAt: time.Now().Add(time.Duration(s.cfg.SessionLifetime) * time.Second), Valid: true, IPAddress: clientIP(r), UserAgent: r.UserAgent()}
-	if store, ok := s.sessions.Store.(*sessionstore.Store); ok {
-		err = store.SaveReplacingUserSessions(ctx, session)
-	} else {
-		err = s.sessions.Store.Save(ctx, session)
-	}
-	if err == nil {
-		s.sessions.SetCookie(w, id)
-	}
-	return err
+	return s.createAuthSession(ctx, w, r, userID)
 }
 
 func (s *Server) providerAuthURL(provider, state, mode string) string {

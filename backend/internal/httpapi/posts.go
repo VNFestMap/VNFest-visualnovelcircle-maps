@@ -154,11 +154,27 @@ func (s *Server) postsGet(w http.ResponseWriter, r *http.Request, action string)
 	case "suggested":
 		writeJSON(w, map[string]any{"success": true, "data": map[string]any{"users": s.postSuggested(r, viewerID)}})
 	case "follow_list":
-		if viewerID == 0 {
-			writeJSON(w, map[string]any{"success": true, "data": map[string]any{"followers": []any{}, "following": []any{}}})
+		username := strings.TrimSpace(r.URL.Query().Get("username"))
+		targetID, err := s.userIDByUsername(r, username)
+		if errors.Is(err, sql.ErrNoRows) || targetID == 0 {
+			postsError(w, "not_found", "用户不存在", http.StatusNotFound, nil)
 			return
 		}
-		writeJSON(w, map[string]any{"success": true, "data": s.postFollowList(r, viewerID)})
+		if err != nil {
+			postsError(w, "posts_unavailable", "动态操作失败，请稍后重试", http.StatusServiceUnavailable, nil)
+			return
+		}
+		listType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("type")))
+		if listType != "followers" && listType != "following" {
+			postsError(w, "invalid_type", "列表类型无效", http.StatusUnprocessableEntity, nil)
+			return
+		}
+		data, err := s.postFollowList(r, targetID, viewerID, listType)
+		if err != nil {
+			postsError(w, "posts_unavailable", "动态操作失败，请稍后重试", http.StatusServiceUnavailable, nil)
+			return
+		}
+		writeJSON(w, map[string]any{"success": true, "data": data})
 	case "search":
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		writeJSON(w, map[string]any{"success": true, "data": map[string]any{"query": query, "users": s.postSearchUsers(r, query, viewerID), "posts": s.postSearch(r, query, viewerID)}})
@@ -498,25 +514,47 @@ func (s *Server) postSuggested(r *http.Request, viewer int64) []map[string]any {
 	}
 	return out
 }
-func (s *Server) postFollowList(r *http.Request, viewer int64) map[string]any {
-	out := map[string]any{"followers": []map[string]any{}, "following": []map[string]any{}}
-	for key, sqlText := range map[string]string{"followers": "SELECT u.id,u.username,COALESCE(u.nickname,''),COALESCE(u.avatar_url,'') FROM user_follows f JOIN users u ON u.id=f.follower_id WHERE f.following_id=? ORDER BY f.id DESC LIMIT 100", "following": "SELECT u.id,u.username,COALESCE(u.nickname,''),COALESCE(u.avatar_url,'') FROM user_follows f JOIN users u ON u.id=f.following_id WHERE f.follower_id=? ORDER BY f.id DESC LIMIT 100"} {
-		rows, err := s.db.QueryContext(r.Context(), sqlText, viewer)
-		if err != nil {
-			continue
-		}
-		items := []map[string]any{}
-		for rows.Next() {
-			var id int64
-			var username, nickname, avatar string
-			if rows.Scan(&id, &username, &nickname, &avatar) == nil {
-				items = append(items, map[string]any{"id": id, "username": username, "handle": "@" + username, "nickname": firstNonEmpty(nickname, username), "avatar_url": avatar})
-			}
-		}
-		rows.Close()
-		out[key] = items
+func (s *Server) postFollowList(r *http.Request, targetID, viewer int64, listType string) (map[string]any, error) {
+	sqlText := `SELECT u.id,u.username,COALESCE(u.nickname,''),COALESCE(u.avatar_url,''),COALESCE(u.profile_bio,''),
+        CASE WHEN u.id<>? AND viewer_follow.id IS NOT NULL THEN 1 ELSE 0 END,
+        CASE WHEN u.id<>? AND viewer_follow.id IS NOT NULL AND reverse_follow.id IS NOT NULL THEN 1 ELSE 0 END
+        FROM user_follows f
+        JOIN users u ON u.id=f.follower_id
+        LEFT JOIN user_follows viewer_follow ON viewer_follow.follower_id=? AND viewer_follow.following_id=u.id
+        LEFT JOIN user_follows reverse_follow ON reverse_follow.follower_id=u.id AND reverse_follow.following_id=?
+        WHERE f.following_id=? AND u.status='active' ORDER BY f.id DESC LIMIT 200`
+	if listType == "following" {
+		sqlText = `SELECT u.id,u.username,COALESCE(u.nickname,''),COALESCE(u.avatar_url,''),COALESCE(u.profile_bio,''),
+            CASE WHEN u.id<>? AND viewer_follow.id IS NOT NULL THEN 1 ELSE 0 END,
+            CASE WHEN u.id<>? AND viewer_follow.id IS NOT NULL AND reverse_follow.id IS NOT NULL THEN 1 ELSE 0 END
+            FROM user_follows f
+            JOIN users u ON u.id=f.following_id
+            LEFT JOIN user_follows viewer_follow ON viewer_follow.follower_id=? AND viewer_follow.following_id=u.id
+            LEFT JOIN user_follows reverse_follow ON reverse_follow.follower_id=u.id AND reverse_follow.following_id=?
+            WHERE f.follower_id=? AND u.status='active' ORDER BY f.id DESC LIMIT 200`
 	}
-	return out
+	rows, err := s.db.QueryContext(r.Context(), sqlText, viewer, viewer, viewer, viewer, targetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []map[string]any{}
+	for rows.Next() {
+		var id, isFollowing, isFriend int64
+		var username, nickname, avatar, bio string
+		if err := rows.Scan(&id, &username, &nickname, &avatar, &bio, &isFollowing, &isFriend); err != nil {
+			return nil, err
+		}
+		items = append(items, map[string]any{
+			"id": id, "username": username, "handle": "@" + username,
+			"nickname": firstNonEmpty(nickname, username), "avatar_url": avatar,
+			"bio": bio, "is_following": isFollowing != 0, "is_friend": isFriend != 0,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return map[string]any{"type": listType, "users": items}, nil
 }
 func (s *Server) postSearchUsers(r *http.Request, q string, viewer int64) []map[string]any {
 	if q == "" {

@@ -332,6 +332,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 .vn-page-inner-full {
@@ -492,7 +493,7 @@ body {
   cursor: pointer;
   color: inherit;
   font: inherit;
-  border-radius: 6px;
+  border-radius: 12px;
   transition: background 0.15s ease;
 }
 .vn-today-item:last-child {
@@ -820,14 +821,15 @@ body {
 }
 .vn-notification-row {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: flex-start;
   width: 100%;
   min-height: 80px;
   gap: 9px;
   padding: 10px 10px 10px 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -1222,11 +1224,12 @@ body {
   gap: 12px;
 }
 .vn-wallpaper-option {
+  display: block;
   min-width: 0;
   min-height: 44px;
   padding: 0;
   border: 2px solid transparent;
-  border-radius: var(--seed-radius);
+  border-radius: 12px;
   background: var(--seed-surface);
   color: var(--seed-text-bright);
   overflow: hidden;
@@ -1955,7 +1958,7 @@ body {
   .vn-notification-row {
     min-height: 88px;
     padding: 13px 10px;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   .vn-notification-row.is-selected::before {
     top: 12px;

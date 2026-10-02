@@ -42,15 +42,17 @@ $params = [];
 
 // 类型过滤。保留原有值，同时让日志中已经存在的投票、认证、专栏、论坛和接入操作可被单独识别。
 $typeConditions = [
-    'review'   => "al.action LIKE 'galonly.%' OR al.action LIKE 'galonly_staff.%' OR al.action LIKE 'review.%'",
+    'review'   => "al.action LIKE 'galonly.%' OR al.action LIKE 'galonly_staff.%' OR al.action LIKE 'review.%' OR al.action LIKE 'map_%' OR al.action LIKE 'content_review_%' OR al.action IN ('map_export','map_publish','map_save','map_save_draft')",
     'auth'     => "al.action IN ('user.register','user.login','user.logout','user.send_register_code','user.send_password_reset_code','user.reset_password','user.change_password','user.send_code','user.bind_email','user.unbind_email','user.bind_qq','user.unbind_qq','user.bind_discord','user.unbind_discord')",
     'user'     => "(al.action LIKE 'user.%' OR al.action LIKE 'users.%') AND al.action NOT IN ('user.register','user.login','user.logout','user.send_register_code','user.send_password_reset_code','user.reset_password','user.change_password','user.send_code','user.bind_email','user.unbind_email','user.bind_qq','user.unbind_qq','user.bind_discord','user.unbind_discord')",
-    'club'     => "al.action LIKE 'membership.%' OR al.action LIKE 'club.%' OR al.action LIKE 'club_moe_king.%' OR al.action LIKE 'star_union.%' OR al.action IN ('generate_club_code','revoke_club_code','redeem_club_code','delete_club_comment','add_recommendation','remove_recommendation','reorder_recommendations')",
+    'club'     => "al.action LIKE 'membership.%' OR al.action LIKE 'club.%' OR al.action LIKE 'club_moe_king.%' OR al.action LIKE 'star_union.%' OR al.action LIKE 'clubs.%' OR al.action LIKE 'club_avatar.%' OR al.action IN ('generate_club_code','revoke_club_code','redeem_club_code','delete_club_comment','add_recommendation','remove_recommendation','reorder_recommendations')",
     'announce' => "al.action LIKE 'announcement.%' OR al.action LIKE 'announce.%'",
-    'vote'     => "al.action LIKE 'vote.%' OR al.action LIKE 'vote_%'",
+    'vote'     => "al.action LIKE 'vote.%' OR al.action LIKE 'vote_%' OR al.action LIKE 'moe_%'",
     'recognition' => "al.action LIKE 'recog.%' OR al.action LIKE 'recog_%'",
     'column'  => "al.action LIKE 'column.%' OR al.action LIKE 'column_%'",
-    'forum'    => "al.action LIKE 'forum.%' OR al.action LIKE 'forum_%'",
+    'forum'    => "al.action LIKE 'forum.%' OR al.action LIKE 'forum_%' OR al.action LIKE 'posts.%' OR al.action LIKE 'posts_%' OR al.action IN ('forum_reply_delete')",
+    'wiki'     => "al.action LIKE 'wiki_%'",
+    'project'  => "al.action LIKE 'project_%' OR al.action LIKE 'project_item.%' OR al.action LIKE 'project_participation.%'",
     'integration' => "al.action LIKE 'bot.%' OR al.action LIKE 'bot_%'",
 ];
 // “system”是所有未被业务分类命中的动作，保证新动作不会从日志页消失。

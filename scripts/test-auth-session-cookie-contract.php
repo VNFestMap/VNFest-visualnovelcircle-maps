@@ -10,19 +10,23 @@ if (!mkdir($sessionPath, 0700, true) && !is_dir($sessionPath)) {
     throw new RuntimeException('Unable to create temporary session directory');
 }
 
-$port = random_int(18080, 18980);
-$command = sprintf(
-    '%s -d session.save_path=%s -S 127.0.0.1:%d -t %s',
-    escapeshellarg(PHP_BINARY),
-    escapeshellarg($sessionPath),
-    $port,
-    escapeshellarg($repoRoot)
-);
+$dbPath = $sessionPath . DIRECTORY_SEPARATOR . 'fixture.db';
+$db = new PDO('sqlite:' . $dbPath);
+$db->exec('CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id INTEGER, expires_at TEXT, is_valid INTEGER DEFAULT 1)');
+$db->exec('CREATE TABLE vnfest_session_bridge (session_id TEXT PRIMARY KEY, user_id INTEGER, payload_json TEXT, expires_at TEXT, is_valid INTEGER, created_at TEXT, updated_at TEXT)');
+$db->exec("INSERT INTO sessions(id,user_id,expires_at) VALUES ('preserve-session',123,datetime('now','+1 hour'))");
+$db = null;
+$router = $sessionPath . DIRECTORY_SEPARATOR . 'router.php';
+file_put_contents($router, '<?php define("DB_PATH",' . var_export($dbPath,true) . '); define("DB_DRIVER","sqlite"); require ' . var_export($repoRoot . '/includes/auth.php',true) . '; initSession(); header("Content-Type: application/json"); echo json_encode(["session_id"=>session_id()]);');
+$socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+if (!$socket) throw new RuntimeException($errstr);
+$port = (int)substr(strrchr(stream_socket_get_name($socket,false), ':'),1); fclose($socket);
+$command = [PHP_BINARY, '-d', 'session.save_path=' . $sessionPath, '-S', '127.0.0.1:' . $port, $router];
 
 $pipes = [];
 $process = proc_open(
     $command,
-    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+    [0 => ['pipe', 'r'], 1 => ['file', $sessionPath . '/server.log', 'a'], 2 => ['file', $sessionPath . '/server.log', 'a']],
     $pipes,
     $repoRoot
 );
@@ -154,7 +158,7 @@ try {
     }
     proc_terminate($process);
     proc_close($process);
-    foreach (glob($sessionPath . DIRECTORY_SEPARATOR . 'sess_*') ?: [] as $sessionFile) {
+    foreach (glob($sessionPath . DIRECTORY_SEPARATOR . '*') ?: [] as $sessionFile) {
         @unlink($sessionFile);
     }
     @rmdir($sessionPath);

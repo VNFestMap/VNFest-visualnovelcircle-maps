@@ -107,7 +107,7 @@ button, input, textarea, select { font: inherit; }
   min-width: 36px;
   height: 36px;
   padding-inline: 10px;
-  border-radius: var(--cm-r-sm);
+  border-radius: var(--vn-button-radius, 9999px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -507,6 +507,7 @@ button, input, textarea, select { font: inherit; }
     font-size: 0;
   }
   .cm-topbar-actions .ant-btn .anticon { font-size: 16px; }
+  .cm-topbar-actions .cm-topbar-action > span:not(.ant-btn-icon):not(.anticon) { display: none; }
   .vn-topbar-sub { font-size: var(--cm-fs-meta); }
   .cm-page-heading { align-items: stretch; flex-direction: column; }
   .cm-page-heading .ant-space, .cm-page-heading .ant-btn { width: 100%; }

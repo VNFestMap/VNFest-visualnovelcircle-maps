@@ -69,6 +69,15 @@ type auditRequestSnapshot struct {
 	contentType string
 }
 
+// Only these business fields may be copied from an already parsed form into an
+// audit row. In particular, multipart file names and contents are never read.
+var auditFormFieldNames = []string{
+	"id", "user_id", "club_id", "country", "event_id", "event_code", "booth_id",
+	"application_id", "membership_id", "project_id", "stage_id", "pool_id",
+	"program_id", "submission_id", "union_id", "asset", "phase", "vote",
+	"decision", "status", "provider", "count", "guest", "public_visibility",
+}
+
 func (s *Server) auditRequestSnapshot(r *http.Request) *auditRequestSnapshot {
 	if !shouldAutomaticallyAudit(r) || s.shouldSkipAutomaticAudit(r) {
 		return nil
@@ -93,6 +102,11 @@ func (s *Server) auditRequestSnapshot(r *http.Request) *auditRequestSnapshot {
 }
 
 func (s *Server) shouldSkipAutomaticAudit(r *http.Request) bool {
+	if r.URL.Path == "/api/galonly_booths.php" && r.URL.Query().Get("action") == "track" {
+		// Tracking deliberately returns 204 even when the event is discarded;
+		// recording it as a successful administrator operation is misleading.
+		return true
+	}
 	switch r.URL.Path {
 	case "/api/admin_logs.php", "/api/admin_insights.php", "/api/analytics.php", "/api/health.php", "/api/test.php", "/api/galonly_map.php":
 		// The map endpoint already has domain-specific audit records. The other
@@ -133,6 +147,19 @@ func (s *Server) finishAutomaticAudit(r *http.Request, snapshot *auditRequestSna
 	if snapshot == nil || response == nil || !auditResponseSucceeded(response.status, response.body.Bytes()) {
 		return
 	}
+	if snapshot.body == nil {
+		snapshot.body = map[string]any{}
+	}
+	for _, key := range auditFormFieldNames {
+		if _, exists := snapshot.body[key]; exists {
+			continue
+		}
+		if values := r.PostForm[key]; len(values) > 0 {
+			snapshot.body[key] = values[0]
+		} else if r.MultipartForm != nil && len(r.MultipartForm.Value[key]) > 0 {
+			snapshot.body[key] = r.MultipartForm.Value[key][0]
+		}
+	}
 	action, targetType, targetID, ok := auditActionForRequest(r, snapshot.body, response.body.Bytes())
 	if !ok {
 		return
@@ -142,7 +169,9 @@ func (s *Server) finishAutomaticAudit(r *http.Request, snapshot *auditRequestSna
 		actor = s.auditActorFromResponse(r, response)
 	}
 	details := safeAuditDetails(r, snapshot.body, response.body.Bytes())
-	details["result"] = "success"
+	if _, exists := details["result"]; !exists {
+		details["result"] = "success"
+	}
 	s.recordAudit(r.Context(), r, actor, action, targetType, targetID, details)
 }
 
@@ -478,7 +507,7 @@ func isSensitiveAuditKey(key string) bool {
 
 func safeAuditDetails(r *http.Request, body map[string]any, response []byte) map[string]any {
 	details := map[string]any{}
-	for _, key := range []string{"id", "user_id", "club_id", "country", "event_id", "application_id", "membership_id", "project_id", "stage_id", "pool_id", "program_id", "submission_id", "union_id", "phase", "vote", "decision", "status", "result", "provider", "count", "existing_count", "guest", "public_visibility", "duplicate", "mail_sent", "found", "fields", "updated_fields", "role", "old_role", "new_role", "name", "title"} {
+	for _, key := range []string{"id", "user_id", "club_id", "country", "event_id", "event_code", "booth_id", "application_id", "membership_id", "project_id", "stage_id", "pool_id", "program_id", "submission_id", "union_id", "asset", "phase", "vote", "decision", "status", "result", "provider", "count", "existing_count", "guest", "public_visibility", "duplicate", "mail_sent", "found", "fields", "updated_fields", "role", "old_role", "new_role", "name", "title"} {
 		if value, ok := body[key]; ok {
 			if safe, keep := safeAuditValue(value); keep {
 				details[key] = safe
@@ -490,7 +519,7 @@ func safeAuditDetails(r *http.Request, body map[string]any, response []byte) map
 	}
 	var decoded map[string]any
 	if json.Unmarshal(response, &decoded) == nil {
-		for _, key := range []string{"id", "user_id", "club_id", "application_id", "membership_id", "project_id", "stage_id", "pool_id", "program_id", "submission_id", "union_id", "phase", "vote", "decision", "status", "result", "provider", "count", "mail_sent", "found"} {
+		for _, key := range []string{"id", "user_id", "club_id", "event_id", "event_code", "booth_id", "application_id", "membership_id", "project_id", "stage_id", "pool_id", "program_id", "submission_id", "union_id", "asset", "phase", "vote", "decision", "status", "result", "provider", "count", "mail_sent", "found", "storage", "fallback"} {
 			if value, ok := decoded[key]; ok {
 				if safe, keep := safeAuditValue(value); keep {
 					details[key] = safe

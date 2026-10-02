@@ -15,7 +15,7 @@
  *
  * 指定页面 id（逗号分隔，可传多个以一次抓多期）：
  *   node scripts/fetch-daily-notion.mjs <pageId1>,<pageId2>
- *   未提供命令行页面 ID 时，会将自动发现的当天页面与 NOTION_PAGE_IDS 合并；
+ *   未提供命令行页面 ID 时，会将自动发现的最近两周页面与 NOTION_PAGE_IDS 合并；
  *   设置 NOTION_AUTO_DISCOVER=0 可关闭自动发现。
  * =========================================================================== */
 import fs from 'node:fs'
@@ -37,6 +37,11 @@ if (!TOKEN) {
 const VERSION = '2022-06-28'
 const API_BASE_URL = process.env.NOTION_API_BASE_URL || 'https://api.notion.com/v1'
 const REPORT_TIME_ZONE = process.env.NOTION_REPORT_TIME_ZONE || 'Asia/Shanghai'
+// 自动重读最近两周，补抓错过 07:00 执行时间才完成的页面和文案版。
+const LOOKBACK_DAYS = Number(process.env.NOTION_LOOKBACK_DAYS || 14)
+if (!Number.isInteger(LOOKBACK_DAYS) || LOOKBACK_DAYS < 1 || LOOKBACK_DAYS > 60) {
+  throw new Error('NOTION_LOOKBACK_DAYS 必须是 1 至 60 的整数')
+}
 const DEFAULT_PAGES = ['3c9007db-6a17-816c-9201-cb99ad1b336e']
 const SOURCE_SHARE_URL =
   'https://app.notion.com/p/e622db10061342b4bd31bb7452314803?v=655d15134e244f4e86612fb78a2c07a6'
@@ -59,17 +64,24 @@ const hasCliPageIds = Boolean(process.argv[2]?.trim())
 const autoDiscoverToday = !hasCliPageIds && process.env.NOTION_AUTO_DISCOVER !== '0'
 
 async function api(pathname, init = {}) {
-  const r = await fetch(`${API_BASE_URL}${pathname}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${TOKEN}`,
-      'Notion-Version': VERSION,
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init.headers || {}),
-    },
-  })
-  if (!r.ok) throw new Error(`${pathname} -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
-  return r.json()
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const r = await fetch(`${API_BASE_URL}${pathname}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        'Notion-Version': VERSION,
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.headers || {}),
+      },
+    })
+    if ((r.status === 429 || r.status >= 500) && attempt < 4) {
+      const seconds = Number(r.headers.get('retry-after')) || (attempt + 1) * 2
+      await new Promise((resolve) => setTimeout(resolve, Math.min(seconds, 30) * 1000))
+      continue
+    }
+    if (!r.ok) throw new Error(`${pathname} -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+    return r.json()
+  }
 }
 
 async function getBlocks(id) {
@@ -104,11 +116,14 @@ function pageTitleOf(page) {
 }
 
 async function searchTodayPage(date) {
+  const start = new Date(`${date}T00:00:00Z`)
+  start.setUTCDate(start.getUTCDate() - LOOKBACK_DAYS + 1)
+  const firstDate = start.toISOString().slice(0, 10)
   const results = []
   let cursor
   do {
     const body = {
-      query: date,
+      query: '日本 Galgame 行业日报',
       page_size: 100,
       filter: { property: 'object', value: 'page' },
     }
@@ -120,7 +135,10 @@ async function searchTodayPage(date) {
 
   const matches = results
     .map((page) => ({ page, title: pageTitleOf(page) }))
-    .filter(({ title }) => title.includes('日本 Galgame 行业日报') && title.endsWith(date))
+    .filter(({ title }) => {
+      const issueDate = title.match(/\d{4}-\d{2}-\d{2}\s*$/)?.[0].trim()
+      return title.includes('日本 Galgame 行业日报') && issueDate >= firstDate && issueDate <= date
+    })
     .sort((a, b) => String(b.page.last_edited_time || '').localeCompare(String(a.page.last_edited_time || '')))
 
   // 同一天可能同时存在“正式日报”和“文案版/草稿版”。不要直接使用
@@ -149,7 +167,7 @@ async function parseIssue(pageId, { announce = true } = {}) {
   }
   if (cur.length) groups.push(cur)
 
-  const topItems = parseTopItems(blocks, { fallbackUrl: page.url || SOURCE_SHARE_URL })
+  const topItems = parseTopItems(blocks, { fallbackUrl: page.url || SOURCE_SHARE_URL, reportDate: date })
   const structuredItems = parseStructuredItems(blocks)
   let items
   let parser
@@ -198,23 +216,41 @@ function issueQuality(issue) {
   return editionWeight + parserWeight + itemWeight + directWeight
 }
 
+function isCompleteIssue(issue) {
+  return issue.items.length > 0 && issue.items.every((item) =>
+    item.title && item.summary && META_DATE_RE.test(item.meta || '') && /^https?:\/\//.test(item.url || ''),
+  )
+}
+
 if (autoDiscoverToday) {
   const today = dateInTimeZone()
   const todayPages = await searchTodayPage(today)
   if (!todayPages.length) {
-    throw new Error(`未找到 ${today} 的 Notion 日报页面，请确认页面已创建且集成有权限；如需手动回填可设置 NOTION_AUTO_DISCOVER=0`)
+    throw new Error(`未找到最近 ${LOOKBACK_DAYS} 天的 Notion 日报页面，请确认集成权限`)
   }
-  const candidates = await Promise.all(todayPages.map((page) => parseIssue(page.id, { announce: false })))
-  const ranked = candidates
-    .map((issue) => ({ issue, quality: issueQuality(issue) }))
-    .sort((a, b) => b.quality - a.quality)
-  const todayIssue = ranked.find(({ issue }) => issue.items.length > 0)?.issue || ranked[0].issue
-  const todayPageId = todayIssue.pageId
-  pageIds = [todayPageId, ...pageIds.filter((id) => id !== todayPageId)]
-  console.log(`自动发现今日页面：${todayIssue.pageTitle}（${todayPageId}）`)
-  if (ranked.length > 1) {
-    console.log(`同日候选页面 ${ranked.length} 个，已按页面结构和有效条目数选择：${todayIssue.parser}；${todayIssue.items.length} 条`)
+  const candidates = []
+  for (const page of todayPages) candidates.push(await parseIssue(page.id, { announce: false }))
+  const dates = [...new Set(candidates.map((issue) => issue.date))].sort().reverse()
+  const discoveredIds = []
+  for (const date of dates) {
+    const ranked = candidates.filter((issue) => issue.date === date)
+      .map((issue) => ({ issue, quality: issueQuality(issue) }))
+      .sort((a, b) => b.quality - a.quality)
+    const todayIssue = ranked.find(({ issue }) => isCompleteIssue(issue))?.issue
+    if (!todayIssue) {
+      console.log(`跳过未完成日报 ${date}，保留此前数据`)
+      continue
+    }
+    const todayPageId = todayIssue.pageId
+    discoveredIds.push(todayPageId)
+    console.log(`自动发现${date === today ? '今日' : '回补'}页面：${todayIssue.pageTitle}（${todayPageId}）`)
+    if (ranked.length > 1) {
+      console.log(`同日候选页面 ${ranked.length} 个，已按页面结构和有效条目数选择：${todayIssue.parser}；${todayIssue.items.length} 条`)
+    }
   }
+  if (!discoveredIds.length) throw new Error('最近日报均未完成，保留此前数据')
+  pageIds = [...discoveredIds, ...pageIds.filter((id) => !discoveredIds.includes(id))]
+  if (!candidates.some((issue) => issue.date === today)) console.log(`今日 ${today} 页面尚不可用，已核对最近 ${LOOKBACK_DAYS} 天`)
 }
 
 // 读取已有数据以便按日期累积合并
@@ -225,9 +261,19 @@ try {
   /* 首次运行，用默认结构 */
 }
 
-const fetched = await Promise.all(pageIds.map(parseIssue))
+const fetched = []
+for (const pageId of pageIds) {
+  const issue = await parseIssue(pageId)
+  if (!isCompleteIssue(issue)) throw new Error(`日报 ${issue.date} 未完成，不写入数据`)
+  fetched.push(issue)
+}
 const map = new Map((existing.reports || []).map((r) => [r.date, r]))
-for (const r of fetched) map.set(r.date, r) // 新抓取的覆盖同日旧数据
+const fetchedByDate = new Map()
+for (const r of fetched) {
+  const previous = fetchedByDate.get(r.date)
+  if (!previous || issueQuality(r) > issueQuality(previous)) fetchedByDate.set(r.date, r)
+}
+for (const r of fetchedByDate.values()) map.set(r.date, r) // 新抓取的覆盖同日旧数据
 
 const reports = [...map.values()].sort((a, b) => (a.date < b.date ? 1 : -1))
 const payload = {

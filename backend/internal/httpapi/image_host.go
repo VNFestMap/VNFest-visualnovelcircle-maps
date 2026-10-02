@@ -14,14 +14,17 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/VNFestMap/galgame-community-map/backend/internal/integrations/picui"
 )
 
 type storedImage struct {
-	URL         string
-	LocalBackup string
-	Storage     string
-	RemoteKey   string
-	Fallback    bool
+	URL            string
+	LocalBackup    string
+	Storage        string
+	RemoteKey      string
+	Fallback       bool
+	FallbackReason string
 }
 
 func (s *Server) storePublicDataImage(ctx context.Context, relative, localURL, originalName, mimeType, contextName string, data []byte) (storedImage, error) {
@@ -64,7 +67,23 @@ func (s *Server) finishPublicImage(ctx context.Context, localURL, originalName, 
 		return storedImage{}, fmt.Errorf("image host upload failed: %w", err)
 	}
 	result.Fallback = true
+	result.FallbackReason = picuiFallbackReason(err)
 	return result, nil
+}
+
+func picuiFallbackReason(err error) string {
+	switch {
+	case errors.Is(err, picui.ErrRateLimited):
+		return "rate_limited"
+	case errors.Is(err, picui.ErrNetwork):
+		return "network_error"
+	case errors.Is(err, picui.ErrUntrustedURL):
+		return "untrusted_url"
+	case errors.Is(err, picui.ErrRejected):
+		return "provider_rejected"
+	default:
+		return "provider_error"
+	}
 }
 
 // Post images share their temporary upload endpoint with private messages. To
@@ -308,6 +327,7 @@ func storedImageFields(result storedImage) map[string]any {
 	}
 	if result.Fallback {
 		fields["fallback"] = true
+		fields["fallback_reason"] = result.FallbackReason
 	}
 	return fields
 }

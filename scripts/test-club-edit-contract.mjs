@@ -18,7 +18,7 @@ assert.match(appSource, /fetch\(['"]\.\/api\/clubs\.php['"][\s\S]*cache:\s*['"]n
 assert.match(appSource, /fetch\(['"]\.\/api\/clubs_japan\.php['"][\s\S]*cache:\s*['"]no-store['"]/, 'Japan edit flow should read the club snapshot from the API before opening editor');
 assert.match(appSource, /function\s+openClubEditor\s*\(/, 'edit buttons should use the hydrated editor opener');
 assert.match(appSource, /openClubEditor\(club\)/, 'deep link handler should open the hydrated edit panel');
-assert.match(appSource, /data-action="edit-club"[\s\S]*openClubEditor\(club\)/, 'detail edit action should hydrate before editing');
+assert.match(appSource, /edit:\s*\(\)\s*=>\s*launch\(\(\)\s*=>\s*openClubEditor\(club\)\)/, 'React detail edit action should hydrate before editing');
 assert.match(indexSource, /id="provincePicker"/, 'club editor should use a province picker');
 assert.match(indexSource, /id="provincePickerOptions"/, 'province picker should render selectable options');
 assert.match(indexSource, /id="cropImage"[^>]*loading="eager"/, 'avatar crop image should load eagerly while the crop modal opens');

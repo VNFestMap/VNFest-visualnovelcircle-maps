@@ -11,691 +11,207 @@
 <meta name="theme-color" content="#f5f3f0" media="(prefers-color-scheme: light)">
 <title>VNFest · 登录</title>
 <script src="./js/theme-runtime.js?v=20260702-theme"></script>
-<link rel="stylesheet" href="./css/auth-shared.css?v=20260803-auth" />
+<link rel="stylesheet" href="./css/auth-transition.css?v=20261001-page-smooth-v5" />
+<script src="./js/auth-transition.js?v=20261001-page-smooth-v5"></script>
+<link rel="stylesheet" href="./css/auth-shared.css?v=20261001-auth-polish-v2" />
+<script defer src="./js/auth-ui.js?v=20261001-auth-polish"></script>
+<script defer src="./js/page-background.js?v=20260812-preferences"></script>
 <style>
-/* ── Theme Variables ── */
+
+/* Centered account page. Tokens: warm neutral / VNFest red, 4px spacing,
+   480px card, 48px controls, 12px controls and 28px card radii. */
 :root {
-  --login-wallpaper: url("./images/a9b7bf991c6688102abd0059eba3c3f8.jpeg");
-  --bg: #090909;
-  --surface: #141313;
-  --surface2: #1f1d1c;
-  --surface3: #292521;
-  --border: rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.18);
-  --text: #f7f1ee;
-  --muted: #b9aaa4;
-  --soft: #7c716d;
-  --primary: #e74c3c;
-  --primary-dim: #bd382b;
-  --primary-soft: rgba(231,76,60,0.14);
-  --accent: #d99a3a;
-  --accent-cool: #5fb7d7;
-  --success: #4fb985;
-  --glass-bg: rgba(18,17,16,0.84);
-  --glass-border: rgba(255,255,255,0.13);
-  --input-bg: rgba(255,255,255,0.055);
-  --shadow-card: 0 28px 80px rgba(0,0,0,0.42), 0 10px 28px rgba(231,76,60,0.10);
-  --radius-card: 16px;
-  --radius-control: 7px;
-  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  /* 统一认证组件层令牌（沿用本页原配色） */
-  --auth-primary: #e74c3c;
-  --auth-primary-strong: #bd382b;
-  --auth-danger: #e74c3c;
-  --auth-success: #4fb985;
-  --auth-bg: #090909;
-  --auth-surface: #141313;
-  --auth-surface-raised: #1f1d1c;
-  --auth-surface-muted: #292521;
-  --auth-text: #f7f1ee;
-  --auth-text-muted: #b9aaa4;
-  --auth-text-soft: #7c716d;
-  --auth-border: rgba(255,255,255,0.10);
-  --auth-border-strong: rgba(255,255,255,0.18);
-  --auth-input-bg: rgba(255,255,255,0.055);
-  --auth-input-bg-focus: rgba(255,255,255,0.09);
-  --auth-shadow: rgba(0,0,0,0.42);
-  --auth-shadow-primary: 0 12px 26px rgba(231,76,60,0.22);
-  --auth-shadow-soft: 0 4px 16px rgba(0,0,0,0.2);
-  --auth-focus-ring: 0 0 0 3px rgba(231,76,60,0.15);
-  color-scheme: dark;
-}
-:root[data-theme='light'] {
-  --bg: #f4f1ec;
-  --surface: #ffffff;
-  --surface2: #f7f4ef;
-  --surface3: #eee8df;
-  --border: rgba(69,42,32,0.12);
-  --border-strong: rgba(69,42,32,0.20);
-  --text: #211b18;
-  --muted: #705f57;
-  --soft: #9b8d87;
-  --primary: #e74c3c;
-  --primary-dim: #c23d30;
-  --primary-soft: rgba(231,76,60,0.10);
-  --accent: #b77925;
-  --accent-cool: #287c9a;
-  --success: #258a5c;
-  --glass-bg: rgba(255,255,255,0.88);
-  --glass-border: rgba(69,42,32,0.12);
-  --input-bg: rgba(69,42,32,0.045);
-  --shadow-card: 0 28px 70px rgba(75,48,35,0.12), 0 8px 22px rgba(231,76,60,0.08);
-  --auth-primary-strong: #c23d30;
-  --auth-success: #258a5c;
-  --auth-bg: #f4f1ec;
-  --auth-surface: #ffffff;
-  --auth-surface-raised: #f7f4ef;
-  --auth-surface-muted: #eee8df;
-  --auth-text: #211b18;
-  --auth-text-muted: #705f57;
-  --auth-text-soft: #9b8d87;
-  --auth-border: rgba(69,42,32,0.12);
-  --auth-border-strong: rgba(69,42,32,0.20);
-  --auth-input-bg: rgba(69,42,32,0.045);
-  --auth-input-bg-focus: rgba(69,42,32,0.07);
-  --auth-focus-ring: 0 0 0 3px rgba(231,76,60,0.12);
+  --login-wallpaper: none;
+  --bg: #f6f2eb; --surface: #fff; --text: #272521; --muted: #77736c;
+  --border: #e9e5de; --primary: #e74c3c;
+  --auth-text: var(--text); --auth-text-muted: var(--muted); --auth-text-soft: #959089;
+  --auth-surface: var(--surface); --auth-surface-raised: #faf9f6;
+  --auth-border: var(--border); --auth-border-strong: #ddd9d2;
+  --auth-input-bg: #faf9f7; --auth-input-bg-focus: #fff;
+  --auth-primary: #e74c3c; --auth-primary-strong: #ce3e30;
+  --auth-focus-ring: 0 0 0 3px rgb(231 76 60 / 12%);
+  --auth-shadow-primary: none; --auth-shadow-soft: none;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #090909; --surface: #141313; --surface2: #1f1d1c; --surface3: #292521;
-    --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.18);
-    --text: #f7f1ee; --muted: #b9aaa4; --soft: #7c716d;
-    --primary: #e74c3c; --primary-dim: #bd382b; --primary-soft: rgba(231,76,60,0.14);
-    --accent: #d99a3a; --accent-cool: #5fb7d7; --success: #4fb985;
-    --glass-bg: rgba(18,17,16,0.84); --glass-border: rgba(255,255,255,0.13);
-    --input-bg: rgba(255,255,255,0.06);
-    --shadow-card: 0 28px 80px rgba(0,0,0,0.42), 0 10px 28px rgba(231,76,60,0.10);
-    color-scheme: dark;
-  }
+:root[data-theme='dark'] {
+  --bg: #161719; --surface: #202124; --text: #f4f1eb; --muted: #aaa7a1;
+  --border: #353638; --auth-text-soft: #99958f;
+  --auth-surface-raised: #292a2d; --auth-border-strong: #47484b;
+  --auth-input-bg: #26272a; --auth-input-bg-focus: #2d2e31;
+  --auth-focus-ring: 0 0 0 3px rgb(231 76 60 / 20%);
+  color-scheme: dark;
 }
-
-/* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  min-height: 100vh; min-height: 100dvh;
-  background:
-    linear-gradient(90deg, rgba(9,9,9,0.90), rgba(9,9,9,0.66) 48%, rgba(9,9,9,0.92)),
-    linear-gradient(115deg, color-mix(in srgb, var(--primary) 18%, transparent), transparent 34%),
-    linear-gradient(245deg, color-mix(in srgb, var(--accent-cool) 14%, transparent), transparent 38%),
-    var(--login-wallpaper) center / cover fixed,
-    var(--bg);
-  color: var(--text);
-  font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow-x: hidden;
-  opacity: 0;
-  transition: opacity 0.35s ease, background-color 0.4s ease;
-}
-:root[data-theme='light'] body {
-  background:
-    linear-gradient(90deg, rgba(244,241,236,0.86), rgba(244,241,236,0.58) 48%, rgba(244,241,236,0.90)),
-    linear-gradient(115deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent 34%),
-    linear-gradient(245deg, color-mix(in srgb, var(--accent-cool) 10%, transparent), transparent 38%),
-    var(--login-wallpaper) center / cover fixed,
-    var(--bg);
-}
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-}
-:root[data-theme='light'] body::before {
-  background-image:
-    linear-gradient(rgba(92,58,44,0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92,58,44,0.055) 1px, transparent 1px);
-}
-body.ready { opacity: 1; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--bg);
+  color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  transition: background-color 180ms ease, color 180ms ease; }
 a { color: inherit; text-decoration: none; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--primary) 68%, var(--surface3));
-  border: 2px solid transparent;
-  background-clip: padding-box;
+button { font-family: inherit; }
+/* Quiet campus illustrations frame the form without entering its reading area. */
+body { isolation: isolate; display: flex; flex-direction: column; }
+.login-backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  --art-line: #b5a394; --art-red: #d97059; --art-peach: #f0d8c5; --art-paper: #fffaf2; --art-blue: #b5c8c6;
+  background: radial-gradient(ellipse at 12% 46%, rgb(234 192 157 / 22%), transparent 38%),
+    radial-gradient(ellipse at 90% 58%, rgb(179 203 196 / 20%), transparent 38%); }
+.login-backdrop::before { content: ''; position: absolute; inset: 0; opacity: .28;
+  background-image: radial-gradient(var(--art-line) .8px, transparent .8px); background-size: 28px 28px;
+  mask-image: linear-gradient(90deg, #000, transparent 38%, transparent 62%, #000); }
+.campus-art { position: absolute; width: max(1160px, 100%); height: 100%; min-height: 720px;
+  left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--art-line); }
+.campus-art .art-stroke { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.campus-art .art-paper { fill: var(--art-paper); }
+.campus-art .art-peach { fill: var(--art-peach); }
+.campus-art .art-red { fill: var(--art-red); }
+.campus-art .art-blue { fill: var(--art-blue); }
+.campus-art .art-route { stroke-dasharray: 5 10; }
+html.has-vnfest-wallpaper .login-backdrop { background: none; opacity: .18; }
+html.has-vnfest-wallpaper .login-backdrop::before { display: none; }
+:root[data-theme='dark'] .login-backdrop { --art-line: #71685f; --art-red: #a46553;
+  --art-peach: #382d28; --art-paper: #242527; --art-blue: #344947;
+  background: radial-gradient(ellipse at 12% 46%, rgb(136 88 59 / 14%), transparent 38%),
+    radial-gradient(ellipse at 90% 58%, rgb(75 110 101 / 13%), transparent 38%); }
+.page-header, .login-shell { position: relative; z-index: 1; }
+@media (max-width: 1000px) { .campus-art { opacity: .6; } }
+@media (max-width: 760px) {
+  .campus-art { width: 1050px; opacity: .5; }
+  .campus-art .art-scene { display: none; }
+  .login-backdrop::before { opacity: .18; mask-image: linear-gradient(#000, transparent 35%, transparent 75%, #000); }
+  .login-backdrop { background: radial-gradient(ellipse at 0 5%, rgb(234 192 157 / 30%), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgb(179 203 196 / 24%), transparent 50%); }
 }
-
-/* ── Particle Canvas ── */
-#particleCanvas {
-  position: fixed; inset: 0; z-index: 0;
-  pointer-events: none;
-}
-
-/* ── Layout ── */
-.login-shell {
-  position: relative;
-  z-index: 1;
-  width: min(1180px, calc(100vw - 48px));
-  min-height: calc(100dvh - 48px);
-  margin: 24px auto;
-  display: grid;
-  grid-template-columns: minmax(420px, 1.08fr) minmax(360px, 430px);
-  align-items: center;
-  gap: 28px;
-
-}
-/* ── Branding ── */
-.brand-panel {
-  min-height: 640px;
-  padding: clamp(24px, 4vw, 48px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-card);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--surface) 76%, transparent), color-mix(in srgb, var(--surface2) 58%, transparent)),
-    linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent 42%);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
-  box-shadow: var(--shadow-card);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: clamp(26px, 4vw, 52px);
-  overflow: hidden;
-  position: relative;
-}
-.brand-panel::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: linear-gradient(120deg, rgba(255,255,255,0.12), transparent 30%, transparent 70%, rgba(255,255,255,0.06));
-  opacity: 0.5;
-}
-.brand-mark {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  position: relative;
-  z-index: 1;
-}
-.brand-symbol {
-  width: 46px;
-  height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  overflow: hidden;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid var(--border);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.20);
-}
-.brand-symbol img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-}
-.brand-mark strong {
-  display: block;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-.brand-mark small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.brand-copy {
-  align-self: center;
-  max-width: 620px;
-  position: relative;
-  z-index: 1;
-}
-.eyebrow {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-.brand-copy h1 {
-  max-width: 560px;
-  font-size: clamp(34px, 4.4vw, 64px);
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-wrap: pretty;
-}
-.brand-copy p:last-child {
-  max-width: 520px;
-  margin-top: 18px;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.8;
-  text-wrap: pretty;
-}
-.preview-window {
-  position: relative;
-  z-index: 1;
-  min-height: 174px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--surface2) 96%, transparent), transparent),
-    repeating-linear-gradient(0deg, transparent 0 31px, rgba(255,255,255,0.05) 32px),
-    repeating-linear-gradient(90deg, transparent 0 31px, rgba(255,255,255,0.05) 32px);
-  overflow: hidden;
-}
-.route-line {
-  position: absolute;
-  left: 12%;
-  right: 14%;
-  top: 52%;
-  height: 2px;
-  background: linear-gradient(90deg, var(--primary), var(--accent), var(--accent-cool));
-  opacity: 0.7;
-}
-.map-node {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 0 6px var(--primary-soft);
-}
-.map-node.one { left: 12%; top: 49%; }
-.map-node.two { left: 44%; top: 31%; border-color: var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent); }
-.map-node.three { right: 14%; top: 49%; border-color: var(--accent-cool); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-cool) 18%, transparent); }
-.preview-card {
-  position: absolute;
-  width: min(210px, 36%);
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  background: color-mix(in srgb, var(--glass-bg) 90%, transparent);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 16px 32px rgba(0,0,0,0.18);
-}
-.preview-card.top { left: 7%; top: 18px; }
-.preview-card.bottom { right: 7%; bottom: 18px; }
-.preview-card span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.preview-card strong {
-  display: block;
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.35;
-}
-.preview-card i {
-  display: block;
-  width: 68%;
-  height: 6px;
-  margin-top: 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--primary) 35%, var(--surface3));
-}
-.brand-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  margin-top: 14px;
-  color: var(--muted);
-  font-size: 13px;
-  position: relative;
-  z-index: 1;
-}
-.brand-footer a {
-  color: var(--text);
-  font-weight: 700;
-  border-bottom: 1px solid color-mix(in srgb, var(--primary) 64%, transparent);
-}
-.brand-footer a:hover { color: var(--primary); }
-
-/* ── Auth Panel ── */
-.auth-panel {
-  width: 100%;
-  align-self: center;
-}
-.auth-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.auth-tools {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-.wallpaper-select {
-  max-width: 150px;
-  min-height: 28px;
-  padding: 4px 28px 4px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface2);
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  outline: none;
-}
-.wallpaper-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(231,76,60,0.14);
-}
-.wallpaper-select[hidden] { display: none; }
-
-/* ── Glass Card ── */
-.gate-card {
-  width: 100%;
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  padding: 30px;
-  transition: box-shadow 0.3s ease;
-}
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  15% { transform: translateX(-6px); }
-  30% { transform: translateX(5px); }
-  45% { transform: translateX(-4px); }
-  60% { transform: translateX(3px); }
-  75% { transform: translateX(-2px); }
-  90% { transform: translateX(1px); }
-}
-
-/* ── 入场动画（参考 galo_poster：0.7s ease-out + 错峰） ── */
-.shell-enter {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
-}
-body.ready .shell-enter {
-  opacity: 1;
-  transform: translateY(0);
-}
-.shell-enter.delay-1 { transition-delay: 0.1s; }
-.shell-enter.delay-2 { transition-delay: 0.2s; }
-.shell-enter.delay-3 { transition-delay: 0.35s; }
-/* ── 主题切换（圆形图标钮，参考 galo_poster） ── */
-.auth-theme-toggle {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: var(--surface2);
-  color: var(--primary);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.3s var(--ease-spring), color 0.3s var(--ease-spring), border-color 0.3s ease, transform 0.2s var(--ease-spring);
-}
-.auth-theme-toggle:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-}
-.auth-theme-toggle:active { transform: scale(0.85); }
-.auth-theme-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-.auth-theme-toggle::after { content: "☀"; }
-:root[data-theme="light"] .auth-theme-toggle::after { content: "☾"; }
-.oauth-provider-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--auth-border-strong);
-  border-radius: var(--auth-radius-md);
-  background: var(--auth-input-bg);
-}
-.oauth-provider-avatar {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--auth-surface-muted);
-}
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 24px clamp(24px, 5vw, 72px); }
+.brand-mark { display: inline-flex; align-items: center; gap: 12px; min-width: 0; min-height: 44px;
+  border-radius: 8px; transition: color 180ms ease; }
+.brand-mark:hover { color: var(--primary); }
+.brand-symbol { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center;
+  overflow: hidden; border-radius: 12px; background: #fff; }
+.brand-symbol img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.brand-mark strong { min-width: 0; font-size: 20px; font-weight: 650; letter-spacing: .04em; line-height: 1.4; white-space: nowrap; }
+.header-actions { display: flex; align-items: center; gap: 20px; }
+.home-link { font-size: 14px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
+.home-link svg { width: 16px; height: 16px; }
+.home-link:hover { color: var(--primary); }
+.auth-theme-toggle { width: 44px; height: 44px; border: 0;
+  border-radius: 50%; background: transparent; color: var(--text); cursor: pointer; font-size: 20px;
+  transition: background-color 180ms ease; }
+.auth-theme-toggle::after { content: '☾'; }
+:root[data-theme='dark'] .auth-theme-toggle::after { content: '☀'; }
+.auth-theme-toggle:hover { background: var(--auth-surface-raised); }
+.brand-mark:focus-visible, .home-link:focus-visible, .auth-theme-toggle:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 4px; }
+.login-shell { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 0; padding: 16px 24px 48px; }
+.auth-panel { width: min(480px, 100%); }
+.gate-card { background: var(--surface); border: 1px solid var(--border); border-radius: 28px;
+  padding: 36px; box-shadow: 0 12px 40px rgb(55 43 28 / 4%); }
+:root[data-theme='dark'] .gate-card { box-shadow: 0 12px 40px rgb(0 0 0 / 12%); }
+.auth-title { text-align: center; }
+.auth-title h2 { margin: 0; font-size: 28px; font-weight: 750; line-height: 1.3; }
+.auth-title p { margin-bottom: 0; }
+.auth-stack { gap: 16px; margin-top: 28px; }
+.auth-field > label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.auth-input { border-radius: 12px; }
+.auth-view .auth-btn-primary { min-height: 48px; margin-top: 0; letter-spacing: 0.08em; box-shadow: none; }
+.auth-view .auth-btn-primary:hover { box-shadow: none; }
+.auth-view .auth-link-row { margin: -4px 0; }
+.auth-text-button { font-weight: 600; }
+.auth-view .auth-divider { margin: 4px 0 0; }
+.auth-view .auth-social-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; }
+:root[lang^='ja'] .auth-view .auth-social-row { grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); }
+.auth-view .auth-social-row .auth-btn { display: inline-flex; width: 100%; height: 48px; min-height: 48px;
+  padding: 10px 12px; gap: 9px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--auth-border-strong); font-size: 14px; white-space: nowrap; box-shadow: none; }
+.provider-icon { display: block; width: 22px; height: 22px; flex: 0 0 22px; fill: currentColor; }
+.auth-btn-qq .provider-icon { color: #149cca; }
+.auth-btn-discord .provider-icon { color: #5865f2; }
+:root[data-theme='dark'] .auth-btn-discord .provider-icon { color: #929cff; }
+.auth-view .auth-social-row .auth-btn:hover { border-color: var(--primary); background: var(--auth-surface-raised); }
+.oauth-note { color: var(--muted); font-size: 12px; line-height: 1.7; text-align: center; }
+.auth-view .auth-switch { margin: 4px 0 0; font-size: 13px; line-height: 1.8; }
+.page-footer { margin: 24px 0 0; color: var(--muted); font-size: 12px; text-align: center; letter-spacing: 0.04em; }
+.oauth-provider-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--auth-input-bg); }
+.oauth-provider-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
 .oauth-provider-avatar.is-empty { display: none; }
-.oauth-provider-card strong { display: block; color: var(--auth-text); }
-.oauth-provider-card span { display: block; margin-top: 3px; color: var(--auth-text-muted); font-size: 12px; }
-.oauth-note {
-  padding: 10px 12px;
-  border-radius: var(--auth-radius-sm);
-  color: var(--auth-text-muted);
-  background: color-mix(in srgb, var(--auth-primary) 8%, transparent);
-  font-size: 12px;
-  line-height: 1.7;
-}
+.oauth-provider-card strong, .oauth-provider-card span { display: block; }
+.oauth-provider-card span { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .oauth-choice-grid { display: grid; gap: 8px; }
 .oauth-choice-grid .auth-btn { width: 100%; }
 .oauth-secondary-btn { background: transparent; }
-/* ── Responsive ── */
-@media (max-width: 960px) {
-  .login-shell {
-    width: min(620px, calc(100vw - 28px));
-    min-height: calc(100dvh - 28px);
-    margin: 14px auto;
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  .auth-panel { order: -1; }
-  .brand-panel {
-    min-height: auto;
-    padding: 22px;
-    gap: 22px;
-  }
-  .brand-copy h1 { font-size: clamp(28px, 9vw, 42px); }
-  .preview-window { min-height: 132px; }
+@keyframes shake { 25%, 75% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+@media (max-width: 520px) {
+  .page-header { padding: 16px; gap: 8px; }
+  .brand-mark { gap: 8px; }
+  .brand-mark strong { font-size: 16px; letter-spacing: 0; }
+  :root[lang^='ja'] .brand-mark strong { white-space: normal; text-wrap: balance; }
+  .brand-symbol { flex-basis: 30px; width: 30px; height: 30px; border-radius: 9px; }
+  .header-actions { flex: 0 0 auto; gap: 8px; }
+  .home-link { justify-content: center; width: 44px; border-radius: 50%; }
+  .home-link:hover { background: var(--auth-surface-raised); }
+  .home-link span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .login-shell { padding: 12px 16px max(24px, env(safe-area-inset-bottom)); }
+  .gate-card { padding: 28px 20px; border-radius: 24px; }
+  .auth-title h2 { font-size: 26px; }
+  .auth-stack { margin-top: 24px; }
 }
-@media (max-width: 560px) {
-  body {
-    background:
-      linear-gradient(180deg, rgba(9,9,9,0.82), rgba(9,9,9,0.94)),
-      linear-gradient(130deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent 40%),
-      var(--login-wallpaper) center top / cover scroll,
-      var(--bg);
-  }
-  :root[data-theme='light'] body {
-    background:
-      linear-gradient(180deg, rgba(244,241,236,0.80), rgba(244,241,236,0.94)),
-      linear-gradient(130deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent 40%),
-      var(--login-wallpaper) center top / cover scroll,
-      var(--bg);
-  }
-  .login-shell {
-    width: calc(100vw - 20px);
-    margin: 10px auto;
-  }
-  .gate-card { padding: 22px 16px; }
-  .auth-top { margin-bottom: 10px; }
-  .auth-tools { flex: 1; }
-  .wallpaper-select { flex: 1; max-width: none; }
-  .brand-panel { padding: 18px; }
-  .brand-symbol { width: 40px; height: 40px; }
-  .brand-copy p:last-child { font-size: 14px; line-height: 1.7; }
-  .preview-card { width: 44%; padding: 10px; }
-  .auth-social-row { flex-direction: column; }
-  .auth-input-row { flex-direction: column; }
-  .auth-code-btn { width: 100%; }
-}
-@media (max-height: 700px) {
-  .login-shell { align-items: start; }
-  .brand-panel { min-height: 560px; }
-  .gate-card { padding: 22px 20px; }
-}
-
-/* ============================================================
-   移动端独立设计（≤767px：顶部通栏品牌 + 底部圆角登录卡片）
-   ============================================================ */
-@media (max-width: 767px) {
-  body {
-    background:
-      linear-gradient(180deg, rgba(9,9,9,0.78) 0%, rgba(9,9,9,0.90) 55%, rgba(9,9,9,0.96) 100%),
-      linear-gradient(130deg, color-mix(in srgb, var(--primary) 14%, transparent), transparent 46%),
-      var(--login-wallpaper) center top / cover fixed,
-      var(--bg);
-  }
-  :root[data-theme='light'] body {
-    background:
-      linear-gradient(180deg, rgba(244,241,236,0.72) 0%, rgba(244,241,236,0.86) 55%, rgba(244,241,236,0.94) 100%),
-      linear-gradient(130deg, color-mix(in srgb, var(--primary) 9%, transparent), transparent 46%),
-      var(--login-wallpaper) center top / cover fixed,
-      var(--bg);
-  }
-  body::before { background-size: 34px 34px; }
-
-  .login-shell {
-    width: 100%;
-    min-height: 100dvh;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-  }
-
-  /* 品牌区：压缩为顶部通栏，不再保留桌面卡片形态 */
-  .brand-panel {
-    min-height: auto;
-    padding: calc(16px + env(safe-area-inset-top)) 20px 8px;
-    border: none;
-    border-radius: 0;
-    background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow: none;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    overflow: visible;
-  }
-  .brand-panel::after { display: none; }
-  .brand-mark { gap: 10px; }
-  .brand-symbol { width: 40px; height: 40px; border-radius: 12px; }
-  .brand-mark strong { font-size: 17px; }
-  .brand-mark small { font-size: 11px; }
-  .brand-copy { align-self: stretch; }
-  .eyebrow { margin-bottom: 8px; font-size: 11px; letter-spacing: 0.14em; }
-  .brand-copy h1 { max-width: none; font-size: clamp(27px, 7.5vw, 38px); line-height: 1.12; }
-  .brand-copy p:last-child { max-width: none; margin-top: 8px; font-size: 14px; line-height: 1.65; }
-  .preview-window,
-  .brand-footer { display: none; }
-
-  /* 认证区：登录卡片沉底，拇指友好 */
-  .auth-panel {
-    order: 0;
-    align-self: stretch;
-    margin-top: auto;
-    padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
-  }
-  .auth-top { justify-content: flex-end; margin-bottom: 10px; }
-  .auth-top > span { display: none; }
-  .auth-tools { gap: 6px; }
-  .wallpaper-select { display: none; }
-  .auth-theme-toggle { width: 38px; height: 38px; font-size: 16px; }
-
-  .gate-card {
-    border-radius: 22px;
-    padding: 24px 18px;
-    box-shadow: 0 20px 54px rgba(0,0,0,0.38);
-  }
-  .auth-title h2 { font-size: 22px; }
-  .auth-input { min-height: 48px; font-size: 16px; }
-  .auth-btn { min-height: 48px; }
-  .auth-btn-primary { font-size: 16px; }
-}
-
-/* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation: none !important; transition: none !important; transform: none !important; }
 }
 </style>
 <script defer src="js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body>
 
-<canvas id="particleCanvas" aria-hidden="true"></canvas>
-
-<div class="login-shell">
-  <section class="brand-panel shell-enter" aria-label="VNFest 入口">
-    <a class="brand-mark" href="index.html?guest=1" aria-label="返回 VNFest 地图">
-      <span class="brand-symbol"><img src="/images/logo.png" alt="" decoding="async"></span>
-      <span>
-        <strong>VNFest</strong>
-        <small>视觉小说高校学园祭</small>
-      </span>
-    </a>
-
-    <div class="brand-copy">
-      <p class="eyebrow">Campus visual novel atlas</p>
-      <h1>回到你的同好会。</h1>
-      <p>管理活动、关注社团动态，也可以继续参与投稿流程。</p>
-    </div>
-
-    <div>
-      <div class="preview-window" aria-hidden="true">
-        <div class="route-line"></div>
-        <span class="map-node one"></span>
-        <span class="map-node two"></span>
-        <span class="map-node three"></span>
-        <div class="preview-card top">
-          <span>CLUB MAP</span>
-          <strong>高校同好会地图</strong>
-          <i></i>
-        </div>
-        <div class="preview-card bottom">
-          <span>EVENT FLOW</span>
-          <strong>活动与投稿</strong>
-          <i></i>
-        </div>
-      </div>
-      <div class="brand-footer">
-        <span>VNFest account center</span>
-        <a href="index.html?guest=1">先看看地图</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="auth-panel shell-enter delay-1" aria-label="账号登录">
-    <div class="auth-top">
-      <span>账号入口</span>
-      <div class="auth-tools">
-        <select class="wallpaper-select" id="wallpaperSelect" title="选择登录页壁纸" aria-label="选择登录页壁纸" hidden>
-          <option value="__random__">随机壁纸</option>
-        </select>
-        <button class="auth-theme-toggle" id="themeToggle" title="切换主题" aria-label="切换主题"></button>
-      </div>
-    </div>
-
+<div class="login-backdrop" aria-hidden="true">
+  <svg class="campus-art" viewBox="0 0 1440 900" fill="none" preserveAspectRatio="xMidYMid slice" focusable="false">
+    <!-- Soft shapes and a route across the campus. All graphics are decorative. -->
+    <path class="art-peach" opacity=".55" d="M-70 110C52 13 180 96 227 192S241 350 139 370-100 264-70 110Z"/>
+    <path class="art-blue" opacity=".35" d="M1308 574c122-38 227 26 227 134s-100 207-203 151-172-245-24-285Z"/>
+    <path class="art-stroke art-route" opacity=".6" d="M-20 686c97-6 87-140 174-154s126 77 200 36M1082 343c96 60 115-22 182-53s128 29 196-11"/>
+    <g class="art-scene" transform="translate(105 270) rotate(-9 145 170)">
+      <rect class="art-peach" x="32" y="37" width="230" height="292" rx="28"/>
+      <rect class="art-paper" x="16" y="20" width="230" height="292" rx="22"/>
+      <rect class="art-stroke" x="16" y="20" width="230" height="292" rx="22"/>
+      <path class="art-stroke" d="M46 62h70m-70 14h43"/>
+      <circle class="art-red" cx="208" cy="67" r="11" opacity=".75"/>
+      <path class="art-stroke" d="M49 237v-94l72-40 72 40v94M38 237h167m-84-129v129m-47-76h20v24H74zm0 46h20v24H74zm73-46h20v24h-20zm0 46h20v24h-20z"/>
+      <path class="art-peach" d="M109 202h24v35h-24z"/>
+      <path class="art-stroke" d="M109 237v-35h24v35M48 270h106m-106 14h68"/>
+      <circle class="art-blue" cx="218" cy="220" r="29"/>
+      <path class="art-stroke" d="m205 220 9 9 17-20"/>
+    </g>
+    <g class="art-scene" transform="translate(1090 430) rotate(10 120 110)">
+      <rect class="art-blue" x="8" y="37" width="228" height="177" rx="24" opacity=".65"/>
+      <path class="art-paper" d="M0 54c42-11 75-9 111 7 36-16 69-18 111-7v149c-41-10-77-6-111 8-34-14-70-18-111-8Z"/>
+      <path class="art-stroke" d="M0 54c42-11 75-9 111 7 36-16 69-18 111-7v149c-41-10-77-6-111 8-34-14-70-18-111-8ZM111 62v147M26 94l54 6m-54 21 54 6m-54 21 40 4m73-51 53-6m-53 33 53-6m-53 33 39-4"/>
+      <path class="art-red" opacity=".8" d="M158 51v57l12-10 12 8V49z"/>
+      <path class="art-paper" d="M56-51h102a20 20 0 0 1 20 20v35a20 20 0 0 1-20 20h-43L88 45V24H56A20 20 0 0 1 36 4v-35a20 20 0 0 1 20-20Z"/>
+      <path class="art-stroke" d="M56-51h102a20 20 0 0 1 20 20v35a20 20 0 0 1-20 20h-43L88 45V24H56A20 20 0 0 1 36 4v-35a20 20 0 0 1 20-20Z"/>
+      <path class="art-red" d="M105 7 84-10c-15-14 5-31 21-15 16-16 36 1 21 15Z" opacity=".75"/>
+    </g>
+    <g class="art-stroke" opacity=".75">
+      <path d="m350 221 5 14 14 5-14 5-5 14-5-14-14-5 14-5Zm736 448 5 14 14 5-14 5-5 14-5-14-14-5 14-5ZM1215 182v18m-9-9h18M204 658v18m-9-9h18"/>
+      <circle cx="304" cy="624" r="7"/><circle cx="1121" cy="256" r="6"/>
+    </g>
+    <circle class="art-red" cx="1285" cy="354" r="5" opacity=".65"/>
+    <circle class="art-blue" cx="91" cy="211" r="7"/>
+  </svg>
+</div>
+<header class="page-header">
+  <a class="brand-mark" href="index.html?guest=1" aria-label="返回地图">
+    <span class="brand-symbol"><img src="/images/logo.png" alt="" decoding="async"></span>
+    <strong>视觉小说学园祭</strong>
+  </a>
+  <nav class="header-actions" aria-label="页面导航">
+    <a class="home-link" href="index.html?guest=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg><span>返回地图</span></a>
+    <button class="auth-theme-toggle" id="themeToggle" title="切换主题" aria-label="切换主题"></button>
+  </nav>
+</header>
+<main class="login-shell">
+  <section class="auth-panel" aria-label="账号登录">
     <div class="gate-card" id="gateCard">
       <!-- Login Form -->
       <div class="auth-view" id="loginForm">
@@ -713,19 +229,19 @@ body.ready .shell-enter {
             <input class="auth-input" type="password" id="loginPassword" placeholder="输入密码" autocomplete="current-password">
           </div>
           <div class="auth-link-row">
-            <a id="goForgot">忘记密码？</a>
+            <button id="goForgot" class="auth-text-button" type="button">忘记密码？</button>
           </div>
           <button class="auth-btn auth-btn-primary" id="loginBtn">登 录</button>
           <div class="auth-msg" id="loginMsg" style="display:none"></div>
 
           <div class="auth-divider" id="socialDivider"><span>其他登录方式</span></div>
           <div class="auth-social-row" id="socialRow">
-            <button class="auth-btn auth-btn-qq" id="qqLoginBtn">QQ 登录 / 注册</button>
-            <button class="auth-btn auth-btn-discord" id="discordLoginBtn">Discord 登录 / 注册</button>
+            <button class="auth-btn auth-btn-qq" id="qqLoginBtn"><svg class="provider-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false"><path d="M824.8 613.2c-16-51.4-34.4-94.6-62.7-165.3C766.5 262.2 689.3 112 511.5 112 331.7 112 256.2 265.2 261 447.9c-28.4 70.8-46.7 113.7-62.7 165.3-34 109.5-23 154.8-14.6 155.8 18 2.2 70.1-82.4 70.1-82.4 0 49 25.2 112.9 79.8 159-26.4 8.1-85.7 29.9-71.6 53.8 11.4 19.3 196.2 12.3 249.5 6.3 53.3 6 238.1 13 249.5-6.3 14.1-23.8-45.3-45.7-71.6-53.8 54.6-46.2 79.8-110.1 79.8-159 0 0 52.1 84.6 70.1 82.4 8.5-1.1 19.5-46.4-14.5-155.8z"/></svg><span>QQ 登录</span></button>
+            <button class="auth-btn auth-btn-discord" id="discordLoginBtn"><svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515c-.211.375-.457.88-.626 1.28a18.27 18.27 0 0 0-5.417 0 13.37 13.37 0 0 0-.635-1.28 19.74 19.74 0 0 0-4.885 1.515C.78 8.97-.054 13.456.363 17.88a19.9 19.9 0 0 0 5.993 3.03c.483-.658.914-1.358 1.285-2.096a12.87 12.87 0 0 1-2.024-.983c.17-.125.336-.255.497-.389 3.902 1.82 8.142 1.82 12 0 .162.134.328.264.497.389-.645.38-1.322.71-2.024.983.372.738.802 1.438 1.285 2.095a19.84 19.84 0 0 0 5.994-3.03c.49-5.128-.838-9.572-3.549-13.51zM8.02 15.16c-1.18 0-2.153-1.085-2.153-2.419s.952-2.42 2.153-2.42 2.174 1.096 2.153 2.42c0 1.334-.952 2.42-2.153 2.42zm7.96 0c-1.18 0-2.153-1.085-2.153-2.419s.952-2.42 2.153-2.42 2.174 1.096 2.153 2.42c0 1.334-.942 2.42-2.153 2.42z"/></svg><span>Discord 登录</span></button>
           </div>
           <div class="oauth-note">首次使用 QQ 或 Discord 授权会自动创建账号，邮箱和密码可以之后在用户中心补充。</div>
           <div class="auth-switch">
-            还没有账号？<a id="goRegister">注册</a>
+            还没有账号？<button id="goRegister" class="auth-text-button" type="button">注册</button>
           </div>
         </div>
       </div>
@@ -763,7 +279,7 @@ body.ready .shell-enter {
           <button class="auth-btn auth-btn-primary" id="registerBtn">注 册</button>
           <div class="auth-msg" id="regMsg" style="display:none"></div>
           <div class="auth-switch">
-            已有账号？<a id="goLogin">返回登录</a>
+            已有账号？<button id="goLogin" class="auth-text-button" type="button">返回登录</button>
           </div>
         </div>
       </div>
@@ -793,7 +309,7 @@ body.ready .shell-enter {
           <button class="auth-btn auth-btn-primary" id="resetPasswordBtn">重置密码</button>
           <div class="auth-msg" id="forgotMsg" style="display:none"></div>
           <div class="auth-switch">
-            想起来了？<a id="forgotGoLogin">返回登录</a>
+            想起来了？<button id="forgotGoLogin" class="auth-text-button" type="button">返回登录</button>
           </div>
         </div>
       </div>
@@ -862,14 +378,14 @@ body.ready .shell-enter {
       </div>
     </div>
   </section>
-</div>
+  <p class="page-footer">视觉小说学园祭</p>
+</main>
 
 <script>
 (function() {
 
 /* ── Theme（统一走 VNFTheme / theme-runtime.js，含 system 偏好；不做全屏闪屏） ── */
 var themeToggle = document.getElementById('themeToggle');
-var wallpaperSelect = document.getElementById('wallpaperSelect');
 
 themeToggle.addEventListener('click', function() {
   if (window.VNFTheme && typeof window.VNFTheme.toggle === 'function') {
@@ -883,76 +399,12 @@ if (window.VNFTheme && typeof window.VNFTheme.subscribe === 'function') {
   });
 }
 
-/* ── Wallpaper ── */
-function cssWallpaperUrl(url) {
-  return 'url("' + String(url || '').replace(/\\/g, '/').replace(/"/g, '\\"') + '")';
-}
-
-function applyWallpaper(url) {
-  if (!url) return;
-  document.documentElement.style.setProperty('--login-wallpaper', cssWallpaperUrl(url));
-}
-
-function pickRandomWallpaper(images) {
-  if (!images || !images.length) return null;
-  return images[Math.floor(Math.random() * images.length)];
-}
-
-function setWallpaperPreference(value) {
-  try {
-    if (value && value !== '__random__') {
-      localStorage.setItem('vnfestWallpaperPreference', value);
-    } else {
-      localStorage.removeItem('vnfestWallpaperPreference');
-    }
-  } catch (e) {}
-}
-
-async function initWallpapers() {
-  if (!wallpaperSelect) return;
-  var images = [{ name: '默认壁纸', file: 'a9b7bf991c6688102abd0059eba3c3f8.jpeg', url: 'images/a9b7bf991c6688102abd0059eba3c3f8.jpeg' }];
-  try {
-    var resp = await fetch('api/backgrounds.php', { credentials: 'same-origin' });
-    var data = await resp.json();
-    if (data && Array.isArray(data.images) && data.images.length) {
-      images = data.images;
-    }
-
-    wallpaperSelect.hidden = false;
-    images.forEach(function(item) {
-      var option = document.createElement('option');
-      option.value = item.url;
-      option.textContent = item.name || item.file || item.url;
-      wallpaperSelect.appendChild(option);
-    });
-
-    var saved = '';
-    try { saved = localStorage.getItem('vnfestWallpaperPreference') || ''; } catch (e) {}
-    var selected = images.find(function(item) { return item.url === saved || new URL(item.url, window.location.href).toString() === saved; });
-    if (selected) {
-      wallpaperSelect.value = selected.url;
-      applyWallpaper(selected.url);
-    } else {
-      wallpaperSelect.value = '__random__';
-      var random = pickRandomWallpaper(images);
-      if (random) applyWallpaper(random.url);
-    }
-
-    wallpaperSelect.addEventListener('change', function() {
-      var value = wallpaperSelect.value;
-      if (value === '__random__') {
-        setWallpaperPreference(value);
-        var random = pickRandomWallpaper(images);
-        if (random) applyWallpaper(random.url);
-        return;
-      }
-      setWallpaperPreference(value);
-      applyWallpaper(value);
-    });
-  } catch (e) {}
-}
-
 /* ── Auth Check (Gate) ── */
+function navigateAfterAuth(target) {
+  if (window.VNFPageTransition) window.VNFPageTransition.navigate(target, { kind: 'auth', replace: true });
+  else window.location.replace(target);
+}
+
 function getSafeRedirectTarget() {
   var params = new URLSearchParams(window.location.search);
   var target = params.get('redirect') || 'index.html';
@@ -971,7 +423,7 @@ async function checkAuth() {
     var resp = await fetch('api/auth.php?action=me', { credentials: 'same-origin' });
     var data = await resp.json();
     if (data.logged_in) {
-      window.location.replace(getSafeRedirectTarget());
+      navigateAfterAuth(getSafeRedirectTarget());
       return true;
     }
   } catch (e) { /* network error, show login */ }
@@ -990,92 +442,8 @@ async function checkOAuthConfig() {
     var anySocial = showQQ || showDiscord;
     document.getElementById('socialDivider').style.display = anySocial ? '' : 'none';
     document.getElementById('socialRow').style.display = anySocial ? '' : 'none';
+    document.querySelector('#loginForm .oauth-note').style.display = anySocial ? '' : 'none';
   } catch (e) {}
-}
-
-/* ── Particle Canvas ── */
-var canvas, ctx, particles = [], animId, canvasW, canvasH;
-
-function initParticles() {
-  canvas = document.getElementById('particleCanvas');
-  ctx = canvas.getContext('2d');
-  resizeCanvas();
-
-  var count = window.innerWidth < 768 ? 22 : 70;
-  var colors = ['#e74c3c', '#ff6b5c', '#c0392b', '#ff9e96', '#e74c3c'];
-  for (var i = 0; i < count; i++) {
-    particles.push({
-      x: Math.random() * canvasW,
-      y: Math.random() * canvasH,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 1) * 0.5,
-      size: Math.random() * 2.5 + 1,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      opacity: Math.random() * 0.2 + 0.05,
-      wobble: Math.random() * Math.PI * 2
-    });
-  }
-
-  window.addEventListener('resize', resizeCanvas);
-  document.addEventListener('visibilitychange', onVisibility);
-  tick();
-}
-
-function resizeCanvas() {
-  canvasW = window.innerWidth;
-  canvasH = window.innerHeight;
-  canvas.width = canvasW;
-  canvas.height = canvasH;
-}
-
-function onVisibility() {
-  if (document.hidden) {
-    if (animId) { cancelAnimationFrame(animId); animId = null; }
-  } else {
-    if (!animId) tick();
-  }
-}
-
-function tick() {
-  animId = requestAnimationFrame(tick);
-  ctx.clearRect(0, 0, canvasW, canvasH);
-
-  for (var i = 0; i < particles.length; i++) {
-    var p = particles[i];
-    p.wobble += 0.008;
-    p.x += p.vx + Math.sin(p.wobble) * 0.15;
-    p.y += p.vy;
-
-    if (p.x < -10) p.x = canvasW + 10;
-    if (p.x > canvasW + 10) p.x = -10;
-    if (p.y < -10) p.y = canvasH + 10;
-    if (p.y > canvasH + 10) p.y = -10;
-
-    ctx.globalAlpha = p.opacity;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Subtle connections between nearby particles
-  ctx.globalAlpha = 0.04;
-  ctx.strokeStyle = '#e74c3c';
-  ctx.lineWidth = 0.5;
-  for (var i = 0; i < particles.length; i++) {
-    for (var j = i + 1; j < particles.length; j++) {
-      var dx = particles[i].x - particles[j].x;
-      var dy = particles[i].y - particles[j].y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 120) {
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.stroke();
-      }
-    }
-  }
-  ctx.globalAlpha = 1;
 }
 
 /* ── Form Switching ── */
@@ -1152,6 +520,7 @@ document.getElementById('goForgot').addEventListener('click', showForgotForm);
 document.getElementById('forgotGoLogin').addEventListener('click', showLoginForm);
 
 function clearFormInputs() {
+  window.VNAuthUI?.resetPasswords(document.getElementById('gateCard'));
   for (var i = 0; i < arguments.length; i++) {
     var el = document.getElementById(arguments[i]);
     if (el) el.value = '';
@@ -1164,6 +533,7 @@ function showMsg(id, text, type) {
   el.textContent = text;
   el.className = 'auth-msg ' + type;
   el.style.display = 'block';
+  if (type === 'error') window.VNAuthUI?.focusMissing(el.closest('.auth-view'));
 }
 
 function hideMsg(id) {
@@ -1181,16 +551,18 @@ function shakeCard() {
 function setLoading(btnId, loading, text) {
   var btn = document.getElementById(btnId);
   btn.disabled = loading;
+  btn.setAttribute('aria-busy', String(loading));
   btn.textContent = text;
 }
 
 /* ── Login Handler ── */
 document.getElementById('loginBtn').addEventListener('click', handleLogin);
-document.getElementById('loginPassword').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') handleLogin();
-});
+['loginUsername', 'loginPassword'].forEach(function(id) { document.getElementById(id).addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) handleLogin();
+}); });
 
 async function handleLogin() {
+  if (document.getElementById('loginBtn')?.disabled) return;
   var username = document.getElementById('loginUsername').value.trim();
   var password = document.getElementById('loginPassword').value;
 
@@ -1205,6 +577,7 @@ async function handleLogin() {
     return;
   }
 
+  var loginSucceeded = false;
   setLoading('loginBtn', true, '登录中...');
   hideMsg('loginMsg');
 
@@ -1217,8 +590,9 @@ async function handleLogin() {
     });
     var data = await resp.json();
     if (data.success) {
+      loginSucceeded = true;
       showMsg('loginMsg', '登录成功，正在跳转...', 'success');
-      setTimeout(function() { window.location.replace(getSafeRedirectTarget()); }, 600);
+      navigateAfterAuth(getSafeRedirectTarget());
     } else {
       showMsg('loginMsg', data.message || '用户名或密码错误', 'error');
       shakeCard();
@@ -1226,7 +600,7 @@ async function handleLogin() {
   } catch (e) {
     showMsg('loginMsg', '网络错误，请检查连接', 'error');
   } finally {
-    setLoading('loginBtn', false, '登 录');
+    if (!loginSucceeded) setLoading('loginBtn', false, '登 录');
   }
 }
 
@@ -1420,6 +794,7 @@ async function loadOAuthPending() {
 }
 
 async function handleOAuthSendCode() {
+  if (document.getElementById('oauthSendCodeBtn')?.disabled) return;
   if (oauthCodeCooldown > 0) return;
   var email = document.getElementById('oauthEmailInput').value.trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1446,6 +821,7 @@ async function handleOAuthSendCode() {
 }
 
 async function handleOAuthVerifyCode() {
+  if (document.getElementById('oauthVerifyCodeBtn')?.disabled) return;
   var email = document.getElementById('oauthEmailInput').value.trim().toLowerCase();
   var code = document.getElementById('oauthCodeInput').value.trim();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1482,6 +858,7 @@ async function handleOAuthVerifyCode() {
 }
 
 async function handleOAuthLinkExisting() {
+  if (document.getElementById('oauthLinkExistingBtn')?.disabled) return;
   if (!oauthSetupState.verified) {
     showMsg('oauthSetupMsg', '请先验证邮箱验证码', 'error');
     return;
@@ -1512,6 +889,7 @@ function useAnotherOAuthEmail() {
 }
 
 async function handleOAuthCompleteAccount() {
+  if (document.getElementById('oauthCompleteBtn')?.disabled) return;
   if (!oauthSetupState.verified) {
     showMsg('oauthSetupMsg', '请先验证邮箱验证码', 'error');
     return;
@@ -1546,6 +924,7 @@ async function handleOAuthCompleteAccount() {
 }
 
 async function handleOAuthTransferSendCode() {
+  if (document.getElementById('oauthTransferSendCodeBtn')?.disabled) return;
   if (oauthCodeCooldown > 0) return;
   setLoading('oauthTransferSendCodeBtn', true, '发送中...');
   hideMsg('oauthSetupMsg');
@@ -1561,6 +940,7 @@ async function handleOAuthTransferSendCode() {
 }
 
 async function handleOAuthTransferVerify() {
+  if (document.getElementById('oauthTransferVerifyBtn')?.disabled) return;
   var code = document.getElementById('oauthTransferCodeInput').value.trim();
   if (!/^\d{6}$/.test(code)) {
     showMsg('oauthSetupMsg', '验证码为6位数字', 'error');
@@ -1581,6 +961,7 @@ async function handleOAuthTransferVerify() {
 }
 
 async function handleOAuthTransfer() {
+  if (document.getElementById('oauthTransferBtn')?.disabled) return;
   if (!oauthSetupState.verified) {
     showMsg('oauthSetupMsg', '请先验证当前账号邮箱', 'error');
     return;
@@ -1610,7 +991,7 @@ async function handleOAuthCancel() {
 
 function finishOAuthRedirect(data) {
   var target = safeOAuthReturnTo(data && data.redirect_to, safeOAuthReturnTo(oauthSetupState.returnTo, getSafeRedirectTarget()));
-  setTimeout(function() { window.location.replace(target); }, 600);
+  navigateAfterAuth(target);
 }
 
 /* ── Social Login ── */
@@ -1636,7 +1017,7 @@ document.getElementById('oauthCancelBtn').addEventListener('click', handleOAuthC
 var oauthInputs = ['oauthEmailInput', 'oauthCodeInput', 'oauthPasswordInput', 'oauthPasswordConfirmInput', 'oauthTransferCodeInput'];
 for (var oi = 0; oi < oauthInputs.length; oi++) {
   document.getElementById(oauthInputs[oi]).addEventListener('keydown', function(e) {
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
     if (oauthSetupState.flow === 'provider_transfer') {
       handleOAuthTransferVerify();
     } else if (oauthSetupState.verified) {
@@ -1709,11 +1090,12 @@ document.getElementById('registerBtn').addEventListener('click', handleRegister)
 var regInputs = ['regUsername', 'regPassword', 'regEmail', 'regCode', 'regClubCode'];
 for (var i = 0; i < regInputs.length; i++) {
   document.getElementById(regInputs[i]).addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') handleRegister();
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) handleRegister();
   });
 }
 
 async function handleRegister() {
+  if (document.getElementById('registerBtn')?.disabled) return;
   var username = document.getElementById('regUsername').value.trim();
   var password = document.getElementById('regPassword').value;
   var email = document.getElementById('regEmail').value.trim();
@@ -1758,7 +1140,7 @@ async function handleRegister() {
         ? '，已加入「' + data.club_binding.club_name + '」'
         : '';
       showMsg('regMsg', '注册成功' + bindingMessage + '，正在跳转...', 'success');
-      setTimeout(function() { window.location.replace(getSafeRedirectTarget()); }, 800);
+      navigateAfterAuth(getSafeRedirectTarget());
     } else {
       showMsg('regMsg', data.message || '注册失败', 'error');
       shakeCard();
@@ -1779,11 +1161,12 @@ document.getElementById('resetPasswordBtn').addEventListener('click', handleRese
 var forgotInputs = ['forgotEmail', 'forgotCode', 'forgotPassword'];
 for (var f = 0; f < forgotInputs.length; f++) {
   document.getElementById(forgotInputs[f]).addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') handleResetPassword();
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) handleResetPassword();
   });
 }
 
 async function handleSendResetCode() {
+  if (document.getElementById('sendResetCodeBtn')?.disabled) return;
   if (resetCooldown > 0) return;
   var email = document.getElementById('forgotEmail').value.trim();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1837,6 +1220,7 @@ function updateResetCooldownUI() {
 }
 
 async function handleResetPassword() {
+  if (document.getElementById('resetPasswordBtn')?.disabled) return;
   var email = document.getElementById('forgotEmail').value.trim();
   var code = document.getElementById('forgotCode').value.trim();
   var password = document.getElementById('forgotPassword').value;
@@ -1893,8 +1277,6 @@ async function handleResetPassword() {
 async function init() {
   var isLoggedIn = await checkAuth();
   if (isLoggedIn) return;
-  initWallpapers();
-  initParticles();
   checkOAuthConfig();
   document.body.classList.add('ready');
   var oauthStatus = new URLSearchParams(window.location.search).get('oauth');

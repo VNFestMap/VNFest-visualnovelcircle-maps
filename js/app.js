@@ -225,6 +225,7 @@ function openAccountModal(view) {
             bioInput.value = currentUser.user.profile_bio || '';
         }
     }
+    window.VNAuthUI?.open(modal, view);
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
 }
@@ -234,6 +235,7 @@ function closeAccountModal() {
     if (!modal) return;
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
+    window.VNAuthUI?.close(modal);
     // 关闭时销毁裁剪实例
     destroyCropper();
     document.getElementById('avatarCropModal').style.display = 'none';
@@ -306,6 +308,7 @@ document.addEventListener('click', (e) => {
     if (e.target.id === 'accShowRegisterBtn') {
         document.getElementById('accountLoginForm').style.display = 'none';
         document.getElementById('accountRegisterForm').style.display = 'block';
+        window.VNAuthUI?.open(document.getElementById('accountModal'), 'register');
     }
 });
 
@@ -314,33 +317,58 @@ document.addEventListener('click', (e) => {
     if (e.target.id === 'accShowLoginBtn') {
         document.getElementById('accountRegisterForm').style.display = 'none';
         document.getElementById('accountLoginForm').style.display = 'block';
+        window.VNAuthUI?.open(document.getElementById('accountModal'), 'login');
     }
 });
 
+function authUiText(zh, ja) {
+    return document.documentElement.lang.startsWith('ja') ? ja : zh;
+}
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229 || e.target.tagName !== 'INPUT') return;
+    const modal = document.getElementById('accountModal');
+    if (!modal?.classList.contains('open')) return;
+    if (e.target.closest('#accountLoginForm')) { e.preventDefault(); submitAccountLogin(); }
+    else if (e.target.closest('#accountRegisterForm')) { e.preventDefault(); submitAccountRegister(); }
+});
+
 // 账号弹窗 — 登录
-document.addEventListener('click', async (e) => {
-    if (e.target.id === 'accLoginBtn') {
-        const username = document.getElementById('accLoginUsername')?.value.trim();
-        const password = document.getElementById('accLoginPassword')?.value;
-        const msgEl = document.getElementById('accLoginMessage');
-        if (!username || !password) { if (msgEl) { msgEl.textContent = '请输入用户名/邮箱和密码'; msgEl.style.color = '#e74c3c'; } return; }
-        if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
-        try {
-            const resp = await fetch('./api/auth.php?action=login_local', {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await resp.json();
-            if (data.success) {
-                currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
-                closeAccountModal();
-                setTimeout(() => location.reload(), 100);
-            } else {
-                if (msgEl) { msgEl.textContent = data.message || '登录失败'; msgEl.style.color = '#e74c3c'; }
-            }
-        } catch { if (msgEl) { msgEl.textContent = '网络错误，请重试'; msgEl.style.color = '#e74c3c'; } }
+async function submitAccountLogin() {
+    const btn = document.getElementById('accLoginBtn');
+    if (!btn || btn.disabled) return;
+    const username = document.getElementById('accLoginUsername')?.value.trim();
+    const password = document.getElementById('accLoginPassword')?.value;
+    const msgEl = document.getElementById('accLoginMessage');
+    if (!username || !password) { window.VNAuthUI?.message(msgEl, '请输入用户名/邮箱和密码', 'error'); window.VNAuthUI?.focusMissing(document.getElementById('accountLoginForm')); return; }
+    if (password.length < 6) { window.VNAuthUI?.message(msgEl, '密码至少 6 位', 'error'); document.getElementById('accLoginPassword').focus(); return; }
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.textContent = authUiText('登录中…', 'ログイン中…');
+    window.VNAuthUI?.message(msgEl, '');
+    let succeeded = false;
+    try {
+        const resp = await fetch('./api/auth.php?action=login_local', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            succeeded = true;
+            currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
+            closeAccountModal();
+            setTimeout(() => location.reload(), 100);
+        } else {
+            window.VNAuthUI?.message(msgEl, data.message || '登录失败', 'error');
+        }
+    } catch { window.VNAuthUI?.message(msgEl, '网络错误，请重试', 'error'); }
+    finally {
+        if (!succeeded) { btn.disabled = false; btn.textContent = authUiText('登录', 'ログイン'); }
+        btn.setAttribute('aria-busy', 'false');
     }
+}
+document.addEventListener('click', e => {
+    if (e.target.id === 'accLoginBtn') submitAccountLogin();
 });
 
 let registerCodeTimer = null;
@@ -350,7 +378,7 @@ document.addEventListener('click', async (e) => {
         const email = document.getElementById('accRegEmail')?.value.trim();
         const msgEl = document.getElementById('accRegMessage');
         if (!email) {
-            if (msgEl) { msgEl.textContent = '请输入邮箱地址'; msgEl.style.color = '#e74c3c'; }
+            window.VNAuthUI?.message(msgEl, '请输入邮箱地址', 'error');
             return;
         }
         const btn = document.getElementById('accRegSendCodeBtn');
@@ -365,7 +393,7 @@ document.addEventListener('click', async (e) => {
             });
             const data = await resp.json();
             if (data.success) {
-                if (msgEl) { msgEl.textContent = data.message || '验证码已发送'; msgEl.style.color = '#27ae60'; }
+                window.VNAuthUI?.message(msgEl, data.message || '验证码已发送', 'success');
                 document.getElementById('accRegCode')?.focus();
                 let countdown = 60;
                 const tick = () => {
@@ -380,12 +408,12 @@ document.addEventListener('click', async (e) => {
                 registerCodeTimer = setInterval(tick, 1000);
                 tick();
             } else {
-                if (msgEl) { msgEl.textContent = data.message || '发送失败'; msgEl.style.color = '#e74c3c'; }
+                window.VNAuthUI?.message(msgEl, data.message || '发送失败', 'error');
                 btn.disabled = false;
                 btn.textContent = '重新发送';
             }
         } catch {
-            if (msgEl) { msgEl.textContent = '网络错误'; msgEl.style.color = '#e74c3c'; }
+            window.VNAuthUI?.message(msgEl, '网络错误', 'error');
             btn.disabled = false;
             btn.textContent = '重新发送';
         }
@@ -393,33 +421,46 @@ document.addEventListener('click', async (e) => {
 });
 
 // 账号弹窗 — 注册
-document.addEventListener('click', async (e) => {
-    if (e.target.id === 'accRegisterBtn') {
-        const username = document.getElementById('accRegUsername')?.value.trim();
-        const password = document.getElementById('accRegPassword')?.value;
-        const email = document.getElementById('accRegEmail')?.value.trim();
-        const code = document.getElementById('accRegCode')?.value.trim();
-        const msgEl = document.getElementById('accRegMessage');
-        if (!username || !password || !email || !code) { if (msgEl) { msgEl.textContent = '请填写用户名、密码、邮箱和验证码'; msgEl.style.color = '#e74c3c'; } return; }
-        if (username.length < 2 || username.length > 20) { if (msgEl) { msgEl.textContent = '用户名需 2-20 个字符'; msgEl.style.color = '#e74c3c'; } return; }
-        if (password.length < 6) { if (msgEl) { msgEl.textContent = '密码至少 6 位'; msgEl.style.color = '#e74c3c'; } return; }
-        if (!/^\d{6}$/.test(code)) { if (msgEl) { msgEl.textContent = '请输入 6 位邮箱验证码'; msgEl.style.color = '#e74c3c'; } return; }
-        try {
-            const resp = await fetch('./api/auth.php?action=register_local', {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, email, code })
-            });
-            const data = await resp.json();
-            if (data.success) {
-                currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
-                closeAccountModal();
-                setTimeout(() => location.reload(), 100);
-            } else {
-                if (msgEl) { msgEl.textContent = data.message || '注册失败'; msgEl.style.color = '#e74c3c'; }
-            }
-        } catch { if (msgEl) { msgEl.textContent = '网络错误，请重试'; msgEl.style.color = '#e74c3c'; } }
+async function submitAccountRegister() {
+    const btn = document.getElementById('accRegisterBtn');
+    if (!btn || btn.disabled) return;
+    const username = document.getElementById('accRegUsername')?.value.trim();
+    const password = document.getElementById('accRegPassword')?.value;
+    const email = document.getElementById('accRegEmail')?.value.trim();
+    const code = document.getElementById('accRegCode')?.value.trim();
+    const msgEl = document.getElementById('accRegMessage');
+    if (!username || !password || !email || !code) { window.VNAuthUI?.message(msgEl, '请填写用户名、密码、邮箱和验证码', 'error'); window.VNAuthUI?.focusMissing(document.getElementById('accountRegisterForm')); return; }
+    if (username.length < 2 || username.length > 20) { window.VNAuthUI?.message(msgEl, '用户名需 2-20 个字符', 'error'); document.getElementById('accRegUsername').focus(); return; }
+    if (password.length < 6) { window.VNAuthUI?.message(msgEl, '密码至少 6 位', 'error'); document.getElementById('accRegPassword').focus(); return; }
+    if (!/^\d{6}$/.test(code)) { window.VNAuthUI?.message(msgEl, '请输入 6 位邮箱验证码', 'error'); document.getElementById('accRegCode').focus(); return; }
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.textContent = authUiText('注册中…', '登録中…');
+    window.VNAuthUI?.message(msgEl, '');
+    let succeeded = false;
+    try {
+        const resp = await fetch('./api/auth.php?action=register_local', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, email, code })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            succeeded = true;
+            currentUser = { logged_in: true, user: data.user, memberships: data.memberships || [] };
+            closeAccountModal();
+            setTimeout(() => location.reload(), 100);
+        } else {
+            window.VNAuthUI?.message(msgEl, data.message || '注册失败', 'error');
+        }
+    } catch { window.VNAuthUI?.message(msgEl, '网络错误，请重试', 'error'); }
+    finally {
+        if (!succeeded) { btn.disabled = false; btn.textContent = authUiText('注册', '登録'); }
+        btn.setAttribute('aria-busy', 'false');
     }
+}
+document.addEventListener('click', e => {
+    if (e.target.id === 'accRegisterBtn') submitAccountRegister();
 });
 
 // 账号弹窗 — 退出登录
@@ -3713,7 +3754,7 @@ function renderClubCards(rows) {
       : initial;
 
     return `
-      <article class="club-card visible" data-index="${index}">
+      <article class="club-card visible" tabindex="0" data-index="${index}">
         <div class="club-card-top">
           <div class="club-card-avatar" style="background: hsl(${hue}, 48%, 46%);">
             ${avatarHtml}
@@ -3763,7 +3804,7 @@ function renderClubCards(rows) {
     const clubData = filtered[Number(card.dataset.index)];
     if (!clubData) return;
     if (typeof showClubDetail === 'function') {
-      showClubDetail(clubData);
+      showClubDetail(clubData, card);
     }
   };
 }
@@ -3832,6 +3873,8 @@ function renderGroupList(rows) {
       type: type,
       rawType: item.type,
       verifyMeta: verifyMeta,
+      verified: item.verified,
+      created_at: item.created_at || '',
       province: item.province || '',
       provinces: item.provinces || [],
       remark: item.remark || __('listNoRemark'),
@@ -3855,7 +3898,7 @@ function renderGroupList(rows) {
         : `<div class="club-avatar club-avatar-fallback">${vnIconHtml('box')}</div>`;
 
     return `
-        <article class="group-item" data-club='${clubData}'>
+        <article class="group-item" tabindex="0" data-club='${clubData}'>
           <div class="group-main">
             ${avatarHtml}
             <div class="group-header">
@@ -3885,7 +3928,7 @@ function renderGroupList(rows) {
       const clubData = item.getAttribute('data-club');
       if (clubData) {
         const club = JSON.parse(decodeURIComponent(clubData));
-        showClubDetail(club);
+        showClubDetail(club, item);
       }
     });
   });
@@ -3895,7 +3938,7 @@ function renderGroupList(rows) {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       const clubData = el.getAttribute('data-club');
-      if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
+      if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)), el.closest('.group-item') || el);
     });
   });
 
@@ -3936,731 +3979,162 @@ async function loadWikiIndex() {
   return wikiIndexPromise;
 }
 
-async function hydrateClubWikiLink(club) {
-  const wrap = document.getElementById('clubWikiActionWrap');
-  if (!wrap) return;
-  const index = await loadWikiIndex();
-  const wikiKey = getClubWikiKey(club);
-  const item = index[wikiKey];
-  const clubId = parseInt(club.id);
-  const clubCountry = club.country || State.currentCountry || 'china';
-  const canEditWiki = canManageClub(clubId, clubCountry) || hasRole('super_admin');
-  if ((!item || !item.url) && !canEditWiki) return;
+document.addEventListener('keydown', event => {
+  if (!['Enter', ' '].includes(event.key) || !event.target.matches('.group-item[tabindex], .club-card[tabindex]')) return;
+  event.preventDefault();
+  event.target.click();
+});
 
-  const links = [];
-  const wikiLangParam = currentLang === 'ja' ? 'lang=ja' : 'lang=zh';
-  if (item && item.url) {
-    const cleanUrl = String(item.url).replace(/^\.?\//, '');
-    links.push('<a class="club-detail-btn primary full" href="./wiki/' +
-      Utils.escapeHTML(cleanUrl) +
-      '?' + wikiLangParam +
-      '" style="margin-bottom:4px" target="_blank" rel="noopener noreferrer">' +
-      Utils.escapeHTML(__('detailBtnWiki')) +
-      '</a>');
+// The index remains the owner of account state and existing business workflows.
+let clubDetailRevision = 0;
+let clubDetailReturnFocus = null;
+let clubDetailScriptPromise = null;
+
+function loadClubDetailReact() {
+  if (window.VNFClubDetail) return Promise.resolve();
+  if (!clubDetailScriptPromise) {
+    clubDetailScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      const timer = window.setTimeout(() => {
+        script.remove();
+        reject(new Error('Detail component load timed out'));
+      }, 10000);
+      script.src = './js/club-detail-react.js?v=20260930-layout-a-v1';
+      script.onload = () => {
+        window.clearTimeout(timer);
+        window.VNFClubDetail ? resolve() : reject(new Error('Detail component unavailable'));
+      };
+      script.onerror = () => { window.clearTimeout(timer); script.remove(); reject(new Error('Detail component failed to load')); };
+      document.head.appendChild(script);
+    }).catch(error => { clubDetailScriptPromise = null; throw error; });
   }
-  if (canEditWiki) {
-    const editPath = 'admin/wiki_editor.html?club_key=' + encodeURIComponent(wikiKey) + '&' + wikiLangParam;
-    const isBundledClient = window.location.protocol === 'file:' ||
-      window.location.protocol === 'capacitor:' ||
-      window.location.protocol === 'ionic:' ||
-      window.location.protocol === 'app:' ||
-      Boolean(window.Capacitor);
-    const editUrl = isBundledClient
-      ? CONFIG.PUBLIC_BASE_URL.replace(/\/$/, '') + '/' + editPath
-      : './' + editPath;
-    links.push('<a class="club-detail-btn secondary full" href="' +
-      Utils.escapeHTML(editUrl) +
-      '" style="margin-bottom:4px" target="_blank" rel="noopener noreferrer">' +
-      Utils.escapeHTML(__('detailBtnEditWiki')) +
-      '</a>');
-  }
-  wrap.innerHTML = links.join('');
-  const section = document.getElementById('clubWikiSection');
-  if (section) section.style.display = '';
+  return clubDetailScriptPromise;
 }
 
 function closeClubDetailModal() {
   const modal = document.getElementById('clubDetailModal');
   if (!modal) return;
+  clubDetailRevision += 1;
+  window.VNFClubDetail?.unmount();
   modal.classList.remove('open', 'club-detail-sheet-expanded', 'club-detail-sheet-dragging', 'club-detail-sheet-closing');
   modal.setAttribute('aria-hidden', 'true');
-  const card = modal.querySelector('.club-detail-modal-card');
-  if (card) card.style.removeProperty('height');
+  modal.querySelector('.club-detail-modal-card')?.style.removeProperty('height');
+  if (clubDetailReturnFocus?.isConnected) clubDetailReturnFocus.focus({ preventScroll: true });
+  clubDetailReturnFocus = null;
 }
 
-function bindClubDetailMobileSheet(modal) {
-  if (!modal || modal.dataset.mobileSheetBound === 'true') return;
-  modal.dataset.mobileSheetBound = 'true';
-
-  const card = modal.querySelector('.club-detail-modal-card');
-  const scroll = modal.querySelector('.club-detail-modal-scroll');
-  if (!card || !scroll) return;
-
-  let handle = modal.querySelector('.club-detail-mobile-handle');
-  if (!handle) {
-    handle = document.createElement('div');
-    handle.className = 'club-detail-mobile-handle';
-    handle.setAttribute('aria-hidden', 'true');
-    scroll.insertBefore(handle, scroll.firstChild);
-  }
-
-  let startY = 0;
-  let startHeight = 0;
-  let dragging = false;
-  let lastDelta = 0;
-
-  const isMobile = () => window.innerWidth <= 720;
-  const minHeight = () => Math.round(window.innerHeight * 0.42);
-  const midHeight = () => Math.round(window.innerHeight * 0.62);
-  const maxHeight = () => Math.round(window.innerHeight * 0.92);
-
-  function setSheetHeight(height) {
-    const next = Math.max(minHeight(), Math.min(maxHeight(), height));
-    card.style.setProperty('height', next + 'px', 'important');
-    modal.classList.toggle('club-detail-sheet-expanded', next >= maxHeight() - 20);
-  }
-
-  function closeByDrag() {
-    modal.classList.add('club-detail-sheet-closing');
-    window.setTimeout(closeClubDetailModal, 160);
-  }
-
-  function beginDrag(clientY) {
-    if (!isMobile()) return;
-    dragging = true;
-    startY = clientY;
-    startHeight = card.getBoundingClientRect().height || midHeight();
-    lastDelta = 0;
-    modal.classList.add('club-detail-sheet-dragging');
-  }
-
-  function moveDrag(clientY) {
-    if (!dragging || !isMobile()) return;
-    lastDelta = startY - clientY;
-    const next = startHeight + lastDelta;
-    if (next < minHeight()) {
-      const softened = minHeight() - Math.sqrt(minHeight() - next) * 8;
-      card.style.setProperty('height', Math.max(120, softened) + 'px', 'important');
-      modal.classList.remove('club-detail-sheet-expanded');
-      return;
-    }
-    setSheetHeight(next);
-  }
-
-  function endDrag() {
-    if (!dragging) return;
-    dragging = false;
-    modal.classList.remove('club-detail-sheet-dragging');
-    const currentHeight = card.getBoundingClientRect().height;
-    const snapPoint = (minHeight() + maxHeight()) / 2;
-    if (lastDelta < -90 || currentHeight < minHeight() - 18) {
-      closeByDrag();
-      return;
-    }
-    setSheetHeight(currentHeight >= snapPoint || lastDelta > 55 ? maxHeight() : midHeight());
-  }
-
-  function onPointerMove(e) {
-    if (!dragging) return;
-    moveDrag(e.clientY);
-    e.preventDefault();
-  }
-
-  function onPointerUp() {
-    document.removeEventListener('pointermove', onPointerMove);
-    document.removeEventListener('pointerup', onPointerUp);
-    document.removeEventListener('pointercancel', onPointerUp);
-    endDrag();
-  }
-
-  function onTouchMove(e) {
-    if (!dragging) return;
-    const touch = e.touches && e.touches[0];
-    if (!touch) return;
-    moveDrag(touch.clientY);
-    e.preventDefault();
-  }
-
-  function onTouchEnd() {
-    document.removeEventListener('touchmove', onTouchMove);
-    document.removeEventListener('touchend', onTouchEnd);
-    document.removeEventListener('touchcancel', onTouchEnd);
-    endDrag();
-  }
-
-  handle.addEventListener('pointerdown', function(e) {
-    beginDrag(e.clientY);
-    document.addEventListener('pointermove', onPointerMove, { passive: false });
-    document.addEventListener('pointerup', onPointerUp);
-    document.addEventListener('pointercancel', onPointerUp);
-    e.preventDefault();
-  });
-
-  handle.addEventListener('touchstart', function(e) {
-    if (window.PointerEvent) return;
-    const touch = e.touches && e.touches[0];
-    if (!touch) return;
-    beginDrag(touch.clientY);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd);
-    document.addEventListener('touchcancel', onTouchEnd);
-  }, { passive: true });
-
-  handle.addEventListener('dblclick', function() {
-    if (!isMobile()) return;
-    const expanded = modal.classList.contains('club-detail-sheet-expanded');
-    setSheetHeight(expanded ? midHeight() : maxHeight());
-  });
-}
-
-function showClubDetail(club) {
+async function showClubDetail(club, trigger = null) {
   const modal = document.getElementById('clubDetailModal');
   const content = document.getElementById('clubDetailContent');
-  if (!modal) return;
-
-  const esc = (str) => {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-  };
-
-  const clubId = parseInt(club.id);
+  if (!modal || !content) return;
+  if (!modal.classList.contains('open')) {
+    clubDetailReturnFocus = trigger || document.activeElement;
+    if (trigger && trigger.tabIndex < 0) trigger.tabIndex = 0;
+  }
+  const revision = ++clubDetailRevision;
+  window.VNFClubDetail?.unmount();
   const clubCountry = club.country || 'china';
-  const isClubManager = canManageClub(clubId, clubCountry);
-  const isBound = isClubMember(clubId, clubCountry);
-  const isInfoHidden = club.infoHidden === true || club.info === '申请绑定后可见';
-  const canApply = club.canApply === true && !isBound;
-
-  // ——— Header ———
-  const avatarHtml = club.logo_url
-    ? `<img src="${esc(Utils.resolveMediaUrl(club.logo_url))}" alt="" class="club-detail-avatar">`
-    : `<div class="club-detail-avatar club-detail-avatar-fallback">${vnIconHtml('box')}</div>`;
-  const rawType = club.rawType || club.type;
-  const typeLabel = rawType === 'region' ? __('detailTypeRegion') : rawType === 'vnfest' ? __('detailTypeVnfest') : __('detailTypeSchool');
-  const provinceLabel = club.country === 'japan'
-    ? (formatJapanPrefectureName(club.prefecture || club.province || '') || __('detailUnfilled'))
-    : (getClubProvinceLabel(club) || __('detailUnfilled'));
-  const headerHtml = `
-    <div class="club-detail-header">
-      ${avatarHtml}
-      <div class="club-detail-header-info">
-        <div class="club-detail-name">${esc(club.name)}</div>
-        <div class="club-detail-meta-row">
-          <span class="club-detail-chip">${esc(provinceLabel)}</span>
-          <span class="club-detail-chip primary">${esc(typeLabel)}</span>
-          <span class="club-detail-chip verified">${__('detailRegistered')}</span>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // ——— 简介 ———
-  const descHtml = `
-    <div class="club-detail-section">
-      <div class="club-detail-section-title">${__('detailSectionIntro')}</div>
-      <div class="club-detail-card">
-        <div class="club-detail-description">${esc(club.remark || '暂无介绍，欢迎补充~')}</div>
-      </div>
-    </div>
-  `;
-
-  // ——— 对外平台（内联链接样式） ———
-  const parseExternalLinks = () => {
-    if (!club.external_links || !club.external_links.trim()) return '';
-    const links = club.external_links.trim().split('\n')
-      .map(line => {
-        const idx = line.indexOf(': ');
-        return idx > 0 ? { platform: line.substring(0, idx).trim(), url: line.substring(idx + 2).trim() } : null;
-      })
-      .filter(Boolean);
-    if (!links.length) return '';
-    return `
-      <div class="club-detail-section">
-        <div class="club-detail-section-title">${__('detailSectionExt')}</div>
-        <div class="club-detail-card club-detail-ext-list">
-          ${links.map(l => {
-            const icon = getPlatformIcon(l.platform);
-            const cleanUrl = l.url.replace(/\/+$/, '');
-            const display = cleanUrl.replace(/^https?:\/\//, '');
-            return `<div class="club-detail-ext-item"><a href="${esc(cleanUrl)}" target="_blank" rel="noopener noreferrer" class="club-detail-ext-link">${icon} ${esc(l.platform)}：${esc(display)}</a></div>`;
-          }).join('')}
-        </div>
-      </div>
-    `;
-  };
-  const extHtml = parseExternalLinks();
-
-  // ——— 联系方式 ———
-  let contactHtml = '';
-  if (isInfoHidden && !isBound) {
-    if (!currentUser?.logged_in) {
-      contactHtml = `
-        <div class="club-detail-section">
-          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
-          <div class="club-detail-hidden-placeholder">
-            <div class="lock-icon">${vnIconHtml('lock')}</div>
-            <p>${__('detailContactLockedLogin')}</p>
-          </div>
-        </div>
-      `;
-    } else if (canApply) {
-      contactHtml = `
-        <div class="club-detail-section">
-          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
-          <div class="club-detail-hidden-placeholder">
-            <div class="lock-icon">${vnIconHtml('lock')}</div>
-            <p id="membershipStatus">查询绑定状态中...</p>
-          </div>
-        </div>
-      `;
-      // 异步查询
-      (async () => {
-        try {
-          const resp = await fetch('./api/membership.php?action=my', { credentials: 'same-origin' });
-          const data = await resp.json();
-          const ms = data.memberships || [];
-          const match = ms.find(m => parseInt(m.club_id) === clubId && (m.country || 'china') === clubCountry);
-          const statusEl = document.getElementById('membershipStatus');
-          if (!statusEl) return;
-          if (match) {
-            if (match.status === 'pending') statusEl.innerHTML = __('detailContactPending');
-            else if (match.status === 'rejected') statusEl.innerHTML = __('detailContactRejected');
-            else if (match.status === 'active') statusEl.innerHTML = __('detailContactBound');
-          } else {
-            statusEl.innerHTML = __('detailContactApply');
-            const parent = statusEl.closest('.club-detail-hidden-placeholder');
-            if (parent) {
-              const btn = document.createElement('button');
-              btn.textContent = __('detailBtnApply');
-              btn.className = 'club-detail-btn primary full';
-              btn.onclick = () => openMembershipApplyModal(club);
-              parent.appendChild(btn);
-            }
-          }
-        } catch {
-          const statusEl = document.getElementById('membershipStatus');
-          if (statusEl) statusEl.textContent = __('detailContactQueryFail');
-        }
-      })();
-    } else {
-      contactHtml = `
-        <div class="club-detail-section">
-          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
-          <div class="club-detail-hidden-placeholder">
-            <div class="lock-icon">${vnIconHtml('lock')}</div>
-            <p>${__('detailContactLocked')}</p>
-          </div>
-        </div>
-      `;
-    }
-  } else {
-    // 可见联系方式（已绑定或公开）
-    const contactInfo = esc(club.originalInfo || club.info || '');
-    const detectedUrl = club.detectedUrl || (/^https?:\/\//.test(club.originalInfo || club.info) ? club.originalInfo || club.info : null);
-    const isLink = detectedUrl || /discord\.(gg|com\/invite)/.test(contactInfo);
-    const contactUrl = detectedUrl || (isLink ? contactInfo : null);
-
-    if (isLink && contactUrl) {
-      contactHtml = `
-        <div class="club-detail-section">
-          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
-          <div class="club-detail-card">
-            <div class="club-detail-contact">${contactInfo}</div>
-            <div class="club-detail-contact-actions">
-              <a href="${esc(contactUrl)}" target="_blank" rel="noopener noreferrer" class="club-detail-btn primary">${vnIconHtml('link')} 打开链接</a>
-              <button onclick="navigator.clipboard.writeText('${contactUrl.replace(/'/g, "\\'")}')" class="club-detail-btn secondary">复制</button>
-            </div>
-          </div>
-        </div>
-      `;
-    } else {
-      const safeCopy = contactInfo.replace(/'/g, "\\'");
-      contactHtml = `
-        <div class="club-detail-section">
-          <div class="club-detail-section-title">${__('detailSectionContact')}</div>
-          <div class="club-detail-card">
-            <div class="club-detail-contact">${contactInfo || __('detailNoContact')}</div>
-            ${contactInfo ? `<div class="club-detail-contact-actions"><button onclick="navigator.clipboard.writeText('${safeCopy}')" class="club-detail-btn primary">复制群号</button></div>` : ''}
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  if (club.membershipStatus === 'pending') {
-    contactHtml += `
-      <div class="club-detail-section">
-        <div class="club-detail-card" style="border:1px solid rgba(255,152,0,0.35);background:rgba(255,152,0,0.06);color:#ff9800;font-size:13px;padding:10px 12px;">
-          绑定申请审核中，联系方式暂时可见。
-        </div>
-      </div>
-    `;
-  }
-
-  // ——— 操作区（纵向按钮） ———
-  const actionBtns = [];
-
-  // 公开入口：参加该同好会的考核（同好会考核系统）
-  actionBtns.push(`<button data-action="join-exam" class="club-detail-btn exam full" style="margin-bottom:4px">${__('detailBtnJoinExam')}</button>`);
-
-  // 已登录 + 未绑定 + 可申请 → 申请绑定
-  if (canApply) {
-    actionBtns.push(`<button data-action="apply-club" class="club-detail-btn primary full" style="margin-bottom:4px">${__('detailBtnApplyClub')}</button>`);
-  }
-
-  // 可管理该俱乐部 → 编辑 + 成员名单
-  if (isClubManager || hasRole('super_admin')) {
-    actionBtns.push(`<button data-action="edit-club" class="club-detail-btn warning full" style="margin-bottom:4px">${__('detailBtnEdit')}</button>`);
-    actionBtns.push(`<button data-action="member-list" class="club-detail-btn secondary full" style="margin-bottom:4px">${__('detailBtnMembers')}</button>`);
-  }
-
-  // 当前用户是该俱乐部的负责人 → 转让负责人
-  if (isClubManager && getClubMembership(clubId, clubCountry)?.role === 'representative') {
-    actionBtns.push(`<button data-action="transfer" class="club-detail-btn warning full" style="margin-bottom:4px">转让负责人</button>`);
-  }
-
-  // 已绑定 → 退出
-  if (isBound) {
-    actionBtns.push(`<button data-action="leave-club" class="club-detail-btn secondary full" style="margin-bottom:4px">退出同好会</button>`);
-  }
-
-  const wikiActionHtml = `<div class="club-detail-section" id="clubWikiSection" style="display:none">
-    <div class="club-detail-section-title">${__('detailSectionWiki')}</div>
-    <div class="club-detail-actions" id="clubWikiActionWrap"></div>
-  </div>`;
-
-  const actionHtml = actionBtns.length
-    ? `<div class="club-detail-section"><div class="club-detail-section-title">${__('detailSectionActions')}</div><div class="club-detail-actions club-detail-action-buttons">${actionBtns.join('')}</div></div>`
-    : '';
-
-  // ——— 底部元信息 ———
-  const footerHtml = `
-    <div class="club-detail-meta-footer">
-      <span>${vnIconHtml('check')} ${esc(club.verifyMeta || __('detailUnknownDate'))}</span>
-    </div>
-  `;
-
-  // ========== 左栏：基本信息 ==========
-  const leftHtml = `
-    <div class="club-detail-left">
-      ${headerHtml}
-      ${descHtml}
-      ${extHtml}
-      ${contactHtml}
-      ${wikiActionHtml}
-      ${actionHtml}
-      ${footerHtml}
-    </div>
-  `;
-
-  // ========== 右栏：神器推荐榜 + 留言板 ==========
-  const recContainerId = 'recContainer_' + clubId;
-  const moeKingContainerId = 'moeKingContainer_' + clubId;
-  const commentContainerId = 'commentContainer_' + clubId;
-  const rightHtml = `
-    <div class="club-detail-right">
-      <div class="club-recommendation-section">
-        <div class="club-detail-section-title">${vnIconHtml('spark')} 神器推荐榜</div>
-        <div id="${recContainerId}">
-          <div class="rec-empty" style="border:none;background:transparent;">加载中...</div>
-        </div>
-      </div>
-      <div class="club-moe-king-section">
-        <div class="club-detail-section-title">萌王</div>
-        <div id="${moeKingContainerId}">
-          <div class="rec-empty" style="border:none;background:transparent;">加载中...</div>
-        </div>
-      </div>
-      <!-- 留言板 -->
-      <div class="club-comment-section">
-        <div class="club-detail-section-title">${vnIconHtml('pen')} 留言板</div>
-        <div id="${commentContainerId}">
-          <div class="comment-login-hint">加载留言...</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // ——— 组装注入 ———
-  content.innerHTML = leftHtml + rightHtml;
-
-  // ——— 操作按钮事件绑定 ———
-  const actionsContainer = content.querySelector('.club-detail-action-buttons');
-  hydrateClubWikiLink(club);
-  if (actionsContainer) {
-    actionsContainer.querySelector('[data-action="apply-club"]')?.addEventListener('click', () => openMembershipApplyModal(club));
-    actionsContainer.querySelector('[data-action="join-exam"]')?.addEventListener('click', () => {
-      const params = new URLSearchParams({ club_id: String(clubId), country: clubCountry || 'china' });
-      location.href = `./exam/index.html?${params.toString()}`;
-    });
-    actionsContainer.querySelector('[data-action="edit-club"]')?.addEventListener('click', () => openClubEditor(club));
-    actionsContainer.querySelector('[data-action="member-list"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
-    actionsContainer.querySelector('[data-action="transfer"]')?.addEventListener('click', () => openMemberList(clubId, club.country || 'china'));
-    actionsContainer.querySelector('[data-action="leave-club"]')?.addEventListener('click', () => confirmLeaveClub(clubId, club.name, club.country));
-  }
-
-  // ——— 异步加载推荐榜 ———
-  (async (containerId) => {
-    try {
-      const resp = await fetch(`api/club_recommendations.php?action=list&club_id=${clubId}&country=${clubCountry}`);
-      const data = await resp.json();
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      if (!data.success || !data.data || data.data.length === 0) {
-        container.innerHTML = '<div class="rec-empty">暂无推荐</div>';
-        return;
-      }
-      container.innerHTML = '<div class="recommendation-grid">' +
-        data.data.map(item => `
-          <div class="rec-card" title="${esc(item.title)}">
-            ${item.image_url
-              ? `<img src="${esc(Utils.resolveMediaUrl(item.image_url))}" alt="${esc(item.title)}" class="rec-cover" loading="lazy">`
-              : `<div class="rec-cover-placeholder">${vnIconHtml('spark')}</div>`
-            }
-            <div class="rec-info">
-              <div class="rec-title">${esc(item.title)}</div>
-              ${item.rating ? `<div class="rec-rating">${parseFloat(item.rating).toFixed(1)}</div>` : ''}
-            </div>
-          </div>
-        `).join('') +
-      '</div>';
-    } catch (e) {
-      const container = document.getElementById(containerId);
-      if (container) container.innerHTML = '<div class="rec-empty">加载失败</div>';
-    }
-  })(recContainerId);
-
-  (async (containerId) => {
-    try {
-      const resp = await fetch(`api/club_moe_king.php?action=get&club_id=${clubId}&country=${clubCountry}`);
-      const data = await resp.json();
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      const item = data.success ? data.data : null;
-      if (!item) {
-        container.innerHTML = '<div class="rec-empty">暂无萌王</div>';
-        return;
-      }
-      const title = item.name_cn || item.name || ('角色 #' + item.character_id);
-      container.innerHTML =
-        '<div class="moe-king-card">' +
-          (item.image_url ? '<img src="' + esc(Utils.resolveMediaUrl(item.image_url)) + '" alt="' + esc(title) + '" loading="lazy">' : '<div class="moe-king-avatar">王</div>') +
-          '<div class="moe-king-info">' +
-            '<div class="moe-king-label">本同好会萌王</div>' +
-            '<div class="moe-king-name">' + esc(title) + '</div>' +
-            (item.summary ? '<div class="moe-king-summary">' + esc(item.summary) + '</div>' : '') +
-          '</div>' +
-        '</div>';
-    } catch (e) {
-      const container = document.getElementById(containerId);
-      if (container) container.innerHTML = '<div class="rec-empty">加载失败</div>';
-    }
-  })(moeKingContainerId);
-
-  // ——— 异步加载留言板 ———
-  (async function loadComments(containerId) {
-    try {
-      const resp = await fetch(`api/club_comments.php?action=list&club_id=${clubId}&country=${clubCountry}&limit=20`);
-      const result = await resp.json();
-      const container = document.getElementById(containerId);
-      if (!container) return;
-
-      const userId = currentUser?.id ? parseInt(currentUser.id) : 0;
-      const isLoggedIn = !!currentUser?.logged_in;
-
-      // 输入区（仅成员可见）
-      let inputHtml = '';
-      if (isBound) {
-        inputHtml = `
-          <div class="comment-input-area">
-            <textarea id="commentInput_${clubId}" placeholder="${__('commentPlaceholder')}" maxlength="1000"></textarea>
-            <div class="comment-input-footer">
-              <span class="comment-char-count" id="commentCount_${clubId}">0 / 1000</span>
-              <button class="comment-submit-btn" id="commentSubmit_${clubId}">发表</button>
-            </div>
-          </div>
-        `;
-      } else if (isLoggedIn) {
-        inputHtml = `<div class="comment-login-hint">${vnIconHtml('lock')} 加入同好会后即可留言</div>`;
-      } else {
-        inputHtml = `<div class="comment-login-hint">${vnIconHtml('lock')} 登录并加入同好会后即可留言</div>`;
-      }
-
-      // 留言列表
-      const comments = result.data || [];
-      let listHtml = '';
-      if (comments.length === 0) {
-        listHtml = '<div class="comment-login-hint">暂无留言，来写第一条吧</div>';
-      } else {
-        listHtml = '<div class="comment-list">' +
-          comments.map(c => {
-            const isOwner = userId > 0 && parseInt(c.user_id) === userId;
-            const canDelete = isOwner || isClubManager || hasRole('super_admin');
-            const avatarText = (c.nickname || c.username || '?')[0];
-            return `
-              <div class="comment-card" data-comment-id="${esc(c.id)}">
-                <div class="comment-avatar">${esc(avatarText)}</div>
-                <div class="comment-body">
-                  <div class="comment-meta">
-                    <span class="comment-username">${esc(c.nickname || c.username)}</span>
-                    <span class="comment-time">${esc(c.created_at || '')}</span>
-                    ${canDelete ? `<button class="comment-delete-btn" data-action="delete-comment" data-id="${esc(c.id)}">×</button>` : ''}
-                  </div>
-                  <div class="comment-content">${esc(c.content)}</div>
-                </div>
-              </div>
-            `;
-          }).join('') +
-        '</div>';
-        if (result.total > comments.length) {
-          listHtml += `<div class="comment-load-more" data-action="load-more-comments" data-page="1" data-club-id="${clubId}" data-country="${clubCountry}">加载更多留言…</div>`;
-        }
-      }
-
-      container.innerHTML = inputHtml + listHtml;
-
-      // 绑定留言提交事件
-      if (isBound) {
-        const textarea = document.getElementById('commentInput_' + clubId);
-        const submitBtn = document.getElementById('commentSubmit_' + clubId);
-        const countEl = document.getElementById('commentCount_' + clubId);
-
-        if (textarea && countEl) {
-          textarea.addEventListener('input', () => {
-            const len = textarea.value.length;
-            countEl.textContent = len + ' / 1000';
-            if (submitBtn) submitBtn.disabled = len === 0 || len > 1000;
-          });
-        }
-        if (submitBtn && textarea) {
-          submitBtn.addEventListener('click', async () => {
-            const content = textarea.value.trim();
-            if (!content) return;
-            submitBtn.disabled = true;
-            try {
-              const postResp = await fetch('api/club_comments.php?action=add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ club_id: clubId, country: clubCountry, content }),
-                credentials: 'same-origin',
-              });
-              const postData = await postResp.json();
-              if (postData.success) {
-                textarea.value = '';
-                countEl.textContent = '0 / 1000';
-                // 刷新留言列表
-                document.getElementById(containerId).innerHTML = '<div class="comment-login-hint">刷新中...</div>';
-                // re-trigger this whole IIFE
-                loadComments(containerId);
-              } else {
-                alert(postData.message || '留言失败');
-              }
-            } catch (e) {
-              alert('网络错误');
-            } finally {
-              submitBtn.disabled = false;
-            }
-          });
-        }
-      }
-
-      // 绑定删除事件
-      container.querySelectorAll('[data-action="delete-comment"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          if (!confirm('确定删除此留言？')) return;
-          try {
-            const delResp = await fetch('api/club_comments.php?action=delete', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: parseInt(btn.dataset.id) }),
-              credentials: 'same-origin',
-            });
-            const delData = await delResp.json();
-            if (delData.success) {
-              const card = btn.closest('.comment-card');
-              if (card) card.style.display = 'none';
-            } else {
-              alert(delData.message || '删除失败');
-            }
-          } catch (e) {
-            alert('网络错误');
-          }
-        });
-      });
-
-      // 绑定加载更多
-      container.querySelector('[data-action="load-more-comments"]')?.addEventListener('click', async (e) => {
-        const el = e.currentTarget;
-        const page = parseInt(el.dataset.page) + 1;
-        el.textContent = '加载中…';
-        try {
-          const moreResp = await fetch(`api/club_comments.php?action=list&club_id=${clubId}&country=${clubCountry}&page=${page}&limit=20`);
-          const moreData = await moreResp.json();
-          const list = container.querySelector('.comment-list');
-          if (list && moreData.data) {
-            moreData.data.forEach(c => {
-              const isOwner = userId > 0 && parseInt(c.user_id) === userId;
-              const canDelete = isOwner || isClubManager || hasRole('super_admin');
-              const avatarText = (c.nickname || c.username || '?')[0];
-              const html = `
-                <div class="comment-card" data-comment-id="${esc(c.id)}">
-                  <div class="comment-avatar">${esc(avatarText)}</div>
-                  <div class="comment-body">
-                    <div class="comment-meta">
-                      <span class="comment-username">${esc(c.nickname || c.username)}</span>
-                      <span class="comment-time">${esc(c.created_at || '')}</span>
-                      ${canDelete ? `<button class="comment-delete-btn" data-action="delete-comment" data-id="${esc(c.id)}">×</button>` : ''}
-                    </div>
-                    <div class="comment-content">${esc(c.content)}</div>
-                  </div>
-                </div>
-              `;
-              list.insertAdjacentHTML('beforeend', html);
-            });
-          }
-          if (moreData.data && moreData.data.length < 20) {
-            el.remove();
-          } else {
-            el.dataset.page = page;
-            el.textContent = '加载更多留言…';
-          }
-        } catch (e) {
-          el.textContent = '加载失败，点击重试';
-        }
-      });
-
-    } catch (e) {
-      const container = document.getElementById(containerId);
-      if (container) container.innerHTML = '<div class="comment-login-hint">留言加载失败</div>';
-    }
-  })(commentContainerId);
-
-  // ——— 弹窗开关 ———
-  modal.classList.remove('club-detail-sheet-expanded', 'club-detail-sheet-dragging', 'club-detail-sheet-closing');
+  const clubId = parseInt(club.id);
+  // Map/list entry points used escaped display strings. Rehydrate with the current
+  // API-visible row so names, visibility, registration and dates have one source.
+  const rows = clubCountry === 'japan' ? State.japanRows : State.bandoriRows;
+  const row = (rows || []).find(item => Number(item.id) === clubId);
+  if (row) club = { ...club, ...apiClubToDetailClub(row, clubCountry) };
   const modalCard = modal.querySelector('.club-detail-modal-card');
-  if (modalCard) modalCard.style.removeProperty('height');
-  bindClubDetailMobileSheet(modal);
-  if (window.innerWidth <= 720 && modalCard) {
-    modalCard.style.setProperty('height', Math.round(window.innerHeight * 0.62) + 'px', 'important');
-  }
-  modal.classList.add('open');
+  modal.classList.add('club-detail-layout-a', 'open');
+  modal.classList.remove('club-detail-sheet-expanded', 'club-detail-sheet-dragging', 'club-detail-sheet-closing');
   modal.setAttribute('aria-hidden', 'false');
-
-  const closeBtn = document.getElementById('clubDetailClose');
-  if (closeBtn) {
-    const newBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newBtn, closeBtn);
-    newBtn.onclick = closeClubDetailModal;
-  }
-  modal.onclick = (e) => {
-    if (e.target === modal) closeClubDetailModal();
+  modalCard.setAttribute('aria-labelledby', 'clubDetailTitle');
+  modalCard.style.removeProperty('height');
+  if (window.innerWidth <= 720) modalCard.style.setProperty('height', Math.round(window.innerHeight * .62) + 'px', 'important');
+  const close = document.getElementById('clubDetailClose');
+  close.onclick = closeClubDetailModal;
+  close.setAttribute('aria-label', currentLang === 'ja' ? '同好会の詳細を閉じる' : '关闭同好会详情弹窗');
+  close.focus();
+  modal.onclick = event => { if (event.target === modal) closeClubDetailModal(); };
+  modal.onkeydown = event => {
+    if (event.key === 'Escape') { event.preventDefault(); closeClubDetailModal(); }
+    if (event.key === 'Tab' && !content.querySelector('.cd-root')) {
+      const buttons = Array.from(modal.querySelectorAll('button')).filter(button => !button.disabled);
+      if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons[buttons.length - 1].focus(); }
+      else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus(); }
+    }
   };
+  content.innerHTML = '<div class="cd-loading-shell"><h2 id="clubDetailTitle"></h2><p role="status"></p></div>';
+  content.querySelector('h2').textContent = club.name || __('listNoName');
+  content.querySelector('p').textContent = currentLang === 'ja' ? '読み込み中…' : '加载中…';
+  try {
+    await loadClubDetailReact();
+    if (revision !== clubDetailRevision) return;
+    const membership = getClubMembership(clubId, clubCountry);
+    const wikiKey = clubCountry + '-' + clubId;
+    const wikiLangParam = currentLang === 'ja' ? 'lang=ja' : 'lang=zh';
+    const editPath = 'admin/wiki_editor.html?club_key=' + encodeURIComponent(wikiKey) + '&' + wikiLangParam;
+    const isBundledClient = ['file:', 'capacitor:', 'ionic:', 'app:'].includes(location.protocol) || Boolean(window.Capacitor);
+    const wikiEditUrl = isBundledClient ? CONFIG.PUBLIC_BASE_URL.replace(/\/$/, '') + '/' + editPath : './' + editPath;
+    const launch = callback => { closeClubDetailModal(); callback(); };
+    window.VNFClubDetail.mount(content, {
+      club: { ...club, membershipStatus: club.membership_status || club.membershipStatus || membership?.status || null }, lang: currentLang,
+      viewer: {
+        loggedIn: Boolean(currentUser?.logged_in),
+        userId: currentUser?.user?.id || currentUser?.id || 0,
+        member: isClubMember(clubId, clubCountry),
+        manage: canManageClub(clubId, clubCountry) || hasRole('super_admin'),
+        role: membership?.status === 'active' ? membership.role : null,
+      },
+      helpers: {
+        region: clubCountry === 'japan' ? formatJapanPrefectureName(club.prefecture || club.province || '') || __('detailUnfilled') : getClubProvinceLabel(club) || __('detailUnfilled'),
+        resolveMedia: value => Utils.resolveMediaUrl(value),
+        formatDate: value => Utils.formatCreatedAt(value),
+        loadWiki: async signal => {
+          const response = await fetch('./wiki/index.json', { signal, cache: 'no-store' });
+          if (!response.ok) throw new Error('Wiki index unavailable');
+          const index = await response.json();
+          if (!index || Array.isArray(index) || typeof index !== 'object') throw new Error('Invalid wiki index');
+          return index;
+        },
+        wikiUrl: value => {
+          const path = String(value).replace(/^\.?\//, '');
+          if (!path || /(?:^|\/)\.\.(?:\/|$)|^[a-z]+:|^\//i.test(path)) return null;
+          return './wiki/' + path + (path.includes('?') ? '&' : '?') + wikiLangParam;
+        },
+        wikiEditUrl,
+      },
+      actions: {
+        close: closeClubDetailModal,
+        login: () => { location.href = './login.html'; },
+        apply: () => launch(() => openMembershipApplyModal(club)),
+        exam: () => { location.href = './exam/index.html?club_id=' + encodeURIComponent(clubId) + '&country=' + encodeURIComponent(clubCountry); },
+        edit: () => launch(() => openClubEditor(club)),
+        members: () => launch(() => openMemberList(clubId, clubCountry)),
+        transfer: () => launch(() => openMemberList(clubId, clubCountry)),
+        leave: () => confirmLeaveClub(clubId, club.name, clubCountry),
+      },
+    });
+  } catch (error) {
+    if (revision !== clubDetailRevision) return;
+    const shell = content.querySelector('.cd-loading-shell');
+    shell.querySelector('p').textContent = currentLang === 'ja' ? '読み込みに失敗しました' : '详情加载失败';
+    const retry = document.createElement('button');
+    retry.className = 'cd-button';
+    retry.textContent = currentLang === 'ja' ? '再試行' : '重试';
+    retry.onclick = () => showClubDetail(club);
+    shell.appendChild(retry);
+  }
 }
+
 
 // ====== 同好会绑定申请弹窗 ======
 function setMembershipApplyMethod(method) {
   const activeMethod = method || 'school_no_code';
+  const modal = document.getElementById('membershipApplyModal');
+  const motion = beginMembershipApplyMotion(modal, activeMethod);
+  initMembershipRoleSelect(modal);
+  modal?._membershipRoleControl?.close(false);
+  modal?._membershipRoleControl?.sync();
   document.querySelectorAll('.membership-apply-tab').forEach(function(tab) {
     tab.classList.toggle('active', tab.dataset.joinMethod === activeMethod);
+    tab.setAttribute('aria-pressed', String(tab.dataset.joinMethod === activeMethod));
   });
   const isCode = activeMethod === 'school_code';
   const isExternal = activeMethod === 'external_exchange';
@@ -4677,6 +4151,7 @@ function setMembershipApplyMethod(method) {
   if (btn) btn.textContent = isCode ? '验证并加入' : '提交申请';
   const msg = document.getElementById('membershipApplyMessage');
   if (msg) msg.textContent = '';
+  finishMembershipApplyMotion(modal, motion);
 }
 
 function openMembershipApplyModal(club) {
@@ -4703,8 +4178,194 @@ function openMembershipApplyModal(club) {
 function closeMembershipApplyModal() {
   const modal = document.getElementById('membershipApplyModal');
   if (!modal) return;
+  modal._membershipRoleControl?.close(false);
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
+  modal._membershipLayoutMotion?.cancel();
+  (modal._membershipFieldMotions || []).forEach(animation => animation.cancel());
+}
+
+// Scoped motion uses the existing easing token and remains interruptible.
+function beginMembershipApplyMotion(modal, method) {
+  if (!modal) return null;
+  const card = modal.querySelector('.calendar-modal-card');
+  const fields = modal.querySelector('.membership-apply-fields');
+  if (!card || !fields) return null;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const visible = new Set([...fields.children].filter(node => !node.hidden));
+  const height = card.getBoundingClientRect().height;
+  modal._membershipLayoutMotion?.cancel();
+  (modal._membershipFieldMotions || []).forEach(animation => animation.cancel());
+  const animate = modal.classList.contains('open') && modal._motionMethod !== method && !reduced;
+  modal._motionMethod = method;
+  return { card, fields, visible, height, animate };
+}
+
+function finishMembershipApplyMotion(modal, motion) {
+  if (!modal || !motion) return;
+  const tabs = modal.querySelector('.membership-apply-tabs');
+  let indicator = tabs.querySelector('.membership-apply-indicator');
+  if (!indicator) {
+    indicator = document.createElement('span');
+    indicator.className = 'membership-apply-indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    tabs.prepend(indicator);
+    const align = () => {
+      const selected = tabs.querySelector('.membership-apply-tab.active');
+      if (!selected) return;
+      indicator.style.width = selected.offsetWidth + 'px';
+      indicator.style.height = selected.offsetHeight + 'px';
+      indicator.style.transform = 'translateX(' + (selected.offsetLeft - 4) + 'px)';
+    };
+    modal._alignMembershipIndicator = align;
+    if (window.ResizeObserver) {
+      modal._membershipTabsObserver = new ResizeObserver(align);
+      modal._membershipTabsObserver.observe(tabs);
+    }
+  }
+  modal._alignMembershipIndicator();
+  requestAnimationFrame(() => tabs.classList.add('membership-motion-ready'));
+  if (!motion.animate || !motion.card.animate) return;
+  const easing = getComputedStyle(modal).getPropertyValue('--ease-spring').trim() || 'cubic-bezier(0.23, 1, 0.32, 1)';
+  const naturalHeight = motion.card.getBoundingClientRect().height;
+  if (Math.abs(naturalHeight - motion.height) > 1) {
+    // A short, scoped accordion transition keeps text and controls unscaled.
+    modal._membershipLayoutMotion = motion.card.animate(
+      [{ height: motion.height + 'px' }, { height: naturalHeight + 'px' }],
+      { duration: 240, easing }
+    );
+  }
+  modal._membershipFieldMotions = [];
+  let order = 0;
+  [...motion.fields.children].filter(node => !node.hidden && node.id !== 'membershipApplyMessage').forEach(node => {
+    const incoming = !motion.visible.has(node);
+    if (!incoming) return;
+    modal._membershipFieldMotions.push(node.animate(
+      [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }],
+      { duration: 200, delay: Math.min(order++ * 30, 60), easing, fill: 'backwards' }
+    ));
+  });
+}
+
+// Keep the native select as the submission source; enhance only this control.
+function initMembershipRoleSelect(modal) {
+  if (!modal || modal._membershipRoleControl || !modal.querySelector('.membership-apply-fields')) return;
+  const select = document.getElementById('applyRole');
+  if (!select) return;
+  const trigger = document.createElement('button');
+  trigger.id = 'membershipRoleTrigger';
+  trigger.type = 'button';
+  trigger.className = 'membership-role-trigger';
+  trigger.dataset.buttonShape = 'keep';
+  trigger.setAttribute('role', 'combobox');
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-labelledby', 'membershipRoleLabel membershipRoleValue');
+  trigger.setAttribute('aria-controls', 'membershipRoleMenu');
+  const value = document.createElement('span');
+  value.id = 'membershipRoleValue';
+  const chevron = document.createElement('span');
+  chevron.className = 'membership-role-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  trigger.append(value, chevron);
+  select.after(trigger);
+  select.hidden = true;
+  const menu = document.createElement('div');
+  menu.id = 'membershipRoleMenu';
+  menu.className = 'membership-role-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-labelledby', 'membershipRoleLabel');
+  const topLayer = typeof menu.showPopover === 'function';
+  if (topLayer) menu.setAttribute('popover', 'manual');
+  else menu.hidden = true;
+  document.body.append(menu);
+  let opened = false;
+  let options = [];
+  let entrance;
+  const sync = () => {
+    value.textContent = select.selectedOptions[0]?.textContent || '';
+    options.forEach(option => option.setAttribute('aria-selected', String(option.dataset.value === select.value)));
+  };
+  const close = (restoreFocus = true) => {
+    if (!opened) return;
+    opened = false;
+    entrance?.cancel();
+    if (topLayer) menu.hidePopover(); else menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger.focus({ preventScroll: true });
+  };
+  const position = () => {
+    if (!opened) return;
+    const rect = trigger.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const top = viewport?.offsetTop || 0;
+    const bottom = top + (viewport?.height || innerHeight);
+    menu.style.width = rect.width + 'px';
+    menu.style.maxHeight = Math.max(80, (viewport?.height || innerHeight) - 32) + 'px';
+    const height = menu.offsetHeight;
+    menu.style.left = Math.max(16, Math.min(rect.left, innerWidth - rect.width - 16)) + 'px';
+    menu.style.top = Math.max(top + 16, Math.min(rect.bottom + 8 + height <= bottom - 16 ? rect.bottom + 8 : rect.top - height - 8, bottom - height - 16)) + 'px';
+  };
+  const open = () => {
+    if (opened) return;
+    options = [...select.options].map(nativeOption => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'membership-role-option';
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(nativeOption.selected));
+      option.tabIndex = -1;
+      option.dataset.value = nativeOption.value;
+      option.textContent = nativeOption.textContent;
+      option.disabled = nativeOption.disabled;
+      option.onclick = () => {
+        select.value = option.dataset.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        sync();
+        close();
+      };
+      return option;
+    });
+    menu.replaceChildren(...options);
+    opened = true;
+    if (topLayer) menu.showPopover(); else menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    position();
+    options.find(option => option.dataset.value === select.value)?.focus({ preventScroll: true });
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      entrance = menu.animate([{ opacity: 0, transform: 'translateY(-4px) scale(.985)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: 160, easing: getComputedStyle(modal).getPropertyValue('--ease-spring').trim() });
+    }
+  };
+  trigger.onclick = () => opened ? close() : open();
+  const keys = event => {
+    const index = options.indexOf(document.activeElement);
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (opened) (options[index] || options.find(option => option.dataset.value === select.value))?.click();
+      else open();
+    }
+    else if (event.key === 'Escape' && opened) { event.preventDefault(); event.stopPropagation(); close(); }
+    else if (event.key === 'Tab' && opened) close();
+    else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      if (!opened) { open(); return; }
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      options[next]?.focus({ preventScroll: true });
+    } else if (opened && event.key.length === 1 && event.key !== ' ') {
+      options.find(option => option.textContent.toLowerCase().startsWith(event.key.toLowerCase()))?.focus({ preventScroll: true });
+    }
+  };
+  trigger.addEventListener('keydown', keys);
+  menu.addEventListener('keydown', keys);
+  select.addEventListener('change', sync);
+  document.getElementById('membershipRoleLabel')?.addEventListener('click', event => { event.preventDefault(); trigger.focus(); });
+  document.addEventListener('pointerdown', event => { if (!menu.contains(event.target) && !trigger.contains(event.target)) close(false); });
+  modal.querySelector('.calendar-modal-scroll').addEventListener('scroll', () => close(false), { passive: true });
+  window.addEventListener('resize', () => close(false));
+  window.visualViewport?.addEventListener('resize', () => close(false));
+  new MutationObserver(sync).observe(select, { subtree: true, childList: true, characterData: true });
+  modal._membershipRoleControl = { close, sync };
+  sync();
 }
 
 function apiClubToDetailClub(row, country) {
@@ -4721,9 +4382,11 @@ function apiClubToDetailClub(row, country) {
     type: row.type,
     rawType: row.type,
     verifyMeta: row.verified ? __('detailRegistered') : '',
+    verified: row.verified,
+    created_at: row.created_at || '',
     province: row.province || '',
     provinces: row.provinces || [],
-    prefecture: row.prefecture || row.province || '',
+    prefecture: (row.country || country) === 'japan' ? row.prefecture || row.province || '' : '',
     remark: row.remark || '',
     country: row.country || country || 'china',
     logo_url: row.logo_url || '',
@@ -5036,6 +4699,8 @@ function renderGroupListWithLocation(rows) {
             type: type,
             rawType: item.type,
             verifyMeta: verifyMeta,
+            verified: item.verified,
+            created_at: item.created_at || '',
             province: locationText,
             provinces: item.provinces || [],
             remark: item.remark || __('listNoRemark'),
@@ -5055,7 +4720,7 @@ function renderGroupListWithLocation(rows) {
                 : '';
 
         return `
-            <article class="group-item" data-club='${clubData}'>
+            <article class="group-item" tabindex="0" data-club='${clubData}'>
                 <div class="group-main">
                     ${avatarHtml}
                     <div class="group-header">
@@ -5108,14 +4773,14 @@ function renderGroupListWithLocation(rows) {
             if (infoEl && listEl.contains(infoEl)) {
                 e.stopPropagation();
                 const clubData = infoEl.getAttribute('data-club');
-                if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
+                if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)), infoEl.closest('.group-item') || infoEl);
                 return;
             }
 
             const item = e.target.closest('.group-item');
             if (!item || !listEl.contains(item)) return;
             const clubData = item.getAttribute('data-club');
-            if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)));
+            if (clubData) showClubDetail(JSON.parse(decodeURIComponent(clubData)), item);
         });
     }
 }
@@ -5959,6 +5624,7 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
           prefecture: item.prefecture || provinceKey,
           school: item.school || '',
           remark: item.remark || __('listNoRemark'),
+          verified: item.verified, created_at: item.created_at || '',
           verifyMeta: (item.verified ? __('listVerified') : __('listUnverified')) + ' · ' + __('detailEstablished') + '：' + Utils.formatCreatedAt(item.created_at),
           country: 'japan', logo_url: item.logo_url || '', external_links: item.external_links || ''
         }))}'>
@@ -6014,7 +5680,7 @@ function showJapanMapBubble(provinceName, anchorX, anchorY) {
         const clubData = el.getAttribute('data-club');
         if (clubData) {
           const club = JSON.parse(decodeURIComponent(clubData));
-          showClubDetail(club);
+          showClubDetail(club, document.getElementById('mapSvg'));
           hideMapBubble();
         }
       };

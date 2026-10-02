@@ -5,7 +5,22 @@ const os = require('node:os');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const currentId = 'updates/2-2-0';
+const currentId = 'updates/2-4-0';
+const guideSeed = JSON.parse(fs.readFileSync(path.join(root, 'wiki', 'guide', 'seed', 'zh-CN', 'documents.json'), 'utf8'));
+const legacyRuntimeCatalog = {
+  version: guideSeed.version,
+  seedRevision: 'legacy-runtime-fixture',
+  groups: guideSeed.groups,
+  articles: Object.fromEntries(guideSeed.articles.map(article => [article.id, {
+    id: article.id,
+    seedRevision: 'legacy-runtime-fixture',
+    status: 'published',
+    draft: null,
+    published: article,
+    updatedAt: `${article.updatedAt}T00:00:00+08:00`,
+    updatedBy: 0,
+  }])),
+};
 const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const externalBaseUrl = String(process.env.GUIDE_BASE_URL || '').replace(/\/$/, '');
 const viewports = [
@@ -22,11 +37,27 @@ const mime = {
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 function createStaticServer() {
-  return http.createServer((request, response) => {
-    const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+  const server = http.createServer((request, response) => {
+    const requestUrl = new URL(request.url, 'http://127.0.0.1');
+    const pathname = decodeURIComponent(requestUrl.pathname);
     if (pathname.startsWith('/api/')) {
+      if (server.mode === 'legacy-runtime' && requestUrl.searchParams.get('action') === 'guide_catalog') {
+        response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ success: true, catalog: legacyRuntimeCatalog }));
+        return;
+      }
+      if (server.mode === 'legacy-runtime' && requestUrl.searchParams.get('action') === 'guide_article') {
+        response.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end('{"success":false,"message":"文档不存在"}');
+        return;
+      }
       response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       response.end('{"success":false}');
+      return;
+    }
+    if (server.mode === 'legacy-runtime' && pathname.startsWith('/wiki/guide/seed/')) {
+      response.writeHead(404);
+      response.end('Not found');
       return;
     }
     const relative = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
@@ -39,6 +70,8 @@ function createStaticServer() {
     response.writeHead(200, { 'Content-Type': mime[path.extname(target).toLowerCase()] || 'application/octet-stream' });
     fs.createReadStream(target).pipe(response);
   });
+  server.mode = 'offline';
+  return server;
 }
 
 async function launchChrome() {
@@ -121,7 +154,7 @@ async function navigate(cdp, sessionId, url, readyExpression, label) {
   await waitFor(cdp, sessionId, readyExpression, `${label} stable render`);
 }
 
-async function inspectViewport(cdp, baseUrl, viewport) {
+async function inspectViewport(cdp, baseUrl, viewport, options = {}) {
   const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
   const errors = [];
@@ -144,7 +177,7 @@ async function inspectViewport(cdp, baseUrl, viewport) {
       const summary = details && details.querySelector('summary');
       return { title: document.querySelector('#guideArticle h1')?.textContent || '', open: Boolean(details?.open), linkCount: details?.querySelectorAll('a[data-guide-id]').length || 0, summaryHeight: summary?.getBoundingClientRect().height || 0, overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth };
     })()`);
-    if (initial.open || initial.linkCount !== 8 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
+    if (initial.open || initial.linkCount !== 9 || initial.summaryHeight < 44 || initial.overflow > 1) throw new Error(`${viewport.name} initial state invalid: ${JSON.stringify(initial)}`);
 
     await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"] > summary').click()`);
     if (!await evaluate(cdp, sessionId, `document.querySelector('details[data-guide-group="release-history"]').open`)) throw new Error(`${viewport.name} click did not open release history`);
@@ -172,8 +205,11 @@ async function inspectViewport(cdp, baseUrl, viewport) {
 
     await navigate(cdp, sessionId, `${baseUrl}/wiki/guide/?lang=ja#/${currentId}`, `document.querySelector('a[data-guide-id="${currentId}"].active') && document.documentElement.lang === 'ja'`, 'Japanese release note');
     const japanese = await evaluate(cdp, sessionId, `(() => ({ title: document.querySelector('#guideArticle h1')?.textContent || '', groupTitle: document.querySelector('details[data-guide-group="release-history"] > summary span')?.textContent || '', open: document.querySelector('details[data-guide-group="release-history"]')?.open || false, overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth }))()`);
-    if (!japanese.title.includes('2.2.0') || japanese.groupTitle !== '更新履歴' || !japanese.open || japanese.overflow > 1) throw new Error(`${viewport.name} Japanese state invalid: ${JSON.stringify(japanese)}`);
-    if (errors.length) throw new Error(`${viewport.name} console errors: ${errors.join(' | ')}`);
+    if (!japanese.title.includes('2.4.0') || japanese.groupTitle !== '更新履歴' || !japanese.open || japanese.overflow > 1) throw new Error(`${viewport.name} Japanese state invalid: ${JSON.stringify(japanese)}`);
+    const unexpectedErrors = options.allowGuideArticle404
+      ? errors.filter(error => !error.includes('Failed to load resource: the server responded with a status of 404'))
+      : errors;
+    if (unexpectedErrors.length) throw new Error(`${viewport.name} console errors: ${unexpectedErrors.join(' | ')}`);
 
     const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, sessionId);
     const screenshot = path.join(os.tmpdir(), `vnfest-guide-history-${viewport.name}.png`);
@@ -194,6 +230,10 @@ async function inspectViewport(cdp, baseUrl, viewport) {
   try {
     await cdp.connect();
     for (const viewport of viewports) await inspectViewport(cdp, baseUrl, viewport);
+    if (!externalBaseUrl) {
+      server.mode = 'legacy-runtime';
+      await inspectViewport(cdp, baseUrl, { name: 'legacy-runtime', width: 1440, height: 900 }, { allowGuideArticle404: true });
+    }
   } finally {
     cdp.close();
     const chromeExited = new Promise(resolve => chrome.child.once('exit', resolve));

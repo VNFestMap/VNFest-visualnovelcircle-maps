@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "eventId": "beijing",
+  "demo": true,
+  "currency": "CNY",
+  "notice": "开发测试模板，不代表公开活动资料。",
+  "categories": [
+    {
+      "id": "game",
+      "name": "测试分类",
+      "color": "#326cc2",
+      "icon": "game"
+    }
+  ],
+  "booths": []
+}

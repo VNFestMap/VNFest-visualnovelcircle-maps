@@ -5,32 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="canvas:aspect-ratio" content="16:9">
 <title>超级管理控制台 - VNFest</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* ================================================================
-   DESIGN TOKENS — GalOnly oklch dark-purple palette
+   DESIGN TOKENS — XiriaCanvas-inspired neutral workspace
    ================================================================ */
 :root {
-  --seed-bg: oklch(18% 0.035 275);
-  --seed-fg: oklch(93% 0.003 80);
-  --seed-primary: oklch(72% 0.07 290);
-  --seed-accent: oklch(58% 0.08 290);
-  --seed-surface: oklch(24% 0.04 272);
+  --seed-bg: #0b0c0b;
+  --seed-fg: #f6f6f3;
+  --seed-primary: #8b7cff;
+  --seed-accent: #8b7cff;
+  --seed-surface: #101110;
   --seed-radius: 12px;
 
   --color-bg: var(--seed-bg);
   --color-surface: var(--seed-surface);
-  --color-surface-alt: oklch(22% 0.038 273);
+  --color-surface-alt: #171817;
   --color-text: var(--seed-fg);
-  --color-text-secondary: oklch(84% 0.015 275);
-  --color-text-muted: oklch(75% 0.03 270);
+  --color-text-secondary: #c9cbc3;
+  --color-text-muted: #9a9d94;
   --color-primary: var(--seed-primary);
-  --color-primary-hover: oklch(78% 0.08 290);
-  --color-primary-light: oklch(72% 0.05 290 / 0.15);
-  --color-border: oklch(30% 0.045 270 / 0.35);
-  --color-border-strong: oklch(38% 0.05 268 / 0.35);
+  --color-primary-hover: #a79cff;
+  --color-primary-light: rgb(139 124 255 / 0.15);
+  --color-border: #292c27;
+  --color-border-strong: #343630;
   --color-success: oklch(72% 0.12 155);
   --color-success-light: oklch(72% 0.08 155 / 0.12);
   --color-warning: oklch(80% 0.12 85);
@@ -43,22 +40,22 @@
   --color-text-warning-dark: oklch(80% 0.12 85);
   --color-text-success-dark: oklch(72% 0.12 155);
   --color-text-danger-dark: oklch(70% 0.14 25);
-  --color-text-primary-dark: oklch(72% 0.07 290);
+  --color-text-primary-dark: #8b7cff;
   --color-text-warning-mid: oklch(80% 0.12 85);
 
   /* Chart palette */
-  --chart-blue: oklch(72% 0.07 290);
+  --chart-blue: #8b7cff;
   --chart-red: oklch(70% 0.14 25);
-  --chart-gray: oklch(65% 0.04 268);
-  --chart-area-fill: oklch(72% 0.05 290 / 0.12);
+  --chart-gray: #9a9d94;
+  --chart-area-fill: rgb(139 124 255 / 0.12);
   --chart-pv: var(--color-success);
   --chart-pv-area: oklch(72% 0.10 155 / 0.11);
   --chart-uv: var(--color-primary);
-  --chart-track: oklch(30% 0.045 270 / 0.42);
+  --chart-track: #292c27;
 
   /* Badge type colors */
-  --badge-info-bg: oklch(72% 0.05 290 / 0.12);
-  --badge-info-text: oklch(72% 0.07 290);
+  --badge-info-bg: rgb(139 124 255 / 0.12);
+  --badge-info-text: #8b7cff;
   --badge-warning-bg: oklch(80% 0.08 85 / 0.12);
   --badge-warning-text: oklch(80% 0.12 85);
   --badge-important-bg: oklch(70% 0.10 25 / 0.12);
@@ -73,21 +70,21 @@
   --color-warning-action-hover: oklch(65% 0.10 65);
 
   /* Component specific */
-  --color-review-hover: oklch(72% 0.04 290 / 0.08);
-  --color-grid-line: oklch(30% 0.045 270 / 0.35);
-  --color-chart-label: oklch(65% 0.04 268);
+  --color-review-hover: rgb(139 124 255 / 0.08);
+  --color-grid-line: #292c27;
+  --color-chart-label: #9a9d94;
 
   /* Inverse and component colors */
-  --color-inverse: oklch(93% 0.003 80);
-  --color-toggle-track: oklch(30% 0.045 270 / 0.5);
-  --color-toggle-knob: oklch(93% 0.003 80);
-  --color-brand-gradient-end: oklch(58% 0.08 290);
+  --color-inverse: #f6f6f3;
+  --color-toggle-track: #292c27;
+  --color-toggle-knob: #f6f6f3;
+  --color-brand-gradient-end: #8b7cff;
 
-  --sidebar-bg: oklch(15% 0.03 275);
-  --sidebar-surface: oklch(22% 0.04 272);
-  --sidebar-text: oklch(75% 0.03 270);
-  --sidebar-text-active: oklch(93% 0.003 80);
-  --sidebar-accent: oklch(72% 0.07 290);
+  --sidebar-bg: #0b0c0b;
+  --sidebar-surface: #1d1e1c;
+  --sidebar-text: #9a9d94;
+  --sidebar-text-active: #f6f6f3;
+  --sidebar-accent: #8b7cff;
   --sidebar-width: 248px;
 
   --space-xs: 4px; --space-sm: 8px; --space-md: 16px;
@@ -98,8 +95,8 @@
   --radius-xl: 20px;
   --radius-pill: 100px;
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-  --shadow-md: 0 10px 36px rgba(0,0,0,0.18), 0 2px 4px oklch(72% 0.04 290 / 0.08);
-  --shadow-lg: 0 10px 36px rgba(0,0,0,0.25), 0 2px 4px oklch(72% 0.04 290 / 0.1);
+  --shadow-md: 0 10px 36px rgba(0,0,0,0.18), 0 2px 4px rgb(139 124 255 / 0.08);
+  --shadow-lg: 0 10px 36px rgba(0,0,0,0.25), 0 2px 4px rgb(139 124 255 / 0.1);
   --font-display: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
   --font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -200,7 +197,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 }
 .nav-item:hover { background: rgba(236,234,233,0.06); color: var(--sidebar-text-active); }
 .nav-item.active {
-  background: oklch(72% 0.05 290 / 0.12); color: var(--sidebar-text-active);
+  background: rgb(139 124 255 / 0.12); color: var(--sidebar-text-active);
 }
 .nav-item.active::before {
   content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
@@ -244,7 +241,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 }
 .topbar {
   height: var(--topbar-h);
-  background: oklch(18% 0.035 275 / 0.85);
+  background: rgb(11 12 11 / 0.85);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--color-border);
   display: flex; align-items: center; justify-content: space-between;
@@ -285,7 +282,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   opacity: 0; transform: scaleX(0.6);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.kpi-card:hover { transform: translateY(-4px); border-color: var(--color-border-strong); background: oklch(30% 0.045 270); box-shadow: var(--shadow-md); }
+.kpi-card:hover { transform: translateY(-4px); border-color: var(--color-border-strong); background: #292c27; box-shadow: var(--shadow-md); }
 .kpi-card:hover::before { opacity: 1; transform: scaleX(1); }
 .kpi-label {
   font-size: 10px; font-weight: 600; color: var(--color-text-muted);
@@ -315,7 +312,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .data-table th {
   text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
   color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
-  background: oklch(22% 0.038 273); border-bottom: 1px solid var(--color-border);
+  background: #171817; border-bottom: 1px solid var(--color-border);
 }
 .data-table td {
   padding: 10px 14px; border-bottom: 1px solid var(--color-border);
@@ -338,7 +335,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .analytics-range-label { margin-left: auto; color: var(--color-text-muted); font-size: 11px; }
 .analytics-notice {
   padding: 10px 14px; margin-bottom: var(--space-md); border-left: 3px solid var(--color-primary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: oklch(72% 0.05 290 / .07);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: rgb(139 124 255 / .07);
   color: var(--color-text-secondary); font-size: 12px; line-height: 1.6;
 }
 .analytics-overview { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
@@ -429,7 +426,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 /* Operation log inspector */
 .log-toolbar {
   padding: 14px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  border-bottom: 1px solid var(--color-border); background: oklch(21% 0.036 273 / 0.55);
+  border-bottom: 1px solid var(--color-border); background: rgb(23 24 23 / 0.55);
 }
 .log-toolbar .search-input { flex: 1 1 260px; min-width: 220px; }
 .log-filter {
@@ -456,7 +453,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
   font-size: 10px; font-weight: 650; white-space: nowrap;
 }
-.log-pill.info { color: var(--color-primary); background: oklch(72% 0.05 290 / .1); }
+.log-pill.info { color: var(--color-primary); background: rgb(139 124 255 / .1); }
 .log-pill.success { color: var(--color-success); background: var(--color-success-light); }
 .log-pill.attention { color: var(--color-warning); background: var(--color-warning-light); }
 .log-pill.high { color: var(--color-danger); background: var(--color-danger-light); }
@@ -469,12 +466,12 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 }
 .log-detail-json {
   margin: 0; padding: 12px; max-height: 260px; overflow: auto; border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm); background: oklch(18% 0.03 273); color: var(--color-text-secondary);
+  border-radius: var(--radius-sm); background: #0b0c0b; color: var(--color-text-secondary);
   font: 11px/1.6 var(--font-mono); white-space: pre-wrap; word-break: break-all; user-select: text;
 }
 .log-explanation {
   padding: 10px 12px; border-left: 3px solid var(--color-primary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: oklch(72% 0.05 290 / .07); color: var(--color-text-secondary); font-size: 12px; line-height: 1.65;
+  background: rgb(139 124 255 / .07); color: var(--color-text-secondary); font-size: 12px; line-height: 1.65;
 }
 
 .btn {
@@ -486,8 +483,8 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: scale(0.95); }
 .btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.btn-primary { background: var(--seed-accent); color: oklch(15% 0.03 275); }
-.btn-primary:hover { background: var(--color-primary); color: oklch(15% 0.03 275); }
+.btn-primary { background: var(--seed-accent); color: #0b0c0b; }
+.btn-primary:hover { background: var(--color-primary); color: #0b0c0b; }
 .btn-success { background: var(--color-success-light); color: var(--color-success); border: 1px solid oklch(72% 0.08 155 / 0.2); }
 .btn-success:hover { background: oklch(72% 0.08 155 / 0.2); }
 .btn-danger { background: var(--color-danger-light); color: var(--color-danger); border: 1px solid oklch(70% 0.10 25 / 0.2); }
@@ -517,7 +514,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 }
 .chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
 .chip.active {
-  background: oklch(72% 0.05 290 / 0.15); color: var(--color-primary); border-color: oklch(72% 0.07 290 / 0.3);
+  background: rgb(139 124 255 / 0.15); color: var(--color-primary); border-color: rgb(139 124 255 / 0.3);
 }
 .chip .chip-count {
   font-size: 10px; font-weight: 700; margin-left: 3px; opacity: 0.8;
@@ -561,7 +558,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   opacity: 0; transform: scaleX(0.6);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.review-card:hover { transform: translateY(-4px); border-color: var(--color-border-strong); background: oklch(30% 0.045 270); box-shadow: var(--shadow-md); }
+.review-card:hover { transform: translateY(-4px); border-color: var(--color-border-strong); background: #292c27; box-shadow: var(--shadow-md); }
 .review-card:hover::before { opacity: 1; transform: scaleX(1); }
 .review-card.approved { border-left: 3px solid var(--color-success); }
 .review-card.approved::before { background: var(--color-success); }
@@ -601,7 +598,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   border-radius: var(--radius-pill); color: var(--color-text); font-size: 13px;
   font-weight: 500; z-index: 9999; opacity: 0;
   transition: all 0.25s; pointer-events: none;
-  background: oklch(24% 0.04 272 / 0.9); backdrop-filter: blur(14px);
+  background: rgb(16 17 16 / 0.9); backdrop-filter: blur(14px);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-lg);
   max-width: calc(100vw - 40px); text-align: center;
@@ -697,7 +694,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .toggle-hint { font-size: 11px; color: var(--color-text-muted); }
 
 .announce-preview {
-  margin-top: 8px; padding: 14px 18px; background: oklch(22% 0.038 273);
+  margin-top: 8px; padding: 14px 18px; background: #171817;
   border-radius: var(--radius-md); border-left: 4px solid var(--color-primary);
 }
 .announce-preview-label {
@@ -727,14 +724,14 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   -webkit-line-clamp: 4; -webkit-box-orient: vertical;
 }
 .type-badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 500; }
-.type-badge-info { background: var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid oklch(72% 0.05 290 / 0.2); }
+.type-badge-info { background: var(--badge-info-bg); color: var(--badge-info-text); border: 1px solid rgb(139 124 255 / 0.2); }
 .type-badge-warning { background: var(--badge-warning-bg); color: var(--badge-warning-text); border: 1px solid oklch(80% 0.08 85 / 0.2); }
 .type-badge-important { background: var(--badge-important-bg); color: var(--badge-important-text); border: 1px solid oklch(70% 0.10 25 / 0.2); }
 .type-badge-update { background: var(--badge-update-bg); color: var(--badge-update-text); border: 1px solid oklch(72% 0.08 155 / 0.2); }
 .status-badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 500; }
-.status-badge-draft { background: oklch(72% 0.04 290 / 0.08); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.status-badge-draft { background: rgb(139 124 255 / 0.08); color: var(--color-text-muted); border: 1px solid var(--color-border); }
 .status-badge-published { background: var(--color-success-light); color: var(--color-success); border: 1px solid oklch(72% 0.08 155 / 0.2); }
-.persistent-tag { font-size: 10px; color: var(--color-primary); background: oklch(72% 0.05 290 / 0.1); padding: 1px 8px; border-radius: var(--radius-pill); font-weight: 600; border: 1px solid oklch(72% 0.05 290 / 0.15); }
+.persistent-tag { font-size: 10px; color: var(--color-primary); background: rgb(139 124 255 / 0.1); padding: 1px 8px; border-radius: var(--radius-pill); font-weight: 600; border: 1px solid rgb(139 124 255 / 0.15); }
 
 /* Dropdown menu — GalOnly style */
 .dropdown {
@@ -906,7 +903,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 
 /* Loading skeleton */
 .skeleton {
-  background: linear-gradient(90deg, oklch(24% 0.04 272) 25%, oklch(28% 0.04 272) 50%, oklch(24% 0.04 272) 75%);
+  background: linear-gradient(90deg, #101110 25%, oklch(28% 0.04 272) 50%, #101110 75%);
   background-size: 200% 100%; animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm); height: 20px;
 }
@@ -924,7 +921,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
   cursor: pointer; transition: all 0.12s;
 }
 .page-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.page-btn.active { background: oklch(72% 0.05 290 / 0.15); color: var(--color-primary); border-color: oklch(72% 0.07 290 / 0.3); }
+.page-btn.active { background: rgb(139 124 255 / 0.15); color: var(--color-primary); border-color: rgb(139 124 255 / 0.3); }
 
 /* Utility */
 .text-center { text-align: center; }
@@ -948,7 +945,7 @@ input, select, textarea { font-family: inherit; font-size: 13px; }
 .insights-presets { display: flex; gap: 4px; }
 .insights-range-label { margin-left: auto; font-size: 11px; color: var(--color-text-muted); }
 .insights-notice {
-  border: 1px solid oklch(72% 0.07 290 / 0.18); background: var(--color-primary-light);
+  border: 1px solid rgb(139 124 255 / 0.18); background: var(--color-primary-light);
   color: var(--color-text-secondary); border-radius: var(--radius-sm);
   padding: 7px 10px; font-size: 11px; margin-bottom: 10px;
 }
@@ -1065,6 +1062,8 @@ button.insights-kpi { font: inherit; cursor: pointer; }
   .insights-toolbar > .btn { width: 100%; }
 }
 </style>
+<link rel="stylesheet" href="./reviews-workspace.css?v=20260930-motion1">
+  <link rel="stylesheet" href="../css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body>
 <div class="app-layout">
@@ -1096,6 +1095,9 @@ button.insights-kpi { font: inherit; cursor: pointer; }
       <button class="nav-item" data-module="galonly-reviewers" onclick="switchModule('galonly-reviewers')" id="galonlyReviewersNav" style="display:none;">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><path d="M2 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/><path d="M8.5 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/></svg></span> 摊位审核成员
       </button>
+      <a class="nav-item" href="../Galgame_events/Beijing_GalOnly_booth_admin.html?event_code=beijing">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6.5h12v7H2z"/><path d="M1 6.5l1.5-4h11L15 6.5"/><path d="M5 6.5v7M11 6.5v7M5 4.5h6"/></svg></span> 摊位资料控制台
+      </a>
       <button class="nav-item" data-module="clubs" onclick="switchModule('clubs')">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V5l6-4 6 4v9"/><path d="M6 14v-4h4v4"/></svg></span> 同好会总览
       </button>
@@ -1529,6 +1531,8 @@ button.insights-kpi { font: inherit; cursor: pointer; }
               <option value="recognition">认证与题库</option>
               <option value="column">专栏内容</option>
               <option value="forum">论坛归档</option>
+              <option value="wiki">维基</option>
+              <option value="project">项目企划</option>
               <option value="announce">公告管理</option>
               <option value="integration">Bot 与接入</option>
               <option value="system">其他系统操作</option>
@@ -1742,7 +1746,7 @@ function showInfoModal(title, rows, copyText) {
   footer.innerHTML = (copyText
     ? '<button class="btn btn-primary" onclick="copyInfoModalText()">复制</button>' : '') +
     '<button class="btn btn-ghost" onclick="closeInfoModal()">关闭</button>';
-  document.getElementById('infoModal').style.display = 'flex';
+  workspaceMotion.openModal(document.getElementById('infoModal'));
 }
 function copyInfoModalText() {
   const text = document.getElementById('infoModalFooter').dataset.copy || '';
@@ -1752,7 +1756,7 @@ function copyInfoModalText() {
     .catch(() => showToast('复制失败', 'error'));
 }
 function closeInfoModal() {
-  document.getElementById('infoModal').style.display = 'none';
+  return workspaceMotion.closeModal(document.getElementById('infoModal'));
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('infoModal').style.display !== 'none') closeInfoModal();
@@ -1819,6 +1823,7 @@ function switchModule(mod, options = {}) {
     return;
   }
   if (currentModule === 'logs' && mod !== 'logs') stopLogAutoRefresh();
+  const previousModule = currentModule;
   currentModule = mod;
   if (options.updateUrl !== false && window.history?.pushState) {
     const nextUrl = new URL(window.location.href);
@@ -1828,9 +1833,7 @@ function switchModule(mod, options = {}) {
   // Update nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.module === mod));
   // Update panels
-  document.querySelectorAll('.module-panel').forEach(p => p.classList.remove('active'));
-  const panel = document.getElementById('module-' + mod);
-  if (panel) panel.classList.add('active');
+  const transition = workspaceMotion.switchPanel(previousModule, mod);
   // Update topbar
   const meta = MODULE_META[mod] || { breadcrumb: '', title: mod };
   document.getElementById('breadcrumb').textContent = meta.breadcrumb;
@@ -1840,7 +1843,7 @@ function switchModule(mod, options = {}) {
   document.getElementById('sidebarOverlay').classList.remove('show');
   if (mod === 'logs') startLogAutoRefresh();
   // Load data
-  return loadModuleData(mod);
+  return Promise.all([transition, loadModuleData(mod)]);
 }
 
 async function loadModuleData(mod) {
@@ -1848,14 +1851,14 @@ async function loadModuleData(mod) {
   else if (mod === 'review') await loadReviewData();
   else if (mod === 'galonly-reviewers') await loadGalonlyReviewers();
   else if (mod === 'clubs') await loadClubsOverview();
-  else if (mod === 'users') loadUsers();
+  else if (mod === 'users') await loadUsers();
   else if (mod === 'announcements') await loadAnnouncements();
-  else if (mod === 'logs') loadLogs();
+  else if (mod === 'logs') await loadLogs();
   else if (mod === 'analytics') await loadAnalytics();
   else if (mod === 'insights') await loadInsights();
 }
 
-function refreshCurrentModule() { loadModuleData(currentModule); }
+function refreshCurrentModule() { return loadModuleData(currentModule); }
 
 /* ================================================================
    CLUB NAMES (shared utility)
@@ -1927,7 +1930,7 @@ async function loadDashboard() {
   renderReviewStats(totalApproved, totalRejected, totalPending, totalReviewed);
   renderRegionDistChart();
   updatePendingBadge(totalPending);
-  if (isSuperAdmin) loadInsights({ dashboardOnly: true });
+  if (isSuperAdmin) await loadInsights({ dashboardOnly: true });
 }
 
 function updatePendingBadge(count) {
@@ -2181,7 +2184,7 @@ function setInsightsLoading() {
 async function loadInsights(options = {}) {
   if (!isSuperAdmin) return;
   const token = ++insightsLoadToken;
-  if (!options.dashboardOnly) setInsightsLoading();
+  if (!options.dashboardOnly && !workspaceMotion.hasLoaded('insights')) setInsightsLoading();
   try {
     const response = await fetch('../api/admin_insights.php?action=summary' + insightsRangeParams(), { credentials: 'same-origin' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2435,7 +2438,7 @@ async function applyAdminDeepLink() {
       window.history.replaceState({ module: 'dashboard' }, '', fallbackUrl.pathname + fallbackUrl.search + fallbackUrl.hash);
     }
     if (currentModule !== 'dashboard') await switchModule('dashboard', { updateUrl: false });
-    else await loadDashboard();
+    else await loadModuleData('dashboard');
     return;
   }
   if (module === 'review') {
@@ -2540,7 +2543,7 @@ async function loadAnalytics() {
   if (!isSuperAdmin) return;
   const token = ++analyticsLoadToken;
   const chart = document.getElementById('analyticsTrendChart');
-  if (chart) chart.innerHTML = '<div class="analytics-empty">加载中...</div>';
+  if (chart && !workspaceMotion.hasLoaded('analytics')) chart.innerHTML = '<div class="analytics-empty">加载中...</div>';
   try {
     const response = await fetch('../api/analytics.php?action=summary' + analyticsRangeParams(), { credentials: 'same-origin' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -3111,12 +3114,16 @@ function switchFilter(f) {
 }
 
 async function loadReviewData() {
+  const requestedTab = currentReviewTab;
+  const sequence = ++workspaceReviewSequence;
   await loadClubNames();
+  if (sequence !== workspaceReviewSequence || requestedTab !== currentReviewTab) return;
   if (currentReviewTab === 'club') await loadClubSubmissions();
   else if (currentReviewTab === 'event') await loadEventSubmissions();
   else if (currentReviewTab === 'publication') await loadPublicationSubmissions();
   else if (currentReviewTab === 'membership') await loadMembershipData();
   else if (currentReviewTab === 'feedback') await loadFeedbackItems();
+  if (sequence !== workspaceReviewSequence || requestedTab !== currentReviewTab) return;
   renderCurrentReviewTab();
 }
 
@@ -3567,14 +3574,16 @@ async function saveGalonlyReviewers() {
    ================================================================ */
 function loadUsers() {
   const tbody = document.getElementById('usersTableBody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>';
+  if (tbody && !workspaceMotion.hasLoaded('users')) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:40px;">加载中...</td></tr>';
   const search = (document.getElementById('userSearch')?.value || '').trim();
   const role = document.getElementById('userRoleFilter')?.value || 'all';
   const qs = 'page=1&per_page=100&search=' + encodeURIComponent(search) + '&role=' + encodeURIComponent(role === 'all' ? '' : role);
-  Promise.all([
+  const sequence = ++workspaceUserSequence;
+  return Promise.all([
     fetch('../api/users.php?action=stats', { credentials: 'same-origin' }).then(r => r.json()).catch(() => ({ success: false })),
     fetch('../api/users.php?action=list&' + qs, { credentials: 'same-origin' }).then(r => r.json()).catch(() => ({ success: false }))
   ]).then(function(results) {
+    if (sequence !== workspaceUserSequence) return;
     const statsData = results[0];
     const listData = results[1];
     if (statsData.success && statsData.stats) {
@@ -3618,6 +3627,7 @@ function loadUsers() {
         '<td>' + selfActions + '</td>' +
       '</tr>';
     }).join('');
+    workspaceMotion.result(tbody);
   });
 }
 
@@ -3840,7 +3850,7 @@ async function openClubMembersModal(id, country, name) {
   document.getElementById('infoModalTitle').textContent = '查看成员 — ' + name;
   document.getElementById('infoModalBody').innerHTML = '<div class="empty-state">加载成员列表...</div>';
   document.getElementById('infoModalFooter').innerHTML = '<button class="btn btn-ghost" onclick="closeInfoModal()">关闭</button>';
-  document.getElementById('infoModal').style.display = 'flex';
+  workspaceMotion.openModal(document.getElementById('infoModal'));
   try {
     const r = await fetch('../api/membership.php?action=members&club_id=' + id + '&country=' + encodeURIComponent(country), { credentials: 'same-origin' });
     const data = await r.json();
@@ -4084,7 +4094,7 @@ function loadLogs(options = {}) {
   if (logAbortController) logAbortController.abort();
   const controller = new AbortController();
   logAbortController = controller;
-  fetch('../api/admin_logs.php?' + qs, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal })
+  return fetch('../api/admin_logs.php?' + qs, { credentials: 'same-origin', cache: 'no-store', signal: controller.signal })
     .then(r => r.json())
     .then(function(data) {
       if (requestSequence !== logRequestSequence) return;
@@ -4096,8 +4106,7 @@ function loadLogs(options = {}) {
       const total = Number(data.total || 0);
       if (!currentLogs.length && total > 0 && logPage > 1) {
         logPage--;
-        loadLogs(options);
-        return;
+        return loadLogs(options);
       }
       updateLogSummary(total);
       if (!currentLogs.length) {
@@ -4122,6 +4131,7 @@ function loadLogs(options = {}) {
             escapeHtml('查看日志 #' + l.id + '：' + l.definition.label + ' 的解释') + '" onclick="showLogDetail(' + Number(l.id) + ')">解释</button></td>' +
         '</tr>';
       }).join('');
+      if (!options.silent) workspaceMotion.result(tbody);
     })
     .catch(function(error) {
       if (error && error.name === 'AbortError') return;
@@ -4185,6 +4195,8 @@ function logTypeLabel(action) {
   if (/^recog[._]/.test(a)) return '认证与题库';
   if (/^column[._]/.test(a)) return '专栏内容';
   if (/^forum[._]/.test(a)) return '论坛归档';
+  if (/^wiki[._]/.test(a)) return '维基';
+  if (/^project[._]/.test(a)) return '项目企划';
   if (/^announce/.test(a)) return '公告管理';
   if (/^bot[._]/.test(a)) return 'Bot 与接入';
   return '其他系统操作';
@@ -4198,6 +4210,7 @@ const LOG_ACTION_DEFINITIONS = [
   [/^user\.change_password$/, '修改账号密码', '已登录用户更换了密码，属于高影响账号操作。', 'high'],
   [/^user\.set_password$/, '设置账号密码', '管理员为账号设置了新的密码，属于高影响账号操作；日志不会保存密码原文。', 'high'],
   [/^user\.oauth_send_code$/, '发送 OAuth 验证码', '向 OAuth 关联流程发送了一次验证码，日志不会保存验证码本身。', 'attention'],
+  [/^user\.oauth_pending$/, '进入 OAuth 等待状态', '第三方登录流程进入等待确认状态，尚未完成身份交换。', 'info'],
   [/^user\.oauth_link_existing$/, '关联已有 OAuth 账号', '已登录账号完成了已有 OAuth 身份的关联。', 'attention'],
   [/^user\.oauth_provider_transfer(?:_started)?$/, '转移 OAuth 登录身份', 'OAuth 登录身份转移流程已发起或完成，可能影响后续登录入口。', 'high'],
   [/^user\.register$/, '创建新用户', '一个新账号已通过本地注册或第三方登录创建。', 'info'],
@@ -4232,6 +4245,10 @@ const LOG_ACTION_DEFINITIONS = [
   [/^vote[._].*(settle|advance|resolve|reseed|rebuild)/, '推进或重算投票赛程', '投票阶段的入选、结算、平票或种子结果发生变更。', 'high'],
   [/^vote[._].*(cast|submit)/, '提交投票或提名', '用户提交了选票或项目提名，详情中可查看项目、阶段与条目数。', 'info'],
   [/^vote[._]/, '修改投票活动', '投票企划、阶段、候选项或匹配配置已发生变更。', 'attention'],
+  [/^recog_(badge|quiz|submission)_image_uploaded$/, '上传认证图片', '认证徽章、题库或提交材料关联的图片已上传。', 'info'],
+  [/^recog_quiz_share_(uploaded|deleted)$/, '管理题库分享图', '题库分享图的缓存图片被上传或删除。', 'info'],
+  [/^recog_credential_visibility$/, '调整认证凭证可见性', '认证凭证的公开可见范围被调整。', 'attention'],
+  [/^recog_submission_(approved|rejected)$/, '处理认证提交', '审核员对一条认证申请作出了通过或拒绝决定。', 'attention'],
   [/^recog[._].*(revoke|expired)/, '撤销或过期认证凭证', '一个或多个认证凭证已失效，不再应被视为有效资格。', 'high'],
   [/^recog[._].*(issued|generated|imported)/, '发放认证或导入名单', '系统创建了可领取凭证或批量导入了参与者。', 'attention'],
   [/^recog[._].*submission_(approve|reject)/, '处理认证提交', '审核员对一条认证申请作出了通过或拒绝决定。', 'attention'],
@@ -4245,17 +4262,71 @@ const LOG_ACTION_DEFINITIONS = [
   [/^bot[._].*revoke/, '撤销 Bot 接入令牌', '已发放的 Bot 访问权限被撤销，该令牌应立即停止工作。', 'high'],
   [/^bot[._].*create/, '创建 Bot 接入令牌', '为同好会创建了新的 Bot 访问权限，详情仅展示权限范围，不显示令牌原文。', 'high'],
   [/^announce/, '变更系统公告', '公告被创建、修改、发布或删除，可能影响全站用户可见内容。', 'attention'],
-  [/^review[._]/, '执行内容审核', '管理员对一条待处理内容更新了审核状态。', 'attention']
+  [/^review[._]/, '执行内容审核', '管理员对一条待处理内容更新了审核状态。', 'attention'],
+  // ── Go 审计中间件产出、此前无归类的动作族 ──
+  [/^wiki[._]/, '变更同好会维基', '同好会维基的页面或配置发生了变更，可结合目标 ID 追溯具体页面。', 'attention'],
+  [/^project_item[._]/, '变更项目条目', '项目企划下的一个条目被创建、修改或移除。', 'info'],
+  [/^project_participation[._]/, '变更项目参与记录', '用户对项目企划的参与状态发生了变更。', 'info'],
+  [/^project[._]/, '变更项目企划', '项目企划本体被创建、修改或删除，条目与参与记录请另行核对。', 'attention'],
+  [/^column\./, '变更专栏内容', '专栏文章或其附属内容发生了变更，可结合目标 ID 与业务参数追溯。', 'attention'],
+  [/^forum\./, '变更论坛归档内容', '历史论坛归档的内容或状态发生了变更。', 'attention'],
+  // ── 生产库中实际存在、此前无归类的动作 ──
+  [/^moe_(candidate|contest|match|stage|vote)[._]/, '变更萌王赛程', '萌王赛程的候选人、阶段、匹配或选票发生了变更。', 'attention'],
+  [/^clubs[._]/, '变更同好会主档', '同好会主档信息被创建、修改或删除。', 'attention'],
+  [/^map_(save|save_draft|publish|export)/, '变更摊位地图', 'GalOnly 摊位地图被保存、发布或导出。', 'attention'],
+  [/^content_review_.*publish/, '发布审核通过内容', '内容审核通过后正式对外发布。', 'attention'],
+  [/^posts[._].*(delete|remove)/, '删除论坛帖子', '论坛帖子、附件或横幅被删除，属于高影响操作。', 'high'],
+  [/^posts[._]/, '变更论坛帖子', '论坛帖子、附件、横幅或私信发生了变更。', 'info'],
+  [/^galgame_[a-z]+\.save$/, '保存 Galgame 存档', '用户保存了 Galgame 想想看的进度、梗图或分级数据。', 'info'],
+  [/^growth[._]/, '记录成长值', '用户成长值或成长任务进度被记录。', 'info'],
+  [/^notifications[._]/, '处理站内通知', '用户或系统处理了站内通知的已读状态。', 'info'],
+  [/^submit[._]/, '处理内容提交', '系统处理了一次内容提交或保存。', 'info']
 ];
+
+// 兜底用：把 Go 审计中间件的 name.action 形式拆成中文模块 + 中文动词，
+// 保证将来新增的动作至少有可读描述，而不是裸的「未归类操作」。
+const LOG_MODULE_NAMES = {
+  wiki: '同好会维基', project: '项目企划', project_item: '项目条目', project_participation: '项目参与',
+  column: '专栏内容', forum: '论坛归档', announcement: '系统公告', galonly: 'GalOnly 活动',
+  galonly_staff: 'GalOnly Staff', vote_project: '投票企划', vote_entry: '投票条目',
+  vote_nomination: '项目提名', vote_stage: '投票阶段', vote_match: '赛程匹配', vote: '投票',
+  membership: '同好会成员', club: '同好会', club_moe_king: '同好会萌王', star_union: '高校联合',
+  club_recommendations: '同好会推荐', club_comments: '同好会评论', club_codes: '同好会绑定码',
+  club_bot_tokens: 'Bot 接入', users: '用户管理', user: '账号', recognition: '认证与题库',
+  quiz_share: '题库分享', recognition_badge: '认证徽章', recognition_quiz: '认证题库',
+  recognition_submission: '认证提交', recognition_credential: '认证凭证', recognition_program: '认证企划',
+  clubs: '同好会主档', club_avatar: '同好会头像', moe_candidate: '萌王候选人', moe_contest: '萌王赛程',
+  moe_match: '赛程匹配', moe_stage: '赛程阶段', moe_vote: '萌王投票', map: '摊位地图',
+  galgame_meme: 'Galgame 梗图', galgame_resume: 'Galgame 进度', galgame_tier: 'Galgame 分级',
+  growth: '成长值', notifications: '站内通知', submit: '内容提交', content_review: '内容审核'
+};
+const LOG_VERB_NAMES = {
+  create: '创建', update: '修改', delete: '删除', publish: '发布', withdraw: '撤回',
+  submit: '提交', approve: '通过', reject: '拒绝', revoke: '撤销', restore: '恢复',
+  reorder: '调整排序', set: '设置', remove: '移除', add: '添加', share: '分享',
+  grant: '发放', import: '导入', visibility: '调整可见性', cast: '投票', vote: '投票',
+  ban: '变更封禁状态', transfer: '转移', leave: '退出', kick: '移出', reapply: '重新提交',
+  apply: '提交申请', resolve: '裁定', finalize: '定稿', unlock: '解锁', seed: '设定种子',
+  settle: '结算', advance: '推进', reseed: '重排种子', rebuild: '重建', generate: '生成',
+  redeem: '兑换', toggle_visibility: '调整可见性', change_avatar: '更换头像', change_banner: '更换横幅',
+  moderate: '治理', import_participants: '导入参与者', claim_generate: '生成领取凭证', share_token_issue: '签发分享令牌'
+};
 
 function getLogActionDefinition(action) {
   const a = String(action || '');
   for (const item of LOG_ACTION_DEFINITIONS) {
     if (item[0].test(a)) return { label: item[1], explanation: item[2], severity: item[3] };
   }
+  // 兜底：按 name.action 拆出中文模块与动词，让新动作至少有可读描述。
+  const dot = a.indexOf('.');
+  const moduleName = dot > 0 ? a.slice(0, dot) : a;
+  const verb = dot > 0 ? a.slice(dot + 1) : '';
+  const moduleLabel = LOG_MODULE_NAMES[moduleName] || LOG_MODULE_NAMES[moduleName.replace(/_/g, '')] || moduleName;
+  const verbLabel = LOG_VERB_NAMES[verb] || LOG_VERB_NAMES[verb.replace(/_.*$/, '')] || verb;
+  const label = (verbLabel ? moduleLabel + ' · ' + verbLabel : moduleLabel) || a;
   return {
-    label: '未归类操作',
-    explanation: '这是系统已记录但还没有专用中文解释的动作。请结合操作代码、目标对象和原始参数判断具体影响。',
+    label,
+    explanation: '这是系统记录但尚未配置专用中文解释的动作。模块「' + moduleLabel + '」的「' + (verbLabel || verb || a) + '」操作已完成，请结合操作代码、目标对象和原始参数判断具体影响。',
     severity: inferSeverity(a)
   };
 }
@@ -4278,7 +4349,8 @@ function parseLogDetails(l) {
 }
 
 function detectLogOutcome(action, details) {
-  const value = details.result ?? details.status ?? details.decision ?? details.vote;
+  // A successful HTTP request may still record a rejected business decision.
+  const value = details.decision ?? details.vote ?? details.status ?? details.result;
   if (details.mail_sent === false || details.success === false) return { label: '失败 / 未发送', tone: 'high' };
   if (details.mail_sent === true) return { label: '已发送', tone: 'success' };
   if (value != null) {
@@ -4339,20 +4411,39 @@ function targetTypeText(type) {
     user: '用户', club: '同好会', club_membership: '成员关系', galonly_application: 'GalOnly 摊位申请',
     galonly_staff_application: 'GalOnly Staff 申请', galonly_event: 'GalOnly 活动', recognition_program: '认证企划',
     recognition_credential: '认证凭证', recognition_badge: '认证徽章', recognition_submission: '认证提交',
-    vote_projects: '投票企划', vote_stages: '投票阶段', vote_entries: '投票条目', column_article: '专栏文章', column_comment: '专栏评论', forum_post: '论坛归档帖子', forum_reply: '论坛归档回复'
+    vote_projects: '投票企划', vote_stages: '投票阶段', vote_entries: '投票条目', column_article: '专栏文章', column_comment: '专栏评论', forum_post: '论坛归档帖子', forum_reply: '论坛归档回复',
+    wiki: '同好会维基', project: '项目企划', club_bot_tokens: 'Bot 接入令牌', recognition_quiz: '认证题库',
+    quiz_share: '题库分享', club_verification_codes: '同好会绑定码', club_comments: '同好会评论',
+    club_recommendations: '同好会推荐', club_moe_kings: '同好会萌王', star_union: '高校联合', announcement: '系统公告'
   };
   return labels[type] || type || '未指定目标';
+}
+
+// target_id 缺失时，从业务参数里找一个可读标识，避免只显示「没有对象 ID」。
+const LOG_TARGET_HINT_KEYS = ['slug', 'title', 'name', 'code', 'event_code', 'booth_id', 'share_token', 'token_name', 'badge_id', 'quiz_id', 'stage_id', 'program_id', 'submission_id', 'page', 'path'];
+function logTargetHint(l) {
+  const source = l.detailsObject || {};
+  for (const key of LOG_TARGET_HINT_KEYS) {
+    const value = source[key];
+    if (value === null || value === undefined || value === '') continue;
+    if (typeof value === 'object') continue;
+    return detailValueText(value);
+  }
+  return '';
 }
 
 function formatLogTarget(l) {
   const label = targetTypeText(l.target_type);
   const id = l.target_id != null ? 'ID ' + l.target_id : '';
-  return '<div>' + escapeHtml(label) + '</div><div class="log-source-meta">' + escapeHtml(id || '没有对象 ID') + '</div>';
+  const hint = id ? '' : logTargetHint(l);
+  return '<div>' + escapeHtml(label) + '</div><div class="log-source-meta">' + escapeHtml(id || hint || '没有对象 ID') + '</div>';
 }
 
 function detailKeyText(key) {
   const labels = {
     provider: '登录方式', email: '邮箱', mail_sent: '邮件已发送', found: '找到账号', vote: '审核意见', phase: '审核阶段',
+    event_id: '活动 ID', event_code: '活动标识', booth_id: '摊位 ID', application_id: '申请 ID', asset: '图片用途',
+    storage: '图片存储位置', fallback: '已回退本地',
     decision: '决定', result: '结果', status: '状态', old_role: '原角色', new_role: '新角色', updated_fields: '更改字段',
     fields: '更改字段', club_id: '同好会 ID', club_name: '同好会', country: '地区', project_id: '企划 ID', pool_id: '分组 ID',
     count: '数量', existing_count: '已有数量', match_id: '对局 ID', guest: '访客投票', public_visibility: '公开可见', duplicate: '重复提交',
@@ -4404,7 +4495,7 @@ function showLogDetail(id) {
   }, null, 2);
   footer.innerHTML = '<button class="btn btn-primary" onclick="copyInfoModalText()">复制日志</button>' +
     '<button class="btn btn-ghost" onclick="closeInfoModal()">关闭</button>';
-  document.getElementById('infoModal').style.display = 'flex';
+  workspaceMotion.openModal(document.getElementById('infoModal'));
 }
 
 /* ================================================================
@@ -4493,6 +4584,109 @@ document.getElementById('sidebarOverlay').addEventListener('click', function() {
   this.classList.remove('show');
 });
 
+
+/* Workspace motion: visual state follows requests without delaying business actions. */
+let workspaceReviewSequence = 0, workspaceUserSequence = 0;
+const workspaceMotion = (() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const loaded = new Set(), requests = new Map(), animations = new Map(), modalEpochs = new WeakMap();
+  let navigation = 0;
+  const progress = document.createElement('div');
+  progress.className = 'workspace-progress'; progress.setAttribute('aria-hidden', 'true');
+  document.querySelector('.topbar').append(progress);
+  const status = document.createElement('span'); status.className = 'workspace-status';
+  status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+  document.querySelector('.topbar').append(status);
+  function play(element, frames, duration, delay = 0) {
+    if (!element) return Promise.resolve();
+    animations.get(element)?.cancel();
+    if (reduced.matches) return Promise.resolve();
+    const animation = element.animate(frames, { duration, delay, easing: 'cubic-bezier(.22,1,.36,1)' });
+    animations.set(element, animation);
+    return animation.finished.then(() => undefined, () => undefined).finally(() => {
+      if (animations.get(element) === animation) animations.delete(element);
+    });
+  }
+  function groups(panel) {
+    if (!panel || !panel.classList.contains('active')) return;
+    Array.from(panel.querySelectorAll('.kpi-grid > *, .insights-kpi-grid > *, .review-card, .panel-card, .announce-composer')).slice(0,12)
+      .forEach((el,i) => play(el,[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],280,Math.min(i*40,160)));
+  }
+  function sync() {
+    const busy = Boolean(requests.get(currentModule)?.visible);
+    progress.classList.toggle('visible', busy); status.textContent = busy ? '正在加载' : '';
+    document.querySelectorAll('.module-panel').forEach(panel => {
+      const request = requests.get(panel.id.replace('module-', ''));
+      panel.setAttribute('aria-busy', request ? 'true' : 'false');
+      panel.classList.toggle('workspace-loading', Boolean(request?.visible));
+    });
+  }
+  async function run(mod, operation, silent = false) {
+    if (silent) return operation();
+    const previous = requests.get(mod);
+    if (previous) { clearTimeout(previous.timer); previous.skeleton?.remove(); }
+    const ticket = {visible:false}; requests.set(mod,ticket);
+    const panel = document.getElementById('module-'+mod);
+    ticket.timer = setTimeout(() => {
+      if (requests.get(mod) !== ticket) return;
+      ticket.visible = true;
+      if (!loaded.has(mod) && panel) {
+        const target = panel.querySelector('#reviewListContainer, .panel-body, .analytics-chart, .insights-layout') || panel;
+        ticket.skeleton = document.createElement('div'); ticket.skeleton.className = 'workspace-skeleton';
+        ticket.skeleton.setAttribute('aria-hidden','true'); ticket.skeleton.innerHTML='<i></i><i></i><i></i>';
+        target.classList.add('workspace-skeleton-host'); target.append(ticket.skeleton);
+      }
+      sync();
+    },150);
+    sync();
+    try {
+      const result = await operation();
+      if (requests.get(mod)===ticket) { const first=!loaded.has(mod); loaded.add(mod); if(first) groups(panel); }
+      return result;
+    } finally {
+      clearTimeout(ticket.timer); ticket.skeleton?.remove();
+      if (requests.get(mod)===ticket) requests.delete(mod);
+      sync();
+    }
+  }
+  async function switchPanel(previous,mod) {
+    const epoch=++navigation;
+    if(previous===mod && document.getElementById('module-'+mod)?.classList.contains('active')) {sync();return;}
+    await play(document.querySelector('.module-panel.active'),[{opacity:1},{opacity:0}],100);
+    if(epoch!==navigation) return;
+    document.querySelectorAll('.module-panel').forEach(panel=>panel.classList.remove('active'));
+    const panel=document.getElementById('module-'+mod); if(!panel)return;
+    panel.classList.add('active'); sync(); groups(panel);
+    await play(panel,[{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'translateY(0)'}],320);
+  }
+  function result(element) { return play(element,[{opacity:.35,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],240); }
+  function openModal(overlay) {
+    modalEpochs.set(overlay,(modalEpochs.get(overlay)||0)+1); overlay.style.display='flex';
+    play(overlay.querySelector('.modal'),[{opacity:0,transform:'scale(.98) translateY(6px)'},{opacity:1,transform:'scale(1) translateY(0)'}],220);
+  }
+  async function closeModal(overlay) {
+    const epoch=(modalEpochs.get(overlay)||0)+1; modalEpochs.set(overlay,epoch);
+    await play(overlay.querySelector('.modal'),[{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.98)'}],140);
+    if(modalEpochs.get(overlay)===epoch)overlay.style.display='none';
+  }
+  reduced.addEventListener('change',()=>{if(reduced.matches)animations.forEach(animation=>animation.cancel());});
+  return {run,switchPanel,result,openModal,closeModal,hasLoaded:mod=>loaded.has(mod)};
+})();
+const workspaceLoaders={loadDashboard,loadReviewData,loadGalonlyReviewers,loadClubsOverview,loadUsers,loadAnnouncements,loadLogs,loadAnalytics,loadInsights};
+loadDashboard=(...args)=>workspaceMotion.run('dashboard',()=>workspaceLoaders.loadDashboard(...args));
+loadReviewData=(...args)=>workspaceMotion.run('review',()=>workspaceLoaders.loadReviewData(...args));
+loadGalonlyReviewers=(...args)=>workspaceMotion.run('galonly-reviewers',()=>workspaceLoaders.loadGalonlyReviewers(...args));
+loadClubsOverview=(...args)=>workspaceMotion.run('clubs',()=>workspaceLoaders.loadClubsOverview(...args));
+loadUsers=(...args)=>workspaceMotion.run('users',()=>workspaceLoaders.loadUsers(...args));
+loadAnnouncements=(...args)=>workspaceMotion.run('announcements',()=>workspaceLoaders.loadAnnouncements(...args));
+loadLogs=(options={})=>workspaceMotion.run('logs',()=>workspaceLoaders.loadLogs(options),options.silent);
+loadAnalytics=(...args)=>workspaceMotion.run('analytics',()=>workspaceLoaders.loadAnalytics(...args));
+loadInsights=(...args)=>args[0]?.dashboardOnly ? workspaceLoaders.loadInsights(...args) : workspaceMotion.run('insights',()=>workspaceLoaders.loadInsights(...args));
+const workspaceRenderReview=renderCurrentReviewTab;
+renderCurrentReviewTab=(...args)=>{const result=workspaceRenderReview(...args);workspaceMotion.result(document.getElementById('reviewListContainer'));return result;};
+const workspaceRenderClubs=renderClubsTable;
+renderClubsTable=(...args)=>{const result=workspaceRenderClubs(...args);workspaceMotion.result(document.getElementById('clubsTableBody'));return result;};
+
 /* ================================================================
    INITIALIZATION
    ================================================================ */
@@ -4500,7 +4694,7 @@ document.getElementById('sidebarOverlay').addEventListener('click', function() {
   if (await checkAuth()) {
     const requestedModule = new URLSearchParams(location.search).get('module');
     if (requestedModule) await applyAdminDeepLink();
-    else await loadDashboard();
+    else await loadModuleData('dashboard');
   }
 })();
 </script>

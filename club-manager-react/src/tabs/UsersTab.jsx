@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Form, Input, Modal, Pagination, Popconfirm, Select, Space, Tag } from 'antd';
+import { Button, Card, Form, Input, Modal, Pagination, Popconfirm, Select, Space, Switch, Tag } from 'antd';
 import { EditOutlined, SearchOutlined, StopOutlined } from '@ant-design/icons';
 import { api, normalizeError } from '../api.js';
 import {
   ActionCluster, Chip, EmptyPanel, ErrorPanel, Identity, LoadingPanel, PageHeading, ProfileAvatar,
 } from '../components.jsx';
-import { applyRoleText, getClubName, getPermissionRole, permissionLevelMeta } from '../model.js';
+import { applyRoleText, getClubName, getPermissionRole, isActivityReviewer, permissionLevelMeta } from '../model.js';
 import { useClubManager } from '../context.jsx';
 
 const PAGE_SIZE = 20;
@@ -17,7 +17,7 @@ function UserStatus({ status }) {
   return <Chip tone={tone}>{statusLabel(status)}</Chip>;
 }
 
-function PermissionLevel({ role }) {
+function PermissionLevel({ role, activityReviewer = false }) {
   const meta = permissionLevelMeta(role);
   return (
     <span
@@ -27,6 +27,7 @@ function PermissionLevel({ role }) {
     >
       <span className="cm-permission-level-mark" aria-hidden="true">{meta.mark}</span>
       {meta.label}
+      {activityReviewer && role !== 'external' && <Tag color="gold" title="审核成员身份">审核人员</Tag>}
     </span>
   );
 }
@@ -80,7 +81,7 @@ export default function UsersTab() {
       const result = await api.get(`users.php?action=get&id=${id}`);
       const user = result.user;
       setEditing(user); setEditorOpen(true);
-      form.setFieldsValue({ nickname: user.nickname || '', role: user.role === 'super_admin' ? 'super_admin' : 'visitor', status: user.status || 'active' });
+      form.setFieldsValue({ nickname: user.nickname || '', role: user.role === 'super_admin' ? 'super_admin' : 'visitor', is_audit: Number(user.is_audit) === 1, status: user.status || 'active' });
     } catch (editError) { messageApi.error(normalizeError(editError)); }
   };
   const save = async (values) => {
@@ -89,6 +90,8 @@ export default function UsersTab() {
       if (values.nickname.trim()) payload.nickname = values.nickname.trim();
       const originalRole = editing.role === 'super_admin' ? 'super_admin' : 'visitor';
       if (values.role !== originalRole) payload.role = values.role;
+      const originalAudit = Number(editing.is_audit) === 1;
+      if (Boolean(values.is_audit) !== originalAudit) payload.is_audit = Boolean(values.is_audit);
       await api.post('users.php?action=update', payload);
       messageApi.success('用户信息已更新'); setEditorOpen(false); await load();
     } catch (saveError) { messageApi.error(normalizeError(saveError)); }
@@ -141,6 +144,7 @@ export default function UsersTab() {
               <tbody>
                 {users.map((user) => {
                   const displayRole = user.display_role || getPermissionRole(user);
+                  const activityReviewer = isActivityReviewer(user);
                   const memberships = user.memberships || [];
                   return (
                     <tr className="cm-user-table-row" key={user.id}>
@@ -157,7 +161,7 @@ export default function UsersTab() {
                           <span className="cm-user-muted" title={user.email || '未填写邮箱'}>{user.email || '未填写邮箱'}</span>
                         </div>
                       </td>
-                      <td data-label="权限等级"><PermissionLevel role={displayRole} /></td>
+                      <td data-label="权限等级"><PermissionLevel role={displayRole} activityReviewer={activityReviewer} /></td>
                       <td data-label="同好会关系"><MembershipSummary memberships={memberships} directory={directory} /></td>
                       <td data-label="状态"><UserStatus status={user.status} /></td>
                       <td data-label="操作" className="cm-user-table-actions">
@@ -185,7 +189,8 @@ export default function UsersTab() {
             <Form.Item label="用户名"><Input value={editing.username} disabled /></Form.Item>
             <Form.Item label="邮箱"><Input value={editing.email || ''} disabled /></Form.Item>
             <Form.Item name="nickname" label="昵称"><Input /></Form.Item>
-            <Form.Item name="role" label="权限等级" extra="管理员、负责人、活动人员由有效同好会关系自动计算。"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'visitor', label: '访客' }, { value: 'super_admin', label: '超级管理员' }]} /></Form.Item>
+            <Form.Item name="role" label="权限等级" extra="此处修改账号角色；管理员、负责人由有效同好会关系自动计算。"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'visitor', label: '访客' }, { value: 'super_admin', label: '超级管理员' }]} /></Form.Item>
+            <Form.Item name="is_audit" label="活动人员 / 审核成员" valuePropName="checked" extra="开启后会纳入审核人员检测，并在用户管理中显示“活动人员”；关闭时会撤销该用户的活动审核分配。"><Switch checkedChildren="已纳入" unCheckedChildren="未纳入" /></Form.Item>
             <Form.Item name="status" label="账号状态"><Select disabled={Number(editing.id) === Number(auth.user.id)} options={[{ value: 'active', label: '正常' }, { value: 'disabled', label: '已禁用' }, { value: 'banned', label: '已封禁' }]} /></Form.Item>
           </Form>
           {(editing.memberships || []).map((membership) => (

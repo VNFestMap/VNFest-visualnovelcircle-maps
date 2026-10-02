@@ -88,6 +88,10 @@ export function permissionLevelText(role) {
   return permissionLevelMeta(role).label;
 }
 
+export function isActivityReviewer(user) {
+  return Number(user?.is_audit) === 1 || Number(user?.activity_reviewer) === 1 || user?.activity_reviewer === true;
+}
+
 export function getPermissionRole(user) {
   let bestRole = Object.prototype.hasOwnProperty.call(ROLE_LEVEL, user?.role) ? user.role : 'visitor';
   let bestLevel = ROLE_LEVEL[bestRole];
@@ -97,6 +101,9 @@ export function getPermissionRole(user) {
       bestRole = membership.role;
       bestLevel = ROLE_LEVEL[membership.role];
     }
+  }
+  if (isActivityReviewer(user) && ROLE_LEVEL.external > bestLevel) {
+    bestRole = 'external';
   }
   return bestRole;
 }

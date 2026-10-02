@@ -52,14 +52,18 @@ func (s *Server) galonly(w http.ResponseWriter, r *http.Request) {
 		s.galonlyResolve(w, r, action)
 	case "list_reviewers", "save_reviewers":
 		s.galonlyReviewers(w, r, action)
+	case "get_staff_application", "submit_staff", "list_staff_applications", "update_staff", "delete_staff_application", "vote_staff", "withdraw_staff_vote", "finalize_staff_roster", "unlock_staff_roster", "update_staff_event_config":
+		s.galonlyStaff(w, r)
 	case "add_event", "update_event", "delete_event":
 		s.galonlyEventAdmin(w, r, action)
 	case "upload_image", "upload_file":
 		s.galonlyUpload(w, r, action)
 	case "submit_merchandise", "get_merchandise", "get_merchandise_history":
 		s.galonlyMerchandise(w, r, action)
+	case "map_public", "map_capability", "map_admin", "map_save", "map_save_draft", "map_publish", "map_export", "map_state", "map_upload_image":
+		s.galonlyMap(w, r, action)
 	default:
-		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未知动作", "available_actions": []string{"list_events", "list_participants", "check_eligibility", "submit", "get_application", "update_application", "delete_application", "list_applications", "vote", "withdraw_vote", "cast_public_vote", "resolve", "upload_image", "upload_file"}})
+		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未知动作", "available_actions": []string{"list_events", "list_participants", "check_eligibility", "submit", "get_application", "update_application", "delete_application", "list_applications", "get_staff_application", "submit_staff", "list_staff_applications", "update_staff", "delete_staff_application", "vote_staff", "withdraw_staff_vote", "finalize_staff_roster", "unlock_staff_roster", "update_staff_event_config", "vote", "withdraw_vote", "cast_public_vote", "resolve", "list_reviewers", "save_reviewers", "upload_image", "upload_file", "map_public", "map_capability", "map_admin", "map_save", "map_save_draft", "map_publish", "map_export", "map_state", "map_upload_image"}})
 	}
 }
 
@@ -74,6 +78,13 @@ func (s *Server) galonlyListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	viewerID, _ := s.optionalSessionUser(r)
+	var viewer *user
+	if viewerID != nil {
+		viewer, _ = s.findUser(r.Context(), *viewerID)
+		if viewer == nil {
+			viewer = &user{ID: *viewerID}
+		}
+	}
 	for _, event := range events {
 		eventID := integerValue(event["id"])
 		var count int64
@@ -83,7 +94,11 @@ func (s *Server) galonlyListEvents(w http.ResponseWriter, r *http.Request) {
 		event["user_application_id"] = nil
 		event["user_staff_application_status"] = nil
 		event["user_staff_application_id"] = nil
-		if viewerID != nil {
+		event["user_review_role"] = nil
+		if viewer != nil {
+			if canReview, role := s.galonlyCanReview(r.Context(), eventID, viewer); canReview {
+				event["user_review_role"] = role
+			}
 			var status string
 			var id int64
 			if s.db.QueryRowContext(r.Context(), "SELECT id,status FROM galonly_applications WHERE event_id=? AND user_id=? ORDER BY updated_at DESC,id DESC LIMIT 1", eventID, *viewerID).Scan(&id, &status) == nil {
@@ -462,7 +477,31 @@ func (s *Server) galonlyListApplications(w http.ResponseWriter, r *http.Request)
 	for _, app := range applications {
 		s.galonlyNormalizeApplication(app)
 		app["clubs"], _ = s.queryMaps(r.Context(), "SELECT club_id,club_country FROM galonly_application_clubs WHERE application_id=?", integerValue(app["id"]))
-		app["votes"], _ = s.queryMaps(r.Context(), "SELECT vote,comment,phase,merchandise_version,created_at,auditer_id FROM galonly_votes WHERE application_id=? ORDER BY phase,id", integerValue(app["id"]))
+		_, reviewRole := s.galonlyCanReview(r.Context(), integerValue(app["event_id"]), user)
+		app["my_review_role"] = reviewRoleOrNil(reviewRole)
+		votes, voteErr := s.queryMaps(r.Context(), `
+			SELECT v.vote,v.comment,v.phase,v.merchandise_version,v.created_at,v.auditer_id,
+			       u.nickname,u.username,u.role AS user_role,u.is_audit,
+			       COALESCE(
+			         (SELECT r.role FROM galonly_reviewers r WHERE r.user_id=v.auditer_id AND r.event_id=? LIMIT 1),
+			         (SELECT r.role FROM galonly_reviewers r WHERE r.user_id=v.auditer_id AND r.event_id=0 LIMIT 1),
+			         CASE WHEN u.role='super_admin' THEN 'chief' WHEN u.is_audit<>0 THEN 'jury' ELSE NULL END
+			       ) AS reviewer_role
+			FROM galonly_votes v
+			LEFT JOIN users u ON u.id=v.auditer_id
+			WHERE v.application_id=? ORDER BY v.phase,v.id`, integerValue(app["event_id"]), integerValue(app["id"]))
+		if voteErr != nil {
+			app["votes"] = []any{}
+		} else {
+			for _, vote := range votes {
+				name := firstNonEmpty(stringValue(vote["nickname"]), stringValue(vote["username"]))
+				if name == "" {
+					name = "用户 #" + strconv.FormatInt(integerValue(vote["auditer_id"]), 10)
+				}
+				vote["reviewer_name"] = name
+			}
+			app["votes"] = votes
+		}
 	}
 	writeJSON(w, map[string]any{"success": true, "applications": applications})
 }
@@ -895,22 +934,36 @@ func (s *Server) galonlyReviewers(w http.ResponseWriter, r *http.Request, action
 	if !ok {
 		return
 	}
-	if user.Role != "super_admin" && user.IsAudit == 0 {
-		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "权限不足"})
-		return
-	}
 	if action == "list_reviewers" {
 		if r.Method != http.MethodGet {
 			methodNotAllowed(w, http.MethodGet)
 			return
 		}
 		eventID := parsePositiveInt(r.URL.Query().Get("event_id"))
+		canView := user.Role == "super_admin" || user.IsAudit != 0
+		if !canView {
+			var assigned int64
+			_ = s.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM galonly_reviewers WHERE user_id=? AND (event_id=0 OR event_id=?)", user.ID, eventID).Scan(&assigned)
+			canView = assigned > 0
+		}
+		if !canView {
+			writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "权限不足"})
+			return
+		}
 		rows, err := s.queryMaps(r.Context(), "SELECT r.*,u.username,u.nickname FROM galonly_reviewers r LEFT JOIN users u ON u.id=r.user_id WHERE r.event_id IN (0,?) ORDER BY r.event_id,r.role,r.id", eventID)
 		if err != nil {
 			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "读取审核人失败"})
 			return
 		}
-		writeJSON(w, map[string]any{"success": true, "reviewers": rows})
+		candidates := []map[string]any{}
+		if user.Role == "super_admin" {
+			candidates, _ = s.queryMaps(r.Context(), "SELECT id,nickname,username,role FROM users WHERE status='active' AND (is_audit<>0 OR role='super_admin') ORDER BY id DESC LIMIT 200")
+		}
+		writeJSON(w, map[string]any{"success": true, "reviewers": rows, "candidates": candidates})
+		return
+	}
+	if user.Role != "super_admin" {
+		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "仅超级管理员可管理审核成员"})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -920,6 +973,18 @@ func (s *Server) galonlyReviewers(w http.ResponseWriter, r *http.Request, action
 	input := voteReadJSON(r)
 	eventID := voteProjectID(input["event_id"])
 	values, _ := input["reviewers"].([]any)
+	if len(values) == 0 {
+		if chiefIDs, ok := input["chief_ids"].([]any); ok {
+			for _, id := range chiefIDs {
+				values = append(values, map[string]any{"user_id": id, "role": "chief"})
+			}
+		}
+		if juryIDs, ok := input["jury_ids"].([]any); ok {
+			for _, id := range juryIDs {
+				values = append(values, map[string]any{"user_id": id, "role": "jury"})
+			}
+		}
+	}
 	tx, err := s.db.BeginTx(r.Context(), nil)
 	if err == nil {
 		_, err = tx.ExecContext(r.Context(), "DELETE FROM galonly_reviewers WHERE event_id=?", eventID)
@@ -1159,14 +1224,26 @@ func (s *Server) galonlyCanReview(ctx context.Context, eventID int64, user *user
 	if user == nil {
 		return false, ""
 	}
-	if user.Role == "super_admin" || user.IsAudit != 0 {
+	if user.Role == "super_admin" {
 		return true, "chief"
 	}
 	var role string
-	if err := s.db.QueryRowContext(ctx, "SELECT role FROM galonly_reviewers WHERE user_id=? AND event_id IN (0,?) ORDER BY event_id DESC LIMIT 1", user.ID, eventID).Scan(&role); err != nil {
-		return false, ""
+	if err := s.db.QueryRowContext(ctx, "SELECT role FROM galonly_reviewers WHERE user_id=? AND event_id IN (0,?) ORDER BY event_id DESC LIMIT 1", user.ID, eventID).Scan(&role); err == nil && role != "" {
+		return true, role
 	}
-	return role != "", role
+	// Keep the historical is_audit identity usable as a reviewing member while
+	// reserving the final-decision channel for an explicit chief assignment.
+	if user.IsAudit != 0 {
+		return true, "jury"
+	}
+	return false, ""
+}
+
+func reviewRoleOrNil(role string) any {
+	if role == "" {
+		return nil
+	}
+	return role
 }
 
 func (s *Server) queryMaps(ctx context.Context, query string, args ...any) ([]map[string]any, error) {

@@ -1,0 +1,108 @@
+/* Shared action shapes. Keep colors, dimensions and interaction states local.
+ * Escape hatch: data-button-shape="keep" on a control or its container.
+ * Explicit shapes: data-button-shape="pill" / "circle".
+ * Radius and content alignment override legacy and runtime component rules.
+ * Display stays low priority so visibility and page layout remain local.
+ */
+:root {
+  --vn-button-radius: 9999px;
+}
+
+:is(
+  button,
+  input[type="button"], input[type="submit"], input[type="reset"],
+  a[role="button"],
+  a.btn, a.button, a.auth-btn, a.btn-primary, a.btn-secondary, a.btn-danger,
+  a.btn-small, a.submit-btn, a.action-btn, a.cta-btn, a.top-login-btn,
+  a.top-account-btn, a.top-admin-btn, a.user-nav-btn, a.vn-topbar-action,
+  a.wiki-button, a.column-button, a.cd-button, a.primary-button,
+  a.secondary-button, a.md3-btn, a.md-btn, a.tier-button, a.meme-button,
+  a.btn-gold-shimmer, a.hero-cta, a.qq-group-join-btn,
+  a.wiki-guide-entry, .vn-topbar-actions > a,
+  label.avatar-file-button,
+  .ant-btn:not(.ant-btn-text, .ant-btn-link),
+  [data-button-shape="pill"], [data-button-shape="circle"]
+):not(:where(
+  [hidden], [data-button-shape="keep"], [data-button-shape="keep"] *,
+  [role="switch"], [role="tab"], [role="menuitem"], [role="option"],
+  [role="tablist"] *, [role="menu"] *, [role="listbox"] *,
+  .ant-switch, .ant-btn-text, .ant-btn-link, .ant-radio-button-wrapper,
+  .ant-input-search-button, .ant-input-group-addon *, .ant-space-compact *,
+  .auth-text-button, .text-button, .cd-text-button, .button-link,
+  .nav-item, .game-nav__item, .tool-nav-item, .dropdown-item,
+  .tab, .tab-btn, .mode-tab, .mode-btn, .sub-tab-btn, .filter-tab,
+  .vn-tab, .vn-collection-tab, .notif-center-tab, .membership-apply-tab,
+  .meme-segment, .tier-segment, .meme-switch, .vn-notification-filter-button,
+  .booth-image-button, .insights-kpi, .quick-row, .article-choice,
+  .color-swatch, .wiki-appearance-toggle,
+  .cropper-container *, .pdfReader *, .pdf-reader *, .flip-action, .annotationLayer *,
+  .ant-menu *, .ant-segmented *, .ant-picker-panel *
+)) {
+  border-radius: var(--vn-button-radius) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+  text-align: center !important;
+}
+
+/* Topbar text buttons are standalone actions, including their mobile icons.
+ * Scope this exception so ordinary Ant Design text links keep their shape. */
+.cm-topbar :is(.cm-topbar-action, .cm-menu-toggle):not(:where(
+  [hidden], [data-button-shape="keep"], [data-button-shape="keep"] *
+)) {
+  border-radius: var(--vn-button-radius) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* Circle markers are for existing square icon controls; retain their geometry. */
+/* Mobile topbar labels use font-size:0 locally. Remove their empty flex item
+ * as well, so Ant Design's icon/label gap cannot shift the icon off center. */
+@media (max-width: 680px) {
+  .cm-topbar-actions .cm-topbar-action > span:not(.ant-btn-icon):not(.anticon) {
+    display: none;
+  }
+}
+
+[data-button-shape="circle"]:not([data-button-shape="keep"] *) {
+  border-radius: 50% !important;
+}
+
+/* A low-priority layout default preserves explicit display:none, block/full
+ * width and component layout rules, while native action controls use flex. */
+@layer vn-button-layout {
+  :where(:is(
+  button,
+  input[type="button"], input[type="submit"], input[type="reset"],
+  a[role="button"],
+  a.btn, a.button, a.auth-btn, a.btn-primary, a.btn-secondary, a.btn-danger,
+  a.btn-small, a.submit-btn, a.action-btn, a.cta-btn, a.top-login-btn,
+  a.top-account-btn, a.top-admin-btn, a.user-nav-btn, a.vn-topbar-action,
+  a.wiki-button, a.column-button, a.cd-button, a.primary-button,
+  a.secondary-button, a.md3-btn, a.md-btn, a.tier-button, a.meme-button,
+  a.btn-gold-shimmer, a.hero-cta, a.qq-group-join-btn,
+  a.wiki-guide-entry, .vn-topbar-actions > a,
+  label.avatar-file-button,
+  .ant-btn:not(.ant-btn-text, .ant-btn-link),
+  [data-button-shape="pill"], [data-button-shape="circle"]
+):not(:where(
+  [hidden], [data-button-shape="keep"], [data-button-shape="keep"] *,
+  [role="switch"], [role="tab"], [role="menuitem"], [role="option"],
+  [role="tablist"] *, [role="menu"] *, [role="listbox"] *,
+  .ant-switch, .ant-btn-text, .ant-btn-link, .ant-radio-button-wrapper,
+  .ant-input-search-button, .ant-input-group-addon *, .ant-space-compact *,
+  .auth-text-button, .text-button, .cd-text-button, .button-link,
+  .nav-item, .game-nav__item, .tool-nav-item, .dropdown-item,
+  .tab, .tab-btn, .mode-tab, .mode-btn, .sub-tab-btn, .filter-tab,
+  .vn-tab, .vn-collection-tab, .notif-center-tab, .membership-apply-tab,
+  .meme-segment, .tier-segment, .meme-switch, .vn-notification-filter-button,
+  .booth-image-button, .insights-kpi, .quick-row, .article-choice,
+  .color-swatch, .wiki-appearance-toggle,
+  .cropper-container *, .pdfReader *, .pdf-reader *, .flip-action, .annotationLayer *,
+  .ant-menu *, .ant-segmented *, .ant-picker-panel *
+))) {
+    display: inline-flex;
+    vertical-align: middle;
+  }
+}

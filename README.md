@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_在线访问-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-2ecc71?style=flat-square">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7.x-646cff?style=flat-square&logo=vite&logoColor=white">
@@ -35,6 +35,10 @@
 在线访问：[https://www.map.vnfest.top](https://www.map.vnfest.top)
 
 访客无需注册即可浏览地图、同好会信息、Wiki 和公开活动。需要发布内容、加入同好会、发送私信或执行管理操作时，再使用对应账号登录。
+
+## v2.4.0 更新日志
+
+本版汇总多设备登录、验证码邮件与 OAuth 修复、React 同好会详情、GalOnly 展位与地图、页面交互、图床与审核、Wiki 和日报更新。详细说明见 [2.4.0 更新日志](RELEASE_NOTES_2.4.0.md)，网站中日双语文档见 [历史更新记录](https://www.map.vnfest.top/wiki/guide/#/updates/2-4-0)。源码发布、网站文档交付与业务功能上线分别验证。
 
 ## v2.3.0 更新日志
 
@@ -326,6 +330,7 @@ bash scripts/deploy.sh
 
 | 版本 | 核心主题 |
 |------|---------|
+| **v2.4.0** | 多设备会话、账号修复、同好会详情、GalOnly 展位与地图、界面、审核、Wiki 和日报 |
 | **v2.3.0** | PHP → Go 后端迁移基础设施、共享 Session、兼容 API、Go Worker、部署回滚、图床代理和履历书性能/图片修复 |
 | **v2.2.0** | 同好会动态 React 化、独立搜索、互关私信、图片灯箱修复、管理员 React 工作台、OAuth 凭证升级、GalgameTool Tier/MEME 与后端整理 |
 | **v2.1.0** | 独立专栏、超级管理控制台、北京 GalOnly、MakoQuiz 连携、偏好集中化、Wiki 使用文档 |

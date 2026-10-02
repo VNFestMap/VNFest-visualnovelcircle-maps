@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_Visit-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-2ecc71?style=flat-square">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="D3.js" src="https://img.shields.io/badge/D3.js-7.9-f9a03c?style=flat-square&logo=d3.js&logoColor=white">
@@ -35,6 +35,10 @@ Discover circles → View details → Apply to join → Participate in events �
 > No registration required — enter guest mode to browse the map and circle information.
 
 ---
+
+## v2.4.0 release notes
+
+This release covers multi-device sessions, verification email and OAuth fixes, React club details, GalOnly booths and maps, interface changes, image fallback and audit logging, Wiki content, and daily reports. See the [release notes](RELEASE_NOTES_2.4.0.md) and [website history](https://www.map.vnfest.top/wiki/guide/#/updates/2-4-0). Source publication, website documentation, and production feature rollout are verified separately.
 
 ## Features in Detail
 
@@ -296,6 +300,7 @@ For detailed deployment configuration, data-zero-loss gates, cutover, and rollba
 
 | Version | Key Theme |
 |---------|-----------|
+| **v2.4.0** | Multi-device sessions, account fixes, club details, GalOnly, UI, audit logs, Wiki and daily reports |
 | **v2.3.0** | PHP-to-Go backend migration foundation, shared sessions, compatible API paths, Go workers, deployment rollback, image proxy, and GalgameTool performance/image fixes |
 | **v2.2.0** | React circle feed, standalone search, mutual-follow messaging, React admin workspace, OAuth credential upgrades, and GalgameTool Tier/MEME tools |
 | **v2.1.0** | Editorial column, Super Admin Console, Beijing GalOnly, MakoQuiz integration, centralized preferences, Wiki guide |

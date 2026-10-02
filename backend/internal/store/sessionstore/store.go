@@ -101,17 +101,23 @@ func (s *Store) loadLegacy(ctx context.Context, sessionID string) (*Session, err
 }
 
 func (s *Store) Save(ctx context.Context, session *Session) error {
-	return s.save(ctx, session, false)
+	return s.save(ctx, session, "")
 }
 
-// SaveReplacingUserSessions atomically retires all sessions for the user and
-// creates the replacement in both stores. If any write fails, the old login
-// remains usable for a PHP rollback instead of being invalidated prematurely.
-func (s *Store) SaveReplacingUserSessions(ctx context.Context, session *Session) error {
-	return s.save(ctx, session, true)
+// SaveLogin atomically issues a login in both stores and retires only the
+// session presented by this browser. Other devices keep their own sessions.
+// A failed write rolls back the rotation and leaves the old login usable.
+func (s *Store) SaveLogin(ctx context.Context, session *Session, previousID string) error {
+	if session == nil || session.UserID == nil || *session.UserID <= 0 || !session.Valid {
+		return errors.New("invalid login session")
+	}
+	if previousID == session.ID || len(previousID) > 128 {
+		return errors.New("invalid previous session")
+	}
+	return s.save(ctx, session, previousID)
 }
 
-func (s *Store) save(ctx context.Context, session *Session, replaceUserSessions bool) error {
+func (s *Store) save(ctx context.Context, session *Session, previousID string) error {
 	if session == nil || session.ID == "" || len(session.ID) > 128 {
 		return errors.New("invalid session")
 	}
@@ -145,12 +151,12 @@ func (s *Store) save(ctx context.Context, session *Session, replaceUserSessions 
 		return fmt.Errorf("begin session transaction: %w", err)
 	}
 	defer tx.Rollback()
-	if replaceUserSessions && session.UserID != nil {
-		if _, err := tx.ExecContext(ctx, "UPDATE sessions SET is_valid = 0 WHERE user_id = ?", *session.UserID); err != nil {
-			return fmt.Errorf("invalidate legacy user sessions: %w", err)
+	if previousID != "" {
+		if _, err := tx.ExecContext(ctx, "UPDATE sessions SET is_valid = 0 WHERE id = ?", previousID); err != nil {
+			return fmt.Errorf("invalidate previous legacy session: %w", err)
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE vnfest_session_bridge SET is_valid = 0, updated_at = ? WHERE user_id = ?", now, *session.UserID); err != nil {
-			return fmt.Errorf("invalidate bridged user sessions: %w", err)
+		if _, err := tx.ExecContext(ctx, "UPDATE vnfest_session_bridge SET is_valid = 0, updated_at = ? WHERE session_id = ?", now, previousID); err != nil {
+			return fmt.Errorf("invalidate previous bridged session: %w", err)
 		}
 	}
 	if err := s.saveSessionTx(ctx, tx, session, user, string(payload), valid); err != nil {
@@ -207,10 +213,8 @@ func (s *Store) Invalidate(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-// InvalidateUserSessions keeps the one-active-session behavior of the PHP
-// implementation while also invalidating the bridge rows. This is deliberately
-// transactional so a login cannot leave a rollback-visible session active when
-// the new session is issued.
+// InvalidateUserSessions revokes all devices for password recovery and account
+// deactivation. Ordinary login and logout must operate on a single session.
 func (s *Store) InvalidateUserSessions(ctx context.Context, userID int64) error {
 	if userID <= 0 {
 		return errors.New("invalid user id")

@@ -99,7 +99,8 @@ assert.equal(jiangsu.getCityForClub({ school: '南京大学' }), '南京');
 assert.equal(jiangsu.getCityForClub(null), '');
 
 // ── 3. 存量数据契约：江苏同好会全部能归入 12 市，宿迁为 0 ──
-const clubs = JSON.parse(read('data/clubs.json')).data || [];
+// Public, synthetic city fixtures keep this suite independent of runtime data.
+const clubs = JSON.parse(read('scripts/fixtures/jiangsu-clubs.json')).data || [];
 const jiangsuClubs = clubs.filter((c) => {
   const provs = c.provinces && c.provinces.length ? c.provinces : (c.province ? [c.province] : []);
   return provs.some((p) => String(p).includes('江苏'));

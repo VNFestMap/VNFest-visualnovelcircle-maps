@@ -110,6 +110,7 @@
   </style>
   <link rel="stylesheet" href="../css/galonly-poster-theme.css">
     <script defer src="../js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="../css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body>
   <main class="page-shell">
@@ -193,7 +194,44 @@
     var cropperDisplayInstance = null;
 
     function setVisible(id, visible) { var n = $(id); if (n) n.hidden = !visible; }
-    function showError(id, message) { var n = $(id); n.textContent = message || ''; n.style.display = message ? 'block' : 'none'; }
+    function showError(id, message) { var n = $(id); n.textContent = message || ''; n.hidden = !message; n.style.display = message ? 'block' : 'none'; }
+
+    // Keep the operational form actionable when PHP/FastCGI returns an HTML
+    // error document (instead of leaking JSON.parse's "Unexpected token <").
+    function readJsonResponse(response) {
+      return response.text().then(function (text) {
+        var data = null;
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch (error) {
+            var parseError = new Error('服务器返回了非 JSON 响应（HTTP ' + response.status + '），请稍后重试；若持续发生请联系活动组。');
+            parseError.status = response.status;
+            throw parseError;
+          }
+        }
+        if (!response.ok) {
+          var responseError = new Error((data && (data.message || data.error)) || ('请求失败（HTTP ' + response.status + '）'));
+          responseError.status = response.status;
+          throw responseError;
+        }
+        return data || {};
+      });
+    }
+
+    function normalizeMerchandiseApplication(applicationData, merchandiseData) {
+      if (!applicationData || applicationData.success === false || !applicationData.application) return null;
+      if (!merchandiseData || merchandiseData.success === false) return null;
+      var app = Object.assign({}, applicationData.application);
+      var payload = merchandiseData.application || merchandiseData;
+      Object.keys(payload).forEach(function (key) {
+        if (['success', 'message', 'application_id', 'version'].indexOf(key) === -1) app[key] = payload[key];
+      });
+      if (Object.prototype.hasOwnProperty.call(payload, 'version')) {
+        app.merchandise_version = parseInt(payload.version, 10) || 0;
+      }
+      return app;
+    }
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -212,7 +250,7 @@
       formData.append('event_id', eventId);
       return fetch('../api/galonly.php?action=upload_file', {
         method: 'POST', credentials: 'include', body: formData
-      }).then(function (response) { return response.json(); }).then(function (data) {
+      }).then(function (response) { return readJsonResponse(response); }).then(function (data) {
         if (!data.success || !data.path) throw new Error(data.message || '文件上传失败');
         return { path: data.path, name: data.name || file.name };
       });
@@ -222,16 +260,43 @@
       return ['image/jpeg', 'image/png', 'image/webp'].indexOf(file.type) !== -1 && file.size <= 10 * 1024 * 1024;
     }
 
-    function uploadImage(file, fileName) {
+    function uploadRetryableStatus(status) {
+      return [408, 425, 429, 499, 502, 503, 504].indexOf(Number(status)) !== -1;
+    }
+
+    function uploadImage(file, fileName, attempt) {
+      attempt = Number(attempt) || 0;
       var formData = new FormData();
       formData.append('file', file, fileName || file.name);
       formData.append('event_id', eventId);
       return fetch('../api/galonly.php?action=upload_image', {
         method: 'POST', credentials: 'include', body: formData
-      }).then(function (response) { return response.json(); }).then(function (data) {
-        if (!data.success || !data.path) throw new Error(data.message || '图片上传失败');
+      }).then(function (response) { return readJsonResponse(response); }).then(function (data) {
+        if (!data.success || !data.path) {
+          var uploadError = new Error(data.message || '图片上传失败');
+          uploadError.status = 200;
+          throw uploadError;
+        }
         return data.path;
+      }).catch(function (error) {
+        // 移动网络或反向代理可能在浏览器收到响应前关闭上传连接。
+        // 只重试瞬时错误，并限制次数，避免把明确的 4xx 业务错误重复提交。
+        if (attempt < 2 && (!error || error.status == null || uploadRetryableStatus(error.status))) {
+          return new Promise(function (resolve) {
+            window.setTimeout(resolve, 500 * (attempt + 1));
+          }).then(function () {
+            return uploadImage(file, fileName, attempt + 1);
+          });
+        }
+        throw error;
       });
+    }
+
+    function resolveUploadImageUrl(path) {
+      var raw = String(path || '').trim();
+      if (!raw) return '';
+      if (/^(?:https?:|data:|blob:)/i.test(raw) || raw.charAt(0) === '/') return raw;
+      return '../' + raw.replace(/^\/+/, '');
     }
 
     // ===== 制品条目图片（每项上限 6 张） =====
@@ -284,13 +349,13 @@
 
     // 设置预览 img：优先缩略图；旧图无缩略图时加载原图；加载失败回退原图
     function setPreviewImage(img, path, altText) {
-      var original = '../' + String(path).replace(/^\/+/, '');
+      var original = resolveUploadImageUrl(path);
       img.alt = altText || '预览图';
       img.decoding = 'async';
       img.loading = 'lazy';
       var thumb = thumbUrl(path);
       if (thumb && thumb !== path) {
-        img.src = '../' + thumb;
+        img.src = resolveUploadImageUrl(thumb);
         img.onerror = function () {
           if (img.src.indexOf('/thumbs/') !== -1) img.src = original;
         };
@@ -430,6 +495,26 @@
       catField.appendChild(catLabel);
       catField.appendChild(catInput);
 
+      var priceField = document.createElement('div');
+      priceField.className = 'field';
+      var priceLabel = document.createElement('label');
+      priceLabel.textContent = '价格（元）';
+      var priceInput = document.createElement('input');
+      priceInput.type = 'number';
+      priceInput.min = '0';
+      priceInput.max = '1000000';
+      priceInput.step = '0.01';
+      priceInput.inputMode = 'decimal';
+      var initialPriceCents = Number.isSafeInteger(Number(item.priceCents)) && Number(item.priceCents) >= 0 ? Number(item.priceCents) : null;
+      priceInput.value = initialPriceCents === null ? '' : (initialPriceCents / 100).toFixed(2);
+      priceInput.placeholder = '例如：12.50';
+      priceInput.addEventListener('input', function () {
+        var value = priceInput.value.trim();
+        row.priceCents = value === '' ? null : Math.round(Number(value) * 100);
+      });
+      priceField.appendChild(priceLabel);
+      priceField.appendChild(priceInput);
+
       var descField = document.createElement('div');
       descField.className = 'field';
       var descLabel = document.createElement('label');
@@ -472,12 +557,13 @@
       card.appendChild(head);
       card.appendChild(nameField);
       card.appendChild(catField);
+      card.appendChild(priceField);
       card.appendChild(descField);
       card.appendChild(imgField);
       container.appendChild(card);
 
       var row = {
-        card: card, name: item.name, category: item.category, description: item.description,
+        card: card, name: item.name, category: item.category, priceCents: initialPriceCents, priceInput: priceInput, description: item.description,
         images: Array.isArray(item.images) ? item.images.slice(0, 6) : [],
         input: nameInput, statusEl: imgStatus, imagesEl: imagesEl
       };
@@ -496,12 +582,14 @@
 
     function collectItems() {
       return items.map(function (row) {
-        return {
+        var result = {
           name: (row.name || '').trim(),
           category: (row.category || '').trim(),
           description: (row.description || '').trim(),
           images: (row.images || []).slice(0, 6)
         };
+        if (Number.isSafeInteger(row.priceCents) && row.priceCents >= 0) result.priceCents = row.priceCents;
+        return result;
       }).filter(function (it) { return it.name !== ''; });
     }
 
@@ -577,7 +665,7 @@
       var item = document.createElement('div');
       item.className = 'display-preview-item';
       var image = document.createElement('img');
-      image.src = '../' + uploadedDisplayImagePath;
+      image.src = resolveUploadImageUrl(uploadedDisplayImagePath);
       image.alt = '参展展示图';
       var label = document.createElement('span');
       label.className = 'display-preview-label';
@@ -616,7 +704,7 @@
       });
       if (!firstImage) return Promise.resolve('');
       return new Promise(function (resolve) {
-        decodeImageForCanvas('../' + firstImage).then(function (bitmap) {
+        decodeImageForCanvas(resolveUploadImageUrl(firstImage)).then(function (bitmap) {
           // A4 竖版宣传图（210:297）
           var targetRatio = 210 / 297;
           var sourceWidth = bitmap.width;
@@ -673,7 +761,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-      }).then(function (response) { return response.json(); }).then(function (data) {
+      }).then(function (response) { return readJsonResponse(response); }).then(function (data) {
         if (!data.success) throw new Error(data.message || '提交失败。');
         window.location.href = 'Galonly_status.html?event_id=' + eventId + '&application_id=' + applicationId;
       }).catch(function (error) {
@@ -687,7 +775,7 @@
       var list = app.merchandise_items || [];
       if (list.length) {
         list.forEach(function (it) {
-          createItemRow({ name: it.name || '', category: it.category || '', description: it.description || '', images: it.images || [] });
+          createItemRow({ name: it.name || '', category: it.category || '', priceCents: it.priceCents, description: it.description || '', images: it.images || [] });
         });
       } else {
         createItemRow({});
@@ -722,44 +810,66 @@
       var params = new URLSearchParams(window.location.search);
       eventId = parseInt(params.get('event_id'), 10) || 0;
       applicationId = parseInt(params.get('application_id') || params.get('app_id') || '0', 10) || 0;
-      if (!eventId || !applicationId) {
-        setVisible('loading-msg', false);
-        showError('error-msg', '缺少活动或申请参数，请从活动列表 / 状态页进入。');
-        return;
-      }
+      var autoSelectBeijingApplication = !eventId && !applicationId;
 
       fetch('../api/auth.php?action=me', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return readJsonResponse(r); })
         .then(function (auth) {
           if (!(auth.success || auth.logged_in) || !(auth.user || auth.id)) {
             window.location.href = '../login.html?redirect=' + encodeURIComponent(window.location.href);
             return null;
           }
-          return Promise.all([
-            fetch('../api/galonly.php?action=list_events', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return { success: false }; }),
-            fetch('../api/galonly.php?action=get_merchandise&event_id=' + eventId + '&application_id=' + applicationId, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return { success: false }; })
-          ]);
+          return fetch('../api/galonly.php?action=list_events', { credentials: 'same-origin' })
+            .then(function (r) { return readJsonResponse(r); })
+            .catch(function () { return { success: false, events: [] }; })
+            .then(function (eventsData) {
+              if (autoSelectBeijingApplication) {
+                var beijingEvent = (eventsData.events || []).find(function (event) {
+                  return String(event.event_code || '').toLowerCase() === 'beijing';
+                });
+                if (!beijingEvent || !beijingEvent.id) throw new Error('北京活动信息加载失败，请从活动列表进入。');
+                eventId = parseInt(beijingEvent.id, 10) || 0;
+                applicationId = parseInt(beijingEvent.user_application_id, 10) || 0;
+              }
+              if (!applicationId && eventId) {
+                var selectedEvent = (eventsData.events || []).find(function (event) { return String(event.id) === String(eventId); });
+                if (selectedEvent) applicationId = parseInt(selectedEvent.user_application_id, 10) || 0;
+              }
+              if (!eventId && !applicationId) throw new Error('缺少活动或申请参数，请从活动列表 / 状态页进入。');
+              if (!applicationId) throw new Error('当前账号没有该活动的申请，请从活动列表确认登录账号。');
+              var applicationUrl = '../api/galonly.php?action=get_application&application_id=' + applicationId;
+              if (eventId) applicationUrl += '&event_id=' + eventId;
+              var merchandiseUrl = '../api/galonly.php?action=get_merchandise&application_id=' + applicationId;
+              return Promise.all([
+                eventsData,
+                fetch(applicationUrl, { credentials: 'same-origin' }).then(function (r) { return readJsonResponse(r); }),
+                fetch(merchandiseUrl, { credentials: 'same-origin' }).then(function (r) { return readJsonResponse(r); })
+              ]);
+            });
         })
         .then(function (results) {
           if (!results) return;
           var eventsData = results[0];
-          var merchData = results[1];
+          var applicationData = results[1];
+          var merchData = results[2];
           if (eventsData.success && eventsData.events) {
             var ev = eventsData.events.find(function (e) { return String(e.id) === String(eventId); });
             if (ev) $('event-name-display').textContent = (ev.name || ev.event_name || ('活动 #' + eventId));
           }
-          if (!merchData.success || !merchData.application) {
+          var app = normalizeMerchandiseApplication(applicationData, merchData);
+          if (!app) {
             setVisible('loading-msg', false);
-            showError('error-msg', merchData.message || '申请信息加载失败。');
+            showError('error-msg', (applicationData && applicationData.message) || (merchData && merchData.message) || '申请信息加载失败。');
             return;
           }
-          var app = merchData.application;
+          applicationId = parseInt(app.id || app.application_id || applicationId, 10) || applicationId;
+          eventId = parseInt(app.event_id || eventId, 10) || eventId;
           if (!['approved', 'phase2_pending', 'phase2_revision', 'phase2_additional_pending', 'confirmed', 'shared'].includes(app.status)) {
             setVisible('loading-msg', false);
             showError('error-msg', '当前申请状态无法提交制品表单。若已通过第一阶段，请从活动列表「提交制品」进入。');
             return;
           }
-          if (app.status === 'phase2_revision' && !app.within_deadline) {
+          if (app.status === 'phase2_revision' && app.within_deadline === false) {
             setVisible('loading-msg', false);
             showError('error-msg', '已超出打回后的 3 天修改期限，不合规制品本次不得放入菜单。');
             return;

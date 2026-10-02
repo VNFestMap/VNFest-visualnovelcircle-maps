@@ -33,7 +33,7 @@ func (s *Server) galonlyStaff(w http.ResponseWriter, r *http.Request) {
 	case "finalize_staff_roster", "unlock_staff_roster", "update_staff_event_config":
 		s.galonlyStaffEventConfig(w, r, action)
 	default:
-		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未知动作", "available_actions": []string{"get_my", "submit_staff", "list_staff_applications", "vote_staff", "withdraw_staff_vote", "update_status"}})
+		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "未知动作", "available_actions": []string{"get_my", "get_staff_application", "submit_staff", "list_staff_applications", "update_staff", "delete_staff_application", "vote_staff", "withdraw_staff_vote", "update_status", "finalize_staff_roster", "unlock_staff_roster", "update_staff_event_config"}})
 	}
 }
 

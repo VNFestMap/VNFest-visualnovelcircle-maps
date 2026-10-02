@@ -901,17 +901,17 @@ function OverviewPage({ data, activeMemberships, isManager, canEnterSpace, compl
           bordered={false}
           size="small"
         >
-          <button className="vn-today-item" type="button" onClick={() => onSwitchTab('clubs')}>
+          <button data-button-shape="keep" className="vn-today-item" type="button" onClick={() => onSwitchTab('clubs')}>
             <span className="vn-today-token urgent">审</span>
             <span className="vn-today-label"><strong>成员申请</strong><span>负责人待处理</span></span>
             <span className="vn-today-count urgent">{isManager ? data.pending.length : 0}</span>
           </button>
-          <button className="vn-today-item" type="button" onClick={() => onSwitchTab('notifications')}>
+          <button data-button-shape="keep" className="vn-today-item" type="button" onClick={() => onSwitchTab('notifications')}>
             <span className="vn-today-token warn">信</span>
             <span className="vn-today-label"><strong>未读通知</strong><span>系统与审核反馈</span></span>
             <span className="vn-today-count warn">{data.unread}</span>
           </button>
-          <button className="vn-today-item" type="button" onClick={() => onSwitchTab('overview')}>
+          <button data-button-shape="keep" className="vn-today-item" type="button" onClick={() => onSwitchTab('overview')}>
             <span className="vn-today-token good">活</span>
             <span className="vn-today-label"><strong>报名活动</strong><span>已登记活动记录</span></span>
             <span className="vn-today-count good">{eventCount}</span>
@@ -1164,6 +1164,7 @@ function PreferencesTab({ language, themePreference, setThemeMode, messageApi })
           const unavailable = !item.random && failedImages.has(item.url);
           return (
             <button
+              data-button-shape="keep"
               type="button"
               role="listitem"
               key={value}
@@ -1878,6 +1879,7 @@ function NotificationsTab({ notifications, unread, actions, isMobile }) {
             return (
               <div key={notification.id} className="vn-notification-list-item" role="listitem">
                 <button
+                  data-button-shape="keep"
                   className={`vn-notification-row${isRead ? '' : ' is-unread'}${isSelected ? ' is-selected' : ''}`}
                   type="button"
                   aria-pressed={isSelected}

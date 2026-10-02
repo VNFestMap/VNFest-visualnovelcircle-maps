@@ -535,11 +535,17 @@ func (s *Server) createAuthSession(ctx context.Context, w http.ResponseWriter, r
 		return err
 	}
 	session := &sessionstore.Session{ID: sessionID, UserID: &userID, Payload: map[string]any{"user_id": userID}, ExpiresAt: time.Now().Add(time.Duration(s.cfg.SessionLifetime) * time.Second), Valid: true, IPAddress: clientIP(r), UserAgent: r.UserAgent()}
-	if store, ok := s.sessions.Store.(*sessionstore.Store); ok {
-		if err = store.SaveReplacingUserSessions(ctx, session); err != nil {
-			return err
-		}
-	} else if err = s.sessions.Store.Save(ctx, session); err != nil {
+	previousID := ""
+	if cookie, cookieErr := r.Cookie(s.sessions.CookieName); cookieErr == nil && len(cookie.Value) <= 128 {
+		previousID = cookie.Value
+	}
+	store, ok := s.sessions.Store.(interface {
+		SaveLogin(context.Context, *sessionstore.Session, string) error
+	})
+	if !ok {
+		return errors.New("atomic login session store unavailable")
+	}
+	if err = store.SaveLogin(ctx, session, previousID); err != nil {
 		return err
 	}
 	s.sessions.SetCookie(w, sessionID)

@@ -1,0 +1,49 @@
+/* Curtain transition inspired by JIEJOE-WEB-Tutorial/006-jump-animation.
+   Shared by the static login and homepage; movement stays on transform. */
+:root {
+  --vn-jump-duration: 560ms;
+  /* easeInOutSine from easings.net: gentle acceleration and deceleration. */
+  --vn-jump-ease: cubic-bezier(0.37, 0, 0.63, 1);
+  --vn-jump-bg: #f6f2eb;
+  --vn-jump-text: #272521;
+  --vn-jump-muted: #77736c;
+}
+:root[data-theme='dark'] {
+  --vn-jump-bg: #161719;
+  --vn-jump-text: #f4f1eb;
+  --vn-jump-muted: #aaa7a1;
+}
+/* Cover the very first homepage paint, before its body is parsed. */
+html.vn-auth-arriving::after {
+  content: ''; position: fixed; inset: 0; z-index: 2147483646;
+  background: var(--vn-jump-bg); pointer-events: auto;
+}
+html.vn-auth-transitioning { overflow: hidden; }
+.vn-auth-transition {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; padding: 24px; box-sizing: border-box;
+  background: var(--vn-jump-bg); color: var(--vn-jump-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  transform: translate3d(0, 100%, 0); visibility: hidden; pointer-events: none;
+  backface-visibility: hidden;
+  transition: transform var(--vn-jump-duration) var(--vn-jump-ease);
+}
+.vn-auth-transition.is-visible { visibility: visible; pointer-events: auto; will-change: transform; }
+.vn-auth-transition.is-covered { transform: translate3d(0, 0, 0); }
+.vn-auth-transition.is-revealing { transform: translate3d(0, -100%, 0); }
+.vn-auth-transition > * { transition: opacity 180ms ease; }
+.vn-auth-transition.is-revealing > * { opacity: 0; }
+.vn-auth-transition.is-arriving { transition: none; }
+.vn-auth-transition__brand { font-size: clamp(28px, 5vw, 36px); font-weight: 800; letter-spacing: -1px; line-height: 1.2; }
+.vn-auth-transition__brand span { color: #e74c3c; }
+.vn-auth-transition__ring { width: 40px; height: 40px; flex: 0 0 40px;
+  border: 3px solid rgb(231 76 60 / 16%); border-top-color: #e74c3c; border-radius: 50%;
+  animation: vn-jump-spin 900ms linear infinite; box-sizing: border-box; }
+.vn-auth-transition__label { margin: 0; max-width: 24em; color: var(--vn-jump-muted);
+  font-size: 14px; line-height: 1.7; text-align: center; }
+@keyframes vn-jump-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .vn-auth-transition { transition: none; }
+  .vn-auth-transition__ring { animation: none; }
+}

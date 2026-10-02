@@ -76,4 +76,48 @@ vm.runInContext(
 const unknown = context.coverage.filter(([, label]) => label === '未归类操作').map(([action]) => action);
 assert(unknown.length === 0, `missing action explanations: ${unknown.join(', ')}`);
 
+// Exercise the same table against the Go audit middleware's action families.
+// The middleware derives `name.<verb>` from the API module and action, so a new
+// module must still produce a readable label instead of 「未归类操作」.
+const auditGoPath = path.join(root, 'backend', 'internal', 'httpapi', 'audit.go');
+const auditSource = fs.readFileSync(auditGoPath, 'utf8');
+const goModules = new Set();
+for (const match of auditSource.matchAll(/case "([a-z_]+)":/g)) goModules.add(match[1]);
+for (const match of auditSource.matchAll(/"([a-z_]+)",\s*"([a-z_]+)"/g)) {
+  goModules.add(match[1]);
+  goModules.add(match[2]);
+}
+for (const match of auditSource.matchAll(/"([a-z_]+)\.\+"/g)) goModules.add(match[1]);
+const goVerbs = ['create', 'update', 'delete', 'publish', 'submit', 'withdraw', 'reorder',
+  'share', 'grant', 'revoke', 'set', 'remove', 'add', 'approve', 'reject', 'cast',
+  'vote', 'ban', 'transfer', 'resolve', 'settle', 'advance', 'reseed', 'generate'];
+const goActions = new Set();
+for (const moduleName of goModules) {
+  if (!/^[a-z][a-z_]*$/.test(moduleName)) continue;
+  for (const verb of goVerbs) goActions.add(moduleName + '.' + verb);
+}
+for (const literal of auditSource.matchAll(/"((?:user|users|recog|bot_token|vote|membership|club|galonly|generate_club_code|revoke_club_code|redeem_club_code|delete_club_comment|add_recommendation|remove_recommendation|reorder_recommendations)[a-z_.]*)"/g)) {
+  if (literal[1].includes('.')) goActions.add(literal[1]);
+}
+const goContext = { actions: [...goActions] };
+vm.createContext(goContext);
+vm.runInContext(
+  reviews.slice(definitionStart, definitionEnd) +
+    '; globalThis.goCoverage = actions.map(action => [action, getLogActionDefinition(action).label]);',
+  goContext
+);
+const goUnknown = goContext.goCoverage.filter(([, label]) => label === '未归类操作').map(([action]) => action);
+assert(goUnknown.length === 0, `Go audit actions missing explanations: ${goUnknown.join(', ')}`);
+console.log(`Go audit action families covered: ${goActions.size} synthetic actions explained`);
+
+const outcomeStart = reviews.indexOf('function detectLogOutcome');
+const outcomeEnd = reviews.indexOf('function detectClient', outcomeStart);
+assert(outcomeStart !== -1 && outcomeEnd > outcomeStart, 'could not locate log outcome function');
+vm.runInContext(reviews.slice(outcomeStart, outcomeEnd) +
+  '; globalThis.rejected = detectLogOutcome("galonly.resolve", { result: "success", decision: "reject" });', context);
+assert(context.rejected.label === '拒绝', 'business rejection must not display as request success');
+for (const field of ["event_code: '活动标识'", "booth_id: '摊位 ID'", "storage: '图片存储位置'", "fallback: '已回退本地'"]) {
+  assert(reviews.includes(field), `log detail label missing: ${field}`);
+}
+
 console.log(`Admin log inspector contract OK (${actions.size} static actions explained)`);

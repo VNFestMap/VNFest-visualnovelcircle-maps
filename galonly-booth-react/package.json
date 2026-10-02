@@ -1,0 +1,20 @@
+{
+  "name": "vnfest-galonly-booth-portal",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 127.0.0.1 --port 5176 --strictPort",
+    "preview": "vite preview --host 127.0.0.1 --port 4176 --strictPort"
+  },
+  "dependencies": {
+    "cropperjs": "1.6.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
+}

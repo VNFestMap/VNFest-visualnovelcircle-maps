@@ -251,7 +251,7 @@ export default function App() {
       Pagination: { itemSize: 28, itemSizeSM: 26 },
       List: { itemPadding: '10px 0', contentWidth: 220 },
       Descriptions: { itemPaddingBottom: 8, labelBg: 'transparent', titleMarginBottom: 10 },
-      Button: { paddingInline: 12, paddingInlineSM: 8, fontWeight: 600 },
+      Button: { borderRadius: 9999, borderRadiusSM: 9999, borderRadiusLG: 9999, paddingInline: 12, paddingInlineSM: 8, fontWeight: 600 },
       Input: { paddingBlock: 4, paddingInline: 10 },
       Alert: { withDescriptionPadding: '12px 14px' },
       Empty: { colorTextDescription: 'var(--cm-muted)' },

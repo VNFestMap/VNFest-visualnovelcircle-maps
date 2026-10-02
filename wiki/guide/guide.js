@@ -36,21 +36,58 @@
   function hashRevision(value) { var text = JSON.stringify(value || {}), hash = 0; for (var i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash) + text.charCodeAt(i) | 0; return String(hash >>> 0); }
 
   async function getJson(url) { var response = await fetch(url, { headers: { Accept: 'application/json' } }); if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); }
+  function normalizeArticle(value, fallbackId) {
+    if (!value || typeof value !== 'object') return null;
+    var source = value.published && typeof value.published === 'object' ? value.published : value;
+    var article = Object.assign({}, source);
+    if (!article.id && fallbackId) article.id = fallbackId;
+    return article.id ? article : null;
+  }
+  function normalizeCatalog(value) {
+    if (!value || typeof value !== 'object') return null;
+    var articleMap = {};
+    if (Array.isArray(value.articles)) {
+      value.articles.forEach(function (article) {
+        var normalized = normalizeArticle(article, article && article.id);
+        if (normalized) articleMap[normalized.id] = normalized;
+      });
+    } else if (value.articles && typeof value.articles === 'object') {
+      Object.keys(value.articles).forEach(function (id) {
+        var record = value.articles[id];
+        if (!record || typeof record !== 'object' || (record.status && record.status !== 'published')) return;
+        var normalized = normalizeArticle(record, id);
+        if (normalized) articleMap[normalized.id] = normalized;
+      });
+    }
+    var orderedIds = [];
+    (Array.isArray(value.groups) ? value.groups : []).forEach(function (group) {
+      (Array.isArray(group.articleIds) ? group.articleIds : []).forEach(function (id) {
+        if (articleMap[id] && orderedIds.indexOf(id) === -1) orderedIds.push(id);
+      });
+    });
+    Object.keys(articleMap).forEach(function (id) { if (orderedIds.indexOf(id) === -1) orderedIds.push(id); });
+    if (!orderedIds.length) return null;
+    return Object.assign({}, value, { groups: Array.isArray(value.groups) ? value.groups : [], articles: orderedIds.map(function (id) { return articleMap[id]; }) });
+  }
   async function loadCatalog(language) {
     try {
       var payload = await getJson(API + '?action=guide_catalog&lang=' + encodeURIComponent(language));
-      if (payload && payload.success && payload.catalog) return payload.catalog;
+      var catalog = payload && payload.success ? normalizeCatalog(payload.catalog) : null;
+      if (catalog) return catalog;
     } catch (error) { /* local seed is a deliberate offline fallback */ }
-    return getJson(FALLBACK + language + '/documents.json');
+    var fallback = normalizeCatalog(await getJson(FALLBACK + language + '/documents.json'));
+    if (!fallback) throw new Error('invalid guide catalog');
+    return fallback;
   }
   async function loadArticle(id, language) {
     try {
       var payload = await getJson(API + '?action=guide_article&lang=' + encodeURIComponent(language) + '&id=' + encodeURIComponent(id));
-      if (payload && payload.success && payload.article) return payload.article;
+      var article = payload && payload.success ? normalizeArticle(payload.article, id) : null;
+      if (article) return article;
     } catch (error) { /* catalog includes the seed article for fallback rendering */ }
     return state.index.get(id) || null;
   }
-  function updateIndex(catalog) { state.index = new Map(); (catalog.articles || []).forEach(function (article) { state.index.set(article.id, article); }); }
+  function updateIndex(catalog) { state.index = new Map(); (catalog && Array.isArray(catalog.articles) ? catalog.articles : []).forEach(function (article) { state.index.set(article.id, article); }); }
   function localizedGroup(group) { return state.language === 'ja-JP' ? (group.titleJa || group.title) : group.title; }
   function syncCollapsibleGroups(activeArticleId) {
     ui.nav.querySelectorAll('details[data-guide-group]').forEach(function (details) {

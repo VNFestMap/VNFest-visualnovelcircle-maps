@@ -495,10 +495,12 @@ function galonlyReviewerRole(PDO $db, int $eventId, array $user): ?string {
         $stmt = $db->prepare("SELECT role FROM galonly_reviewers WHERE user_id = ? AND (event_id = 0 OR event_id = ?) ORDER BY event_id DESC LIMIT 1");
         $stmt->execute([(int)$user['id'], $eventId]);
         $role = $stmt->fetchColumn();
-        return $role ? (string)$role : null;
+        if ($role) return (string)$role;
     } catch (Exception $e) {
-        return null;
+        // 旧库可能尚未创建细分角色表；继续使用审核成员身份的兼容通道。
     }
+    // 历史 is_audit 用户仍可参与分审，但没有显式分配时不能获得总审权限。
+    return hasAuditPermission($user) ? 'jury' : null;
 }
 
 function galonlyCanReview(PDO $db, int $eventId, array $user): bool {
@@ -1768,10 +1770,13 @@ switch ($action) {
             // 完整意见列表（投票人 + 角色 + 意见）
             $stmt = $db->prepare(
                 "SELECT v.vote, v.comment, v.phase, v.created_at, v.auditer_id, u.nickname, u.username,
-                        r.role AS reviewer_role, v.merchandise_version
+                        COALESCE(
+                            (SELECT r.role FROM galonly_reviewers r WHERE r.user_id = v.auditer_id AND r.event_id = ? LIMIT 1),
+                            (SELECT r.role FROM galonly_reviewers r WHERE r.user_id = v.auditer_id AND r.event_id = 0 LIMIT 1),
+                            CASE WHEN u.role = 'super_admin' THEN 'chief' WHEN u.is_audit = 1 THEN 'jury' ELSE NULL END
+                        ) AS reviewer_role, v.merchandise_version
                  FROM galonly_votes v
                  LEFT JOIN users u ON v.auditer_id = u.id
-                 LEFT JOIN galonly_reviewers r ON r.user_id = v.auditer_id AND (r.event_id = 0 OR r.event_id = ?)
                  WHERE v.application_id = ? AND (v.phase <> 2 OR v.merchandise_version = ? OR v.merchandise_version = 0)
                  ORDER BY v.phase ASC, v.id ASC"
             );
@@ -2544,20 +2549,24 @@ switch ($action) {
         }
 
         $user = requireLogin();
-        if (($user['role'] ?? '') !== 'super_admin') {
+        $eventId = (int)($_GET['event_id'] ?? 0);
+        $db = getDB();
+        if (($user['role'] ?? '') !== 'super_admin' && galonlyReviewerRole($db, $eventId, $user) === null && !hasAuditPermission($user)) {
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => '仅超级管理员可管理审核成员'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['success' => false, 'message' => '权限不足'], JSON_UNESCAPED_UNICODE);
             exit();
         }
-        $db = getDB();
         galonlyEnsureBoothSchema($db);
-        $stmt = $db->prepare("SELECT r.id, r.event_id, r.user_id, r.role, r.created_at, u.nickname, u.username, u.is_audit FROM galonly_reviewers r LEFT JOIN users u ON r.user_id = u.id ORDER BY r.role ASC, r.id DESC");
-        $stmt->execute();
+        $stmt = $db->prepare("SELECT r.id, r.event_id, r.user_id, r.role, r.created_at, u.nickname, u.username, u.is_audit FROM galonly_reviewers r LEFT JOIN users u ON r.user_id = u.id WHERE r.event_id = 0 OR r.event_id = ? ORDER BY r.event_id ASC, r.role ASC, r.id DESC");
+        $stmt->execute([$eventId]);
         $reviewers = $stmt->fetchAll();
         // 候选用户：已标记审核员或超级管理员（便于超管选择）
-        $stmt = $db->prepare("SELECT id, nickname, username, role FROM users WHERE status = 'active' AND (is_audit = 1 OR role = 'super_admin') ORDER BY id DESC LIMIT 200");
-        $stmt->execute();
-        $candidates = $stmt->fetchAll();
+        $candidates = [];
+        if (($user['role'] ?? '') === 'super_admin') {
+            $stmt = $db->prepare("SELECT id, nickname, username, role FROM users WHERE status = 'active' AND (is_audit = 1 OR role = 'super_admin') ORDER BY id DESC LIMIT 200");
+            $stmt->execute();
+            $candidates = $stmt->fetchAll();
+        }
         echo json_encode(['success' => true, 'reviewers' => $reviewers, 'candidates' => $candidates], JSON_UNESCAPED_UNICODE);
         exit();
 

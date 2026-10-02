@@ -106,7 +106,9 @@ export function buildTheme(isDark) {
         colorBorderSecondary: t.border,
       },
       Button: {
-        borderRadius: sharedTokens.buttonRadius,
+        borderRadius: 9999,
+        borderRadiusSM: 9999,
+        borderRadiusLG: 9999,
         controlHeight: sharedTokens.controlHeight,
       },
       Input: {

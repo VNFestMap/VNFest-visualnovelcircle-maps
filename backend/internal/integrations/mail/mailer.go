@@ -60,7 +60,7 @@ func (m *Mailer) sendSendmail(ctx context.Context, message Message) error {
 	// Keep the native fallback useful on Linux deployments and harmless on
 	// Windows development machines where sendmail is normally absent.
 	cmd := exec.CommandContext(ctx, "sendmail", "-f", from, message.To)
-	cmd.Stdin = strings.NewReader(m.headers(message) + "\r\n" + message.Body + "\r\n")
+	cmd.Stdin = strings.NewReader(m.encodeMessage(message))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("sendmail failed: %w", err)
 	}
@@ -125,7 +125,7 @@ func (m *Mailer) sendSMTP(ctx context.Context, message Message) error {
 	if err != nil {
 		return fmt.Errorf("SMTP DATA failed: %w", err)
 	}
-	if _, err = writer.Write([]byte(m.headers(message) + "\r\n" + message.Body + "\r\n")); err != nil {
+	if _, err = writer.Write([]byte(m.encodeMessage(message))); err != nil {
 		_ = writer.Close()
 		return fmt.Errorf("SMTP body failed: %w", err)
 	}
@@ -133,6 +133,14 @@ func (m *Mailer) sendSMTP(ctx context.Context, message Message) error {
 		return fmt.Errorf("SMTP send failed: %w", err)
 	}
 	return client.Quit()
+}
+
+// RFC 5322 requires an empty line between headers and the body. Without it,
+// mail readers can consume the first body line (including login codes) as a header.
+func (m *Mailer) encodeMessage(message Message) string {
+	body := strings.ReplaceAll(message.Body, "\r\n", "\n")
+	body = strings.ReplaceAll(body, "\n", "\r\n")
+	return m.headers(message) + "\r\n\r\n" + body + "\r\n"
 }
 
 func (m *Mailer) headers(message Message) string {

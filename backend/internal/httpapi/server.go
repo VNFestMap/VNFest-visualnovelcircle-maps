@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -135,6 +136,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/recognition_events.php", s.recognitionEvents)
 	s.mux.HandleFunc("/api/recognition_admin.php", s.recognitionAdmin)
 	s.mux.HandleFunc("/api/galonly.php", s.galonly)
+	s.mux.HandleFunc("/api/galonly_booths.php", s.galonlyBooths)
+	s.mux.HandleFunc("/api/galonly_public.php", s.galonlyPublic)
 	s.mux.HandleFunc("/api/galonly_staff.php", s.galonlyStaff)
 	s.mux.HandleFunc("/api/vote_projects.php", s.voteProjects)
 	s.mux.HandleFunc("/api/vote_nominations.php", s.voteNominations)
@@ -405,26 +408,11 @@ func (s *Server) authLoginLocal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := user.ID
-	sessionID, err := newSessionID()
-	if err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "登录失败，请稍后再试"})
-		return
-	}
-	// Match PHP createSession semantics: one active session per user, including
-	// rows visible to the rollback PHP runtime through the bridge.
-	session := &sessionstore.Session{ID: sessionID, UserID: &userID, Payload: map[string]any{"user_id": userID}, ExpiresAt: time.Now().Add(time.Duration(s.cfg.SessionLifetime) * time.Second), Valid: true, IPAddress: clientIP(r), UserAgent: r.UserAgent()}
-	var saveErr error
-	if store, ok := s.sessions.Store.(*sessionstore.Store); ok {
-		saveErr = store.SaveReplacingUserSessions(r.Context(), session)
-	} else {
-		saveErr = s.sessions.Store.Save(r.Context(), session)
-	}
-	if saveErr != nil {
+	if err := s.createAuthSession(r.Context(), w, r, userID); err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "登录失败，请稍后再试"})
 		return
 	}
 	_, _ = s.db.ExecContext(r.Context(), "UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?", userID)
-	s.sessions.SetCookie(w, sessionID)
 	writeJSON(w, map[string]any{"success": true, "message": "登录成功", "user": s.publicUser(r.Context(), user), "memberships": s.memberships(r.Context(), userID)})
 }
 
@@ -662,12 +650,44 @@ func newSessionID() (string, error) {
 	}
 	return hex.EncodeToString(b), nil
 }
+
+// clientIP 解析发起请求的客户端 IP。
+// 生产环境由宝塔 Nginx 反代（DEPLOY.md 配置了 X-Real-IP / X-Forwarded-For），
+// 此时 RemoteAddr 是 127.0.0.1，必须改读转发头才能记到真实客户端。
+// 仅当直连对端是回环或内网地址时才信任转发头，防止外部直连伪造。
 func clientIP(r *http.Request) string {
-	host := r.RemoteAddr
-	if index := strings.LastIndex(host, ":"); index > -1 {
-		return host[:index]
+	host := remoteHost(r.RemoteAddr)
+	if isTrustedProxyHost(host) {
+		if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+			return ip
+		}
+		if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+			if index := strings.Index(forwarded, ","); index > -1 {
+				forwarded = forwarded[:index]
+			}
+			if ip := strings.TrimSpace(forwarded); ip != "" {
+				return ip
+			}
+		}
 	}
 	return host
+}
+
+// remoteHost 从 RemoteAddr 中剥掉端口；用 SplitHostPort 以正确处理 [::1]:8080 这类 IPv6 写法。
+func remoteHost(remote string) string {
+	if host, _, err := net.SplitHostPort(strings.TrimSpace(remote)); err == nil {
+		return host
+	}
+	return strings.Trim(strings.TrimSpace(remote), "[]")
+}
+
+// isTrustedProxyHost 判断直连对端是否为可信反代（回环或内网），只有此时才采信转发头。
+func isTrustedProxyHost(host string) bool {
+	parsed := net.ParseIP(host)
+	if parsed == nil {
+		return false
+	}
+	return parsed.IsLoopback() || parsed.IsPrivate() || parsed.IsLinkLocalUnicast()
 }
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {

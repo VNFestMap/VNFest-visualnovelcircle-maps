@@ -17,8 +17,11 @@ import (
 )
 
 var (
-	ErrDisabled    = errors.New("picui disabled")
-	ErrRateLimited = errors.New("picui rate limited")
+	ErrDisabled     = errors.New("picui disabled")
+	ErrRateLimited  = errors.New("picui rate limited")
+	ErrNetwork      = errors.New("picui network error")
+	ErrUntrustedURL = errors.New("picui returned no trusted image URL")
+	ErrRejected     = errors.New("picui upload rejected")
 )
 
 type Config struct {
@@ -107,7 +110,7 @@ func (c *Client) Upload(ctx context.Context, data []byte, originalName, mimeType
 
 		response, err := c.httpClient.Do(request)
 		if err != nil {
-			lastErr = errors.New("picui network error")
+			lastErr = ErrNetwork
 			if attempt < 3 && waitRetry(ctx, attempt, "") == nil {
 				continue
 			}
@@ -142,8 +145,14 @@ func (c *Client) Upload(ctx context.Context, data []byte, originalName, mimeType
 				if strings.Contains(message, "每小时") || strings.Contains(message, "限流") || strings.Contains(message, "rate") || strings.Contains(message, "too many") {
 					return Result{}, ErrRateLimited
 				}
+				if !payload.Status {
+					lastErr = ErrRejected
+				} else {
+					lastErr = ErrUntrustedURL
+				}
+			} else {
+				lastErr = errors.New("picui response invalid")
 			}
-			lastErr = errors.New("picui returned no trusted image URL")
 		} else {
 			lastErr = fmt.Errorf("picui HTTP %d", response.StatusCode)
 		}

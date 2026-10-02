@@ -49,7 +49,19 @@ function initSession(): void {
         }
         session_start();
         sessionBridgeSyncFromDatabase(session_id());
-        sessionBridgeSave(session_id(), isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
+        if (isset($_SESSION['user_id']) && !sessionBridgeLoginIsValid(session_id(), (int)$_SESSION['user_id'])) {
+            // Never turn a revoked/expired native PHP session back into a
+            // valid bridge row after another runtime has invalidated it.
+            invalidateSessionId(session_id());
+            session_destroy();
+            $_SESSION = [];
+            session_id(session_create_id());
+            ini_set('session.use_strict_mode', '0');
+            session_start();
+            sessionBridgeSave(session_id(), null);
+        } else {
+            sessionBridgeSave(session_id(), isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null);
+        }
         if ($migrateLegacyHostCookie) {
             $secure = !empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off';
             // 不带 domain 才能精确删除 host-only cookie，不影响新的共享 cookie。
@@ -198,33 +210,78 @@ function hasAnyClubManagementRole(array $user): bool {
 
 function createSession(int $userId): void {
     initSession();
-    session_regenerate_id(true);
-    $_SESSION['user_id'] = $userId;
-
+    $previousId = session_id();
+    $newId = session_create_id();
+    if (!is_string($newId) || $newId === '') throw new RuntimeException('Unable to create login session');
+    $previousPayload = $_SESSION;
     $db = getDB();
-    $db->prepare('DELETE FROM sessions WHERE user_id = ?')->execute([$userId]);
-
     $lifetime = defined('SESSION_LIFETIME') ? (int)SESSION_LIFETIME : 7200;
     $expiresAt = date('Y-m-d H:i:s', time() + $lifetime);
-
-    $db->prepare(
+    $hasBridge = sessionBridgeTableExists($db);
+    $db->beginTransaction();
+    try {
+        $db->prepare(
         'INSERT INTO sessions (id, user_id, ip_address, user_agent, expires_at)
          VALUES (?, ?, ?, ?, ?)'
-    )->execute([
-        session_id(),
+        )->execute([
+        $newId,
         $userId,
         $_SERVER['REMOTE_ADDR'] ?? '',
         $_SERVER['HTTP_USER_AGENT'] ?? '',
         $expiresAt,
-    ]);
-    sessionBridgeSave(session_id(), $userId);
+        ]);
+        if ($hasBridge) sessionBridgeWrite($db, $newId, $userId, sessionBridgePayload(), $lifetime);
+        $db->prepare('UPDATE sessions SET is_valid = 0 WHERE id = ?')->execute([$previousId]);
+        if ($hasBridge) {
+            $db->prepare('UPDATE vnfest_session_bridge SET is_valid = 0, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?')->execute([$previousId]);
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+    // Native state and cookies change only after both database writes succeed.
+    session_destroy();
+    session_id($newId);
+    // The new ID is generated here, never accepted from client input.
+    ini_set('session.use_strict_mode', '0');
+    session_start();
+    $_SESSION = $previousPayload;
+    $_SESSION['user_id'] = $userId;
+}
+
+function invalidateUserSessions(int $userId): void {
+    $db = getDB();
+    $hasBridge = sessionBridgeTableExists($db);
+    $db->beginTransaction();
+    try {
+        $db->prepare('UPDATE sessions SET is_valid = 0 WHERE user_id = ?')->execute([$userId]);
+        if ($hasBridge) $db->prepare('UPDATE vnfest_session_bridge SET is_valid = 0, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')->execute([$userId]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+}
+
+function invalidateSessionId(string $sessionId): void {
+    $db = getDB();
+    $hasBridge = sessionBridgeTableExists($db);
+    $db->beginTransaction();
+    try {
+        $db->prepare('UPDATE sessions SET is_valid = 0 WHERE id = ?')->execute([$sessionId]);
+        if ($hasBridge) $db->prepare('UPDATE vnfest_session_bridge SET is_valid = 0, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?')->execute([$sessionId]);
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
 }
 
 function destroySession(): void {
     initSession();
     if (isset($_SESSION['user_id'])) {
-        $db = getDB();
-        $db->prepare('UPDATE sessions SET is_valid = 0 WHERE id = ?')->execute([session_id()]);
+        invalidateSessionId(session_id());
     }
     sessionBridgeInvalidate(session_id());
     $_SESSION = [];

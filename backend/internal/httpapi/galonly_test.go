@@ -110,3 +110,113 @@ func TestGalOnlyApplicationReviewAndPublicVoteCompatibility(t *testing.T) {
 		t.Fatalf("staff status=%d body=%s", staff.Code, staff.Body.String())
 	}
 }
+
+func TestGalOnlyReviewerChannelsAndRoster(t *testing.T) {
+	root := t.TempDir()
+	cfg := config.Config{Root: root, SiteURL: "http://test", DBDriver: "sqlite", DBPath: filepath.Join(root, "galonly-reviewers.db"), DataDir: root, UploadDir: root, SessionLifetime: 3600}
+	db, err := sqlstore.Open(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, statement := range []string{
+		`CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, nickname TEXT, avatar_url TEXT, role TEXT NOT NULL, status TEXT NOT NULL, email TEXT, email_verified_at TEXT, password_hash TEXT, qq_openid TEXT, discord_id TEXT, is_audit INTEGER DEFAULT 0, profile_bio TEXT, membership_application_email_enabled INTEGER DEFAULT 1, display_membership_id INTEGER, language_preference TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, last_login_at TEXT)`,
+		`CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, ip_address TEXT, user_agent TEXT, expires_at TEXT NOT NULL, is_valid INTEGER NOT NULL DEFAULT 1)`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := sqlstore.Apply(context.Background(), db, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO users(id,username,nickname,role,status,is_audit) VALUES
+		(1,'applicant','申请人','member','active',0),
+		(2,'chief-user','总审甲','manager','active',1),
+		(3,'jury-user','分审乙','member','active',1),
+		(4,'event-jury-user','活动分审丙','member','active',0)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO galonly_events(id,name,location,date,registration_open,event_code) VALUES(1,'北京 GalOnly','北京','2026-10-01',1,'beijing')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO galonly_applications(id,event_id,user_id,booth_name,image_path,status,phase) VALUES(77,1,1,'测试摊位','[]','pending',1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO galonly_reviewers(event_id,user_id,role) VALUES(0,2,'chief'),(0,3,'jury'),(1,4,'jury')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO galonly_votes(application_id,auditer_id,vote,comment,phase,merchandise_version) VALUES(77,2,'approve','总审意见',1,0),(77,3,'reject','分审意见',1,0)`); err != nil {
+		t.Fatal(err)
+	}
+	sessions := sessionstore.New(db)
+	for _, item := range []struct {
+		id  string
+		uid int64
+	}{{"review-chief", 2}, {"review-jury", 3}, {"review-event-jury", 4}} {
+		uid := item.uid
+		if err := sessions.Save(context.Background(), &sessionstore.Session{ID: item.id, UserID: &uid, Payload: map[string]any{"user_id": uid}, ExpiresAt: time.Now().Add(time.Hour), Valid: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	server, err := New(cfg, db, filestore.New(root, root), &sessionstore.Manager{Store: sessions, CookieName: "PHPSESSID"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func(sessionID, endpoint string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "http://test"+endpoint, nil)
+		req.Header.Set("Origin", "http://test")
+		req.AddCookie(&http.Cookie{Name: "PHPSESSID", Value: sessionID})
+		res := httptest.NewRecorder()
+		server.ServeHTTP(res, req)
+		return res
+	}
+
+	roster := request("review-jury", "/api/galonly.php?action=list_reviewers&event_id=1")
+	if roster.Code != http.StatusOK || !strings.Contains(roster.Body.String(), `"nickname":"总审甲"`) || !strings.Contains(roster.Body.String(), `"role":"jury"`) {
+		t.Fatalf("reviewer roster status=%d body=%s", roster.Code, roster.Body.String())
+	}
+
+	events := request("review-jury", "/api/galonly.php?action=list_events")
+	if events.Code != http.StatusOK || !strings.Contains(events.Body.String(), `"user_review_role":"jury"`) {
+		t.Fatalf("reviewer event role status=%d body=%s", events.Code, events.Body.String())
+	}
+
+	juryApplications := request("review-jury", "/api/galonly.php?action=list_applications&event_id=1")
+	juryBody := juryApplications.Body.String()
+	if juryApplications.Code != http.StatusOK || !strings.Contains(juryBody, `"my_review_role":"jury"`) || !strings.Contains(juryBody, `"reviewer_name":"总审甲"`) || !strings.Contains(juryBody, `"reviewer_role":"chief"`) {
+		t.Fatalf("jury applications status=%d body=%s", juryApplications.Code, juryBody)
+	}
+
+	chiefApplications := request("review-chief", "/api/galonly.php?action=list_applications&event_id=1")
+	chiefBody := chiefApplications.Body.String()
+	if chiefApplications.Code != http.StatusOK || !strings.Contains(chiefBody, `"my_review_role":"chief"`) {
+		t.Fatalf("chief applications status=%d body=%s", chiefApplications.Code, chiefBody)
+	}
+
+	staffApplications := request("review-jury", "/api/galonly.php?action=list_staff_applications&event_id=1")
+	if staffApplications.Code != http.StatusOK || !strings.Contains(staffApplications.Body.String(), `"applications"`) {
+		t.Fatalf("staff applications status=%d body=%s", staffApplications.Code, staffApplications.Body.String())
+	}
+
+	eventJuryStaffApplications := request("review-event-jury", "/api/galonly.php?action=list_staff_applications&event_id=1")
+	if eventJuryStaffApplications.Code != http.StatusOK || !strings.Contains(eventJuryStaffApplications.Body.String(), `"applications"`) {
+		t.Fatalf("event reviewer staff applications status=%d body=%s", eventJuryStaffApplications.Code, eventJuryStaffApplications.Body.String())
+	}
+
+	for _, action := range []string{"get_staff_application", "submit_staff", "list_staff_applications", "update_staff", "delete_staff_application", "vote_staff", "withdraw_staff_vote", "finalize_staff_roster", "unlock_staff_roster", "update_staff_event_config"} {
+		response := request("review-jury", "/api/galonly.php?action="+action+"&event_id=1")
+		if response.Code == http.StatusBadRequest && strings.Contains(response.Body.String(), "未知动作") {
+			t.Fatalf("staff action fell through to unknown action: action=%s status=%d body=%s", action, response.Code, response.Body.String())
+		}
+		anonymous := request("", "/api/galonly.php?action="+action+"&event_id=1")
+		if anonymous.Code == http.StatusBadRequest && strings.Contains(anonymous.Body.String(), "未知动作") {
+			t.Fatalf("anonymous staff action fell through to unknown action: action=%s status=%d body=%s", action, anonymous.Code, anonymous.Body.String())
+		}
+	}
+
+	staffCompat := request("review-jury", "/api/galonly_staff.php?action=list_staff_applications&event_id=1")
+	if staffCompat.Code != http.StatusOK || !strings.Contains(staffCompat.Body.String(), `"applications"`) {
+		t.Fatalf("staff compatibility endpoint status=%d body=%s", staffCompat.Code, staffCompat.Body.String())
+	}
+}

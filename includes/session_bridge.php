@@ -66,8 +66,15 @@ function sessionBridgeSyncFromDatabase(string $sessionId): void {
 function sessionBridgeSave(string $sessionId, ?int $userId = null, ?int $lifetime = null): void {
     if ($sessionId === '' || !function_exists('getDB')) return;
     try {
-        $db = getDB();
-        $payload = sessionBridgePayload();
+        sessionBridgeWrite(getDB(), $sessionId, $userId, sessionBridgePayload(), $lifetime);
+    } catch (Throwable $e) {
+        // Best effort by design; PHP keeps its original session path.
+    }
+}
+
+// Login uses this strict writer inside the caller's transaction. Do not hide a
+// bridge write failure after retiring the current browser's previous session.
+function sessionBridgeWrite(PDO $db, string $sessionId, ?int $userId, array $payload, ?int $lifetime = null): void {
         if ($userId !== null) $payload['user_id'] = $userId;
         $lifetime = $lifetime ?? 604800;
         $now = time();
@@ -95,9 +102,30 @@ function sessionBridgeSave(string $sessionId, ?int $userId = null, ?int $lifetim
                 is_valid=excluded.is_valid, updated_at=excluded.updated_at';
         }
         $db->prepare($sql)->execute($params);
-    } catch (Throwable $e) {
-        // Best effort by design; PHP keeps its original session path.
+}
+
+function sessionBridgeTableExists(PDO $db): bool {
+    try {
+        $db->query('SELECT 1 FROM vnfest_session_bridge LIMIT 0');
+        return true;
+    } catch (PDOException $e) {
+        if (str_contains(strtolower($e->getMessage()), 'no such table: vnfest_session_bridge')
+            || ($e->getCode() === '42S02' && str_contains($e->getMessage(), 'vnfest_session_bridge'))) return false;
+        throw $e;
     }
+}
+
+function sessionBridgeLoginIsValid(string $sessionId, int $userId): bool {
+    $db = getDB();
+    $stmt = $db->prepare('SELECT 1 FROM sessions WHERE id = ? AND user_id = ? AND is_valid = 1 AND expires_at > CURRENT_TIMESTAMP');
+    $stmt->execute([$sessionId, $userId]);
+    if (!$stmt->fetchColumn()) return false;
+    if (!sessionBridgeTableExists($db)) return true;
+    $stmt = $db->prepare('SELECT user_id, is_valid, expires_at > CURRENT_TIMESTAMP AS unexpired FROM vnfest_session_bridge WHERE session_id = ?');
+    $stmt->execute([$sessionId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Legacy PHP sessions may predate the bridge and are imported on access.
+    return !$row || ((int)$row['user_id'] === $userId && (int)$row['is_valid'] === 1 && (int)$row['unexpired'] === 1);
 }
 
 function sessionBridgeInvalidate(string $sessionId): void {

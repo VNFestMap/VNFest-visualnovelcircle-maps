@@ -1,0 +1,161 @@
+{
+  "captured_at": "2026-09-30T09:05:21.635Z",
+  "base": "https://www.map.vnfest.top",
+  "statistics": {
+    "china": {
+      "total": 297,
+      "with_intro": 122,
+      "with_meaningful_intro": 86,
+      "with_logo": 106,
+      "with_external_links": 39
+    },
+    "japan": {
+      "total": 37,
+      "with_intro": 31,
+      "with_meaningful_intro": 30,
+      "with_logo": 3,
+      "with_external_links": 1
+    }
+  },
+  "samples": [
+    {
+      "label": "川渝联合 · 稀疏资料",
+      "club": {
+        "id": 189,
+        "name": "川渝高校联合_川渝galgame联合",
+        "display_name": "川渝高校联合_川渝galgame联合",
+        "type": "region",
+        "province": "四川",
+        "provinces": [
+          "四川",
+          "重庆",
+          "甘肃"
+        ],
+        "school": "川渝高校联合",
+        "remark": "暂无介绍",
+        "external_links": "",
+        "verified": 1,
+        "created_at": "",
+        "info_hidden": true,
+        "can_apply": false,
+        "membership_status": null,
+        "protected": false,
+        "visible_by_default": false,
+        "country": "china",
+        "info": "",
+        "public_contact": "",
+        "logo_url": ""
+      },
+      "recommendations": {
+        "success": true,
+        "data": []
+      },
+      "moe": {
+        "success": true,
+        "data": null
+      },
+      "comments": {
+        "success": true,
+        "data": [],
+        "total": 0,
+        "page": 1,
+        "limit": 20
+      },
+      "wiki": null,
+      "source": "公开接口快照"
+    },
+    {
+      "label": "VNFest · 完整资料",
+      "club": {
+        "id": 233,
+        "name": "VNF视觉小说学园祭",
+        "display_name": "VNF视觉小说学园祭",
+        "type": "vnfest",
+        "province": "上海",
+        "provinces": [
+          "上海"
+        ],
+        "school": "VNFest视觉小说学园祭·CN",
+        "remark": "VNFest（Visual Novel Festival）中文交流群，欢迎各个高校同好会代表加入我们。单个高校同好会暂时请限制入群人数。",
+        "external_links": "Twitter: https://x.com/visualnovelfes",
+        "verified": 1,
+        "created_at": "2025-10-04",
+        "info_hidden": true,
+        "can_apply": false,
+        "membership_status": null,
+        "protected": true,
+        "visible_by_default": false,
+        "country": "china",
+        "info": "",
+        "public_contact": "",
+        "logo_url": "./assets/china-233-logo.png"
+      },
+      "recommendations": {
+        "success": true,
+        "data": []
+      },
+      "moe": {
+        "success": true,
+        "data": {
+          "name": "鈴木佳奈",
+          "name_cn": "鈴木佳奈",
+          "summary": "由萌战决赛结果自动同步",
+          "image_url": "./assets/china-233-moe.png"
+        }
+      },
+      "comments": {
+        "success": true,
+        "data": [],
+        "total": 0,
+        "page": 1,
+        "limit": 20
+      },
+      "wiki": {
+        "url": "https://www.map.vnfest.top/wiki/pages/china-233.html"
+      },
+      "source": "公开接口快照"
+    },
+    {
+      "label": "京都大学 · 日本资料",
+      "club": {
+        "id": 12,
+        "name": "京都大学美少女ゲーム同好会",
+        "display_name": "京都大学美少女ゲーム同好会",
+        "type": "school",
+        "province": "京都府",
+        "prefecture": "京都府",
+        "school": "京都大学",
+        "remark": "京都大学美少女ゲーム同好会",
+        "external_links": "Twitter: https://x.com/KUVNLovers",
+        "verified": 1,
+        "created_at": "2022-02-19",
+        "info_hidden": true,
+        "can_apply": false,
+        "membership_status": null,
+        "protected": true,
+        "visible_by_default": false,
+        "country": "japan",
+        "info": "",
+        "public_contact": "",
+        "logo_url": "./assets/japan-12-logo.png"
+      },
+      "recommendations": {
+        "success": true,
+        "data": []
+      },
+      "moe": {
+        "success": true,
+        "data": null
+      },
+      "comments": {
+        "success": true,
+        "data": [],
+        "total": 0,
+        "page": 1,
+        "limit": 20
+      },
+      "wiki": null,
+      "source": "公开接口快照"
+    }
+  ]
+}

@@ -49,6 +49,7 @@ type Config struct {
 	SMTPSecure                   string
 	SessionSecret                string
 	AnalyticsHashKey             string
+	BoothCredentialKey           string
 	RecognitionHMACSecret        string
 	RecognitionCredPrefix        string
 	ColumnWalineServerURL        string
@@ -163,6 +164,7 @@ func Load(root string) (Config, error) {
 		SMTPSecure:                   envString("SMTP_SECURE", "ssl"),
 		SessionSecret:                os.Getenv("SESSION_SECRET"),
 		AnalyticsHashKey:             envString("ANALYTICS_HASH_KEY", os.Getenv("SESSION_SECRET")),
+		BoothCredentialKey:           os.Getenv("GALONLY_BOOTH_CREDENTIAL_KEY"),
 		RecognitionHMACSecret:        os.Getenv("RECOGNITION_HMAC_SECRET"),
 		RecognitionCredPrefix:        envString("RECOGNITION_CRED_PREFIX", "VNF-CRED-"),
 		ColumnWalineServerURL:        strings.TrimRight(os.Getenv("COLUMN_WALINE_SERVER_URL"), "/"),
@@ -213,7 +215,8 @@ func (c Config) ValidateProduction() error {
 	for name, value := range map[string]string{
 		"DB_HOST": c.DBHost, "DB_NAME": c.DBName, "DB_USER": c.DBUser,
 		"SESSION_SECRET": c.SessionSecret, "ADMIN_TOKEN": c.AdminToken,
-		"RECOGNITION_HMAC_SECRET": c.RecognitionHMACSecret,
+		"GALONLY_BOOTH_CREDENTIAL_KEY": c.BoothCredentialKey,
+		"RECOGNITION_HMAC_SECRET":      c.RecognitionHMACSecret,
 	} {
 		if strings.TrimSpace(value) == "" {
 			missing = append(missing, name)

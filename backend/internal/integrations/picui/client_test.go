@@ -62,8 +62,19 @@ func TestUploadRejectsUntrustedReturnedURL(t *testing.T) {
 	}))
 	defer server.Close()
 	client := New(Config{Enabled: true, APIURL: server.URL, Token: "token", AllowedHosts: []string{"free.picui.cn"}})
-	if _, err := client.Upload(context.Background(), []byte("png"), "a.png", "image/png"); err == nil {
-		t.Fatal("untrusted URL was accepted")
+	if _, err := client.Upload(context.Background(), []byte("png"), "a.png", "image/png"); !errors.Is(err, ErrUntrustedURL) {
+		t.Fatalf("error = %v, want ErrUntrustedURL", err)
+	}
+}
+
+func TestUploadRejectsProviderBusinessFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":false,"message":"upload denied"}`))
+	}))
+	defer server.Close()
+	client := New(Config{Enabled: true, APIURL: server.URL, Token: "token", AllowedHosts: []string{"picui.cn"}})
+	if _, err := client.Upload(context.Background(), []byte("png"), "a.png", "image/png"); !errors.Is(err, ErrRejected) {
+		t.Fatalf("error = %v, want ErrRejected", err)
 	}
 }
 

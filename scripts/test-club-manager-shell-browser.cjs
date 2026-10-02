@@ -116,6 +116,10 @@ function startFixtureServer() {
       return res.end('Not found');
     }
     res.writeHead(200, { 'Content-Type': contentType(filePath), 'Cache-Control': 'no-store' });
+    const baselineCss = process.argv.find((arg) => arg.startsWith('--topbar-css-baseline='))?.slice('--topbar-css-baseline='.length);
+    if (baselineCss && /^\/admin\/club-manager-assets\/index-[^/]+\.css$/.test(pathname)) {
+      return fs.createReadStream(baselineCss).pipe(res);
+    }
     return fs.createReadStream(filePath).pipe(res);
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
@@ -260,6 +264,16 @@ function inspectScript() {
           const rect = node.getBoundingClientRect();
           return { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top), bottom: Math.round(rect.bottom) };
         }),
+        topbarButtonShapes: Array.from(document.querySelectorAll('.cm-topbar .ant-btn')).filter((node) => node.getBoundingClientRect().width > 0).map((node) => {
+          const rect = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          const contents = Array.from(node.children).map((child) => child.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0);
+          const left = Math.min(...contents.map((box) => box.left));
+          const right = Math.max(...contents.map((box) => box.right));
+          const top = Math.min(...contents.map((box) => box.top));
+          const bottom = Math.max(...contents.map((box) => box.bottom));
+          return { label: node.getAttribute('aria-label') || node.textContent, iconOnly: node.classList.contains('ant-btn-icon-only'), radius: parseFloat(style.borderTopLeftRadius), width: rect.width, height: rect.height, dx: (left + right - rect.left - rect.right) / 2, dy: (top + bottom - rect.top - rect.bottom) / 2, align: style.alignItems, justify: style.justifyContent };
+        }),
         pendingBadge: (() => {
           const node = document.querySelector('.cm-pending-badge .ant-badge-count');
           if (!node) return null;
@@ -321,6 +335,13 @@ function assertLayout(result, label, size) {
   assert.ok(result.themeButton, `${label} the topbar must keep the theme toggle`);
   assert.ok(result.reloadButton, `${label} the topbar must keep the refresh action`);
   assert.equal(result.topbarButtonRects.length, 4, `${label} the topbar must expose four aligned actions`);
+  for (const button of result.topbarButtonShapes) {
+    if (button.iconOnly) assert.ok(Math.abs(button.width - button.height) <= 1, `${label} ${button.label} must be circular`);
+    assert.ok(button.radius >= Math.min(button.width, button.height) / 2, `${label} ${button.label} must have fully rounded ends`);
+    assert.equal(button.align, 'center', `${label} ${button.label} must align vertically`);
+    assert.equal(button.justify, 'center', `${label} ${button.label} must align horizontally`);
+    assert.ok(Math.abs(button.dx) <= 2 && Math.abs(button.dy) <= 2, `${label} ${button.label} content must be centered (${button.dx}, ${button.dy})`);
+  }
   assert.ok(result.topbarButtonRects.every((rect) => rect.height === result.topbarButtonRects[0].height), `${label} topbar actions must share one height`);
   for (let index = 1; index < result.topbarButtonRects.length; index += 1) {
     const gap = result.topbarButtonRects[index].left - result.topbarButtonRects[index - 1].right;

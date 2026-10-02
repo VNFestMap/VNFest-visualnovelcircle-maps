@@ -15,8 +15,9 @@ assert.deepEqual(
   'Chinese and Japanese guide groups must keep the same article order',
 );
 assert.equal(zh.groups.length, 6, 'guide must include five documentation groups and one release-history group');
-assert.equal(zh.articles.length, 19, 'guide must include eleven documentation articles and eight release notes');
+assert.equal(zh.articles.length, 20, 'guide must include eleven documentation articles and nine release notes');
 const historyIds = [
+  'updates/2-4-0',
   'updates/2-2-0',
   'updates/2026-09-03',
   'updates/2026-08-16-wiki-reading-layout',
@@ -103,8 +104,8 @@ for (const catalog of [zh, ja]) {
 
 for (const catalog of [zh, ja]) {
   const historyArticles = historyIds.map(id => catalog.articles.find(article => article.id === id));
-  assert.ok(historyArticles.every(Boolean), 'all eight release notes must exist');
-  assert.equal(new Set(historyArticles.map(article => article.updatedAt)).size, 8, 'release-note dates must be unique');
+  assert.ok(historyArticles.every(Boolean), 'all nine release notes must exist');
+  assert.equal(new Set(historyArticles.map(article => article.updatedAt)).size, 9, 'release-note dates must be unique');
   assert.ok(historyArticles.every(article => article.sections.length > 0), 'release notes must include content sections');
 }
 
@@ -132,7 +133,7 @@ assert.ok(wikiIndex.includes('data-wiki-guide-link'), 'Wiki home must expose a d
 assert.ok(wikiIndex.includes('./guide/#/'), 'Wiki home direct guide entry must lead to a guide article');
 assert.ok(guideShell.includes('js/language-runtime.js'), 'guide must load the shared language runtime');
 assert.ok(guideShell.includes('guide.css?v=20260813-history'), 'guide must cache-bust the history stylesheet');
-assert.ok(guideShell.includes('guide.js?v=20260813-history'), 'guide must cache-bust the history runtime');
+assert.ok(guideShell.includes('guide.js?v=20260918-catalog-compat'), 'guide must cache-bust the catalog compatibility runtime');
 assert.ok(!guideShell.includes('langToggle'), 'guide must not expose a local language control');
 assert.ok(!guide.includes('langToggle'), 'guide runtime must not create a local language control');
 

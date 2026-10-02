@@ -170,3 +170,13 @@ overview.md
 *.docx
 *.doc
 *.pptx
+
+# Private release materials and runtime backups
+exports/
+data/**/*-backups/
+data/posts-migration-backups/
+
+# Required MIT-licensed QR runtime for the examination page
+!js/vendor/
+!js/vendor/qrcode.min.js
+!js/vendor/qrcode.LICENSE.txt

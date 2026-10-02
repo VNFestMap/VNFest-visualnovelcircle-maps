@@ -123,7 +123,8 @@ assert.ok(manager.includes('club_moe_king.php?action=get') && manager.includes('
 const moeKingApi = read('api/club_moe_king.php');
 assert.ok(moeKingApi.includes('club_moe_kings'), 'moe king API should persist one character per club');
 assert.ok(moeKingApi.includes("action === 'get'") && moeKingApi.includes("action === 'set'") && moeKingApi.includes("action === 'remove'"), 'moe king API should support get/set/remove');
-assert.ok(app.includes('club_moe_king.php?action=get'), 'club detail should fetch and display the moe king card');
+const clubDetail = read('club-detail-react/src/main.jsx');
+assert.ok(clubDetail.includes('endpoint("club_moe_king", "get")') && clubDetail.includes('className="cd-moe"'), 'React club detail should fetch and display the moe king card');
 
 const i18n = read('js/page-i18n.js');
 assert.ok(i18n.includes('disconnectObserver'), 'page i18n should be able to disconnect its observer');

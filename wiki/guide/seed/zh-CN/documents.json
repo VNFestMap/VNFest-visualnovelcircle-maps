@@ -50,6 +50,7 @@
       "defaultExpanded": false,
       "navigationScope": "group",
       "articleIds": [
+        "updates/2-4-0",
         "updates/2-2-0",
         "updates/2026-09-03",
         "updates/2026-08-16-wiki-reading-layout",
@@ -63,6 +64,109 @@
   ],
   "articles": [
     {
+      "id": "updates/2-4-0",
+      "product": "VNFest 2.4.0 更新记录",
+      "audience": "所有用户、同好会运营者与管理员",
+      "title": "2.4.0｜2026-09-15 至 2026-10-02 更新汇总",
+      "summary": "汇总多设备登录、同好会详情、GalOnly 展位与地图、页面交互、图床与审核、Wiki 和日报更新。",
+      "updatedAt": "2026-10-02",
+      "search": [
+        "2.4.0 2026-10-02 OAuth React GalOnly Wiki 多设备 登录 展位 地图 日报"
+      ],
+      "sections": [
+        {
+          "title": "账号与登录",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "支持同一账号在多个设备同时登录；密码、OAuth 和 PHP 会话桥接使用一致的登录会话规则，当前设备退出不会使其他设备无故掉线。",
+                "修复验证码邮件头与正文分隔格式，避免验证码正文丢失；修复 QQ/Discord 完善账号时 password_confirmation 字段映射导致的密码校验失败。",
+                "补充账号资料、管理员用户列表及邮箱绑定相关兼容处理，减少 Go 接口与既有前端的数据差异。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "同好会与个人中心",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "首页同好会详情改为按需加载的 React 弹窗，统一资料和社区视图，保留入会、考核、编辑、成员、转让及退出入口，并补充手机抽屉和键盘焦点操作。",
+                "调整入会申请弹窗、个人中心卡片和管理后台显示；联系方式继续遵守接口的隐藏设置。",
+                "修复动态关注/粉丝列表按目标用户名和列表类型查询的行为，返回当前访问者的关注及互相关注状态，并过滤非活跃账号。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "GalOnly 展位与地图",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "新增北京 GalOnly 展位登录入口和管理界面，支持参展资料、头像、制品信息与图片维护；补充后端权限、凭据和 SQLite/MySQL 迁移定义。",
+                "公开地图与展位资料分离，地图布局、桌位绑定和参展内容分别维护；补充持久化 V6 地图读取及重复桌位绑定回归，修复公开地图兼容问题。",
+                "补充北京活动展示、制品上传和交付检查；地图支持本机自定义尺寸 PNG 导出与无标注导出，本机导出不上传服务器。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "页面与交互",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "重整登录与账号页面的品牌、表单和布局；增加页面切换过渡与统一按钮形状，调整个人卡片、移动端触控及减少动画设置。",
+                "调整审核工作台样式与交互，并同步正式页面依赖的当前构建资源。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "图片与审核记录",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "改进 PicUI 上传结果处理和图片访问兼容，保留本地副本/回退；管理员日志补充业务分类、可信反代下的客户端 IP 和安全字段记录。",
+                "保留已发布的超级管理员日志修复，并补充表单目标字段；不把被丢弃的埋点请求记为成功的管理操作，不采集上传文件正文或敏感凭据。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Wiki 与日报",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "使用文档阅读器兼容既有运行数据的目录结构和发布正文，历史目录支持折叠；新增本次中日双语更新记录。",
+                "更新公开 Wiki 词条及生成页面；日报解析和 Notion 抓取补充回溯、条目处理与失败恢复逻辑，并整理公开日报存档。"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "发布与验证边界",
+          "blocks": [
+            {
+              "type": "list",
+              "items": [
+                "2.4.0 汇总上次 GitHub 发布后至 2026-10-02 的审核后公开改动；源码发布到组织与个人仓库，网站历史文档单独交付。",
+                "源码包含新功能及迁移定义，不表示本次执行了生产数据库迁移或全站部署。网站文档发布只更新历史文章及必要阅读资源。",
+                "邮件实际收件、真实 OAuth 授权、登录用户写操作及管理员业务验收与本地回归分开记录；不将模拟测试写成真实用户验证。",
+                "本次通过 Go 完整测试、根项目检查及 60 项契约/专项检查；登录、按钮、卡片、详情、过渡和双语历史文章通过本地浏览器回归。GitHub CI 与网站公网交付在发布完成时单独核对。"
+              ]
+            }
+          ]
+        }
+      ],
+      "nextId": "updates/2-2-0"
+    },
+    {
       "id": "updates/2-2-0",
       "product": "VNFest 2.2 更新记录",
       "audience": "所有用户、同好会运营者与管理员",
@@ -72,7 +176,6 @@
       "search": [
         "2.2.0 2026-09-03 2026-09-13 同好会动态 搜索 私信 好友 图片灯箱 React 管理后台 OAuth GalgameTool 数据库迁移"
       ],
-      "nextId": "updates/2026-09-03",
       "sections": [
         {
           "title": "同好会动态、搜索与私信",
@@ -148,7 +251,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2-4-0",
+      "nextId": "updates/2026-09-03"
     },
     {
       "id": "updates/2026-09-03",
@@ -157,11 +262,9 @@
       "title": "2026-09-03｜8月16日至9月3日阶段更新汇总",
       "summary": "汇总 2026-08-16 至 2026-09-03 期间 VNFest 在 Wiki、主站体验、同好会运营、媒体资源、日报自动化与 Galgame 自助工具方面的更新，并标注仍在进行的工作。",
       "updatedAt": "2026-09-03",
-      "previousId": "updates/2-2-0",
       "search": [
         "2026-09-03 8月16日 9月3日 阶段更新 汇总 Wiki 主站 GalgameTool 自助工具 考核 认可凭证 图床 PICUI 日报 移动端"
       ],
-      "nextId": "updates/2026-08-16-wiki-reading-layout",
       "sections": [
         {
           "title": "更新范围",
@@ -272,7 +375,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2-2-0",
+      "nextId": "updates/2026-08-16-wiki-reading-layout"
     },
     {
       "id": "platform/getting-started",
@@ -1805,8 +1910,6 @@
       "search": [
         "2026-08-16 Wiki 更新 阅读页 编辑器 三栏 中日文 条目资料 阅读外观 正文图片 脚注 JSON 目录高亮 换行"
       ],
-      "previousId": "updates/2026-09-03",
-      "nextId": "updates/2-1-0",
       "sections": [
         {
           "title": "阅读页面",
@@ -1851,7 +1954,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2026-09-03",
+      "nextId": "updates/2-1-0"
     },
     {
       "id": "updates/2-1-0",
@@ -1863,8 +1968,6 @@
       "search": [
         "2.1.0 论坛 超级管理控制台 北京 GalOnly MakoQuiz 答题 偏好设置 语言 主题 代表同好会 Wiki 使用文档 江苏 3D 星图 AstrBot"
       ],
-      "previousId": "updates/2026-08-16-wiki-reading-layout",
-      "nextId": "updates/2026-08-13-display-language-preferences",
       "sections": [
         {
           "title": "新增模块",
@@ -1989,7 +2092,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2026-08-16-wiki-reading-layout",
+      "nextId": "updates/2026-08-13-display-language-preferences"
     },
     {
       "id": "updates/2026-08-13-display-language-preferences",
@@ -2001,8 +2106,6 @@
       "search": [
         "更新日志 偏好设置 语言 日语 主题 地图反转 壁纸 用户中心 性能"
       ],
-      "previousId": "updates/2-1-0",
-      "nextId": "updates/2-0-0",
       "sections": [
         {
           "title": "偏好设置集中化",
@@ -2119,7 +2222,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2-1-0",
+      "nextId": "updates/2-0-0"
     },
     {
       "id": "updates/2-0-0",
@@ -2131,8 +2236,6 @@
       "search": [
         "2.0.0 GalOnly Staff 资料公开库 对阵图 用户中心 React PDF 同好会模拟器"
       ],
-      "previousId": "updates/2026-08-13-display-language-preferences",
-      "nextId": "updates/1-7-1",
       "sections": [
         {
           "title": "新增模块",
@@ -2178,7 +2281,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2026-08-13-display-language-preferences",
+      "nextId": "updates/1-7-1"
     },
     {
       "id": "updates/1-7-1",
@@ -2190,8 +2295,6 @@
       "search": [
         "1.7.1 GalOnly 熔断 萌战 v2 Bot 令牌 运营画像 投稿 MD3"
       ],
-      "previousId": "updates/2-0-0",
-      "nextId": "updates/1-7-0",
       "sections": [
         {
           "title": "活动与赛事",
@@ -2233,7 +2336,9 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/2-0-0",
+      "nextId": "updates/1-7-0"
     },
     {
       "id": "updates/1-7-0",
@@ -2245,7 +2350,6 @@
       "search": [
         "1.7.0 企划枢纽 十二器 萌战 投票活动 同好会广场 成长系统 国际化"
       ],
-      "previousId": "updates/1-7-1",
       "sections": [
         {
           "title": "核心模块",
@@ -2289,7 +2393,8 @@
             }
           ]
         }
-      ]
+      ],
+      "previousId": "updates/1-7-1"
     }
   ]
 }

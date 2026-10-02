@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import '../../css/button-shapes.css';
 
 const POSTS_API = '/api/posts.php';
 const IMAGES_API = '/api/post_images.php';

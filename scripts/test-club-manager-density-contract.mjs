@@ -13,6 +13,8 @@ const members = read('club-manager-react/src/tabs/MembersTab.jsx');
 const users = read('club-manager-react/src/tabs/UsersTab.jsx');
 const model = read('club-manager-react/src/model.js');
 const shellHtml = read('admin/club_manager.html');
+const usersGo = read('backend/internal/httpapi/users.go');
+const usersPhp = read('api/users.php');
 
 /* ========== 令牌刻度 ========== */
 for (const token of ['--cm-sp-1: 4px', '--cm-sp-2: 6px', '--cm-sp-3: 8px', '--cm-sp-4: 12px', '--cm-sp-5: 14px', '--cm-sp-6: 18px', '--cm-sp-7: 24px']) {
@@ -51,6 +53,13 @@ assert.match(model, /visitor:\s*'访客'/, 'visitor must have a distinct display
 assert.match(users, /const displayRole = user\.display_role \|\| getPermissionRole\(user\);/, 'users must display the effective permission level');
 assert.match(users, /label: '所有权限等级'/, 'users filter must use the permission-level label');
 assert.match(model, /label: '活动人员'/, 'activity personnel must have a dedicated permission-level label');
+assert.match(model, /export function isActivityReviewer/, 'user identity calculation must recognize audit personnel');
+assert.match(model, /isActivityReviewer\(user\)/, 'effective permission role must include audit personnel');
+assert.match(users, /name="is_audit"/, 'user editor must expose the activity reviewer identity switch');
+assert.match(users, /isActivityReviewer\(user\)/, 'user list must render the activity reviewer identity');
+assert.match(usersGo, /COALESCE\(u\.is_audit, 0\) = 1/, 'Go user filtering must include the audit identity');
+assert.match(usersGo, /userActivityReviewerFlags/, 'Go user listing must include event reviewer assignments');
+assert.match(usersPhp, /activityReviewerIds/, 'PHP compatibility user listing must include event reviewer assignments');
 assert.doesNotMatch(shellHtml, /page-background\.js/, 'club manager must not load the wallpaper runtime');
 
 /* ========== 骨架间距由父级 gap 驱动，不再双份 ========== */

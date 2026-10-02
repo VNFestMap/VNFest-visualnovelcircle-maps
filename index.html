@@ -14,6 +14,8 @@
     <meta name="author" content="全国Galgame同好会地图" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <script src="./js/theme-runtime.js?v=20260702-theme"></script>
+    <link rel="stylesheet" href="./css/auth-transition.css?v=20261001-page-smooth-v5" />
+    <script src="./js/auth-transition.js?v=20261001-page-smooth-v5"></script>
     <script src="./js/display-preferences.js?v=20260812-preferences"></script>
     <script>
     (function() {
@@ -111,7 +113,9 @@
     <!-- 样式表 -->
     <link rel="stylesheet" href="./css/styles.css?v=20260830-intro-polish-v3" />
     <link rel="stylesheet" href="./css/theme-tokens.css?v=20260702-theme" />
-    <link rel="stylesheet" href="./css/auth-shared.css?v=20260803-auth" />
+    <link rel="stylesheet" href="./css/auth-shared.css?v=20261001-auth-polish-v2" />
+    <script defer src="./js/auth-ui.js?v=20261001-auth-polish"></script>
+    <link rel="stylesheet" href="./css/club-detail.css?v=20260930-layout-a-v2" />
     <style>
     /* QQ群反馈引导链接 - 底部小字区突出 */
     .qq-group-link {
@@ -1072,6 +1076,8 @@
     }
     </style>
 <script defer src="js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="css/button-shapes.css?v=20261002-pill-v1">
+  <link rel="stylesheet" href="css/membership-apply.css?v=20261002-scroll-stable-v4">
 </head>
 <body>
     <div class="vn-svg-sprite" aria-hidden="true">
@@ -1702,34 +1708,32 @@
         <div id="hubFormModal" class="calendar-modal" aria-hidden="true"></div>
 
         <!-- 同好会详情弹窗 -->
-        <div id="clubDetailModal" aria-hidden="true">
-            <div class="club-detail-modal-card" role="dialog" aria-modal="true">
+        <div id="clubDetailModal" class="club-detail-layout-a" aria-hidden="true">
+            <div class="club-detail-modal-card" role="dialog" aria-modal="true" aria-labelledby="clubDetailTitle">
                 <button id="clubDetailClose" class="club-detail-modal-close" type="button" aria-label="关闭同好会详情弹窗">×</button>
-                <div class="club-detail-modal-scroll">
-                    <div id="clubDetailContent" class="club-detail-grid"></div>
-                </div>
+                <div id="clubDetailContent"></div>
             </div>
         </div>
 
         <!-- 同好会绑定申请弹窗 -->
         <div id="membershipApplyModal" class="calendar-modal" aria-hidden="true">
-            <div class="calendar-modal-card" role="dialog" aria-modal="true" style="max-width: 450px;">
+            <div class="calendar-modal-card" role="dialog" aria-modal="true" aria-labelledby="membershipApplyTitle">
                 <button id="membershipApplyClose" class="calendar-modal-close" type="button" aria-label="关闭绑定申请弹窗">×</button>
                 <div class="calendar-modal-scroll">
-                    <h3 class="calendar-title" style="margin-top: 30px;"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-pen"></use></svg></span> 申请绑定同好会</h3>
-                    <div id="membershipApplyClubName" style="text-align: center; font-size: 16px; font-weight: 600; margin: 12px 0 20px; color: var(--md-on-surface);"></div>
-                    <div class="membership-apply-tabs" role="tablist" aria-label="加入方式">
-                        <button class="membership-apply-tab active" type="button" data-join-method="school_no_code">本校无绑定码</button>
-                        <button class="membership-apply-tab" type="button" data-join-method="school_code">本校有绑定码</button>
-                        <button class="membership-apply-tab" type="button" data-join-method="external_exchange">外校交流</button>
+                    <h3 id="membershipApplyTitle" class="calendar-title membership-apply-title"><span class="vn-icon" aria-hidden="true"><svg><use href="#vn-icon-pen"></use></svg></span> 申请绑定同好会</h3>
+                    <div id="membershipApplyClubName" class="membership-apply-club-name"></div>
+                    <div class="membership-apply-tabs" role="group" aria-label="加入方式">
+                        <button class="membership-apply-tab active" type="button" aria-pressed="true" data-join-method="school_no_code">本校无绑定码</button>
+                        <button class="membership-apply-tab" type="button" aria-pressed="false" data-join-method="school_code">本校有绑定码</button>
+                        <button class="membership-apply-tab" type="button" aria-pressed="false" data-join-method="external_exchange">外校交流</button>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div class="membership-apply-fields">
                         <div>
-                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">QQ账号 <span style="color: #999; font-weight: 400;">(非必填)</span></label>
+                            <label for="applyQQ" class="membership-field-label">QQ账号 <span style="color: #999; font-weight: 400;">(非必填)</span></label>
                             <input type="text" id="applyQQ" class="md3-input" placeholder="例：123456789" />
                         </div>
                         <div>
-                            <label style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600;">申请身份</label>
+                            <label id="membershipRoleLabel" for="applyRole" class="membership-field-label">申请身份</label>
                             <select id="applyRole" class="md3-select">
                                 <option value="member">成员</option>
                                 <option value="manager">管理员</option>
@@ -1743,21 +1747,21 @@
                             </label>
                         </div>
                         <div class="membership-apply-extra" data-join-panel="school_code" hidden>
-                            <label class="membership-field-label">绑定码</label>
+                            <label for="applyBindCode" class="membership-field-label">绑定码</label>
                             <input type="text" id="applyBindCode" class="md3-input" placeholder="输入同好会绑定码，直接加入" autocomplete="off" />
                             <p class="membership-apply-hint">绑定码验证通过后会直接加入该同好会，不进入审核流程。</p>
                         </div>
                         <div class="membership-apply-extra" data-join-panel="external_exchange" hidden>
-                            <label class="membership-field-label">所属同好会</label>
+                            <label for="applyExternalClub" class="membership-field-label">所属同好会</label>
                             <input type="text" id="applyExternalClub" class="md3-input" placeholder="例：东京某某VN研究会" />
-                            <label class="membership-field-label">所属同好会身份</label>
+                            <label for="applyExternalRole" class="membership-field-label">所属同好会身份</label>
                             <input type="text" id="applyExternalRole" class="md3-input" placeholder="例：成员 / 管理员 / 负责人" />
-                            <label class="membership-field-label">QQ/Discord账号</label>
+                            <label for="applyExternalContact" class="membership-field-label">QQ/Discord账号</label>
                             <input type="text" id="applyExternalContact" class="md3-input" placeholder="用于审核联系" />
-                            <label class="membership-field-label">申请理由（备注）</label>
+                            <label for="applyExternalReason" class="membership-field-label">申请理由（备注）</label>
                             <textarea id="applyExternalReason" class="md3-input" rows="3" placeholder="简述交流原因、合作关系或备注"></textarea>
                         </div>
-                        <div id="membershipApplyMessage" style="font-size: 13px; text-align: center; min-height: 20px; color: var(--md-primary);"></div>
+                        <div id="membershipApplyMessage" role="status" aria-live="polite"></div>
                         <button id="membershipApplySubmitBtn" class="submit-btn primary" type="button">提交申请</button>
                     </div>
                 </div>
@@ -1798,7 +1802,7 @@
                                 <input type="password" id="accLoginPassword" class="auth-input" placeholder="密码" autocomplete="current-password" />
                             </div>
                             <button id="accLoginBtn" class="auth-btn auth-btn-primary" type="button">登录</button>
-                            <div id="accLoginMessage" class="auth-msg" style="min-height: 20px;"></div>
+                            <div id="accLoginMessage" class="auth-msg"></div>
                             <!-- 第三方登录 -->
                             <div id="accSocialLogin" style="display: none;">
                                 <div class="auth-divider"><span>其他方式</span></div>
@@ -1808,7 +1812,7 @@
                                 </div>
                             </div>
                             <div class="auth-switch">
-                                还没有账号？<a id="accShowRegisterBtn" style="cursor:pointer;">注册新账号</a>
+                                还没有账号？<button id="accShowRegisterBtn" class="auth-text-button" type="button">注册新账号</button>
                             </div>
                         </div>
                     </div>
@@ -1839,9 +1843,9 @@
                                 <input type="text" id="accRegCode" class="auth-input" placeholder="邮箱验证码" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
                             </div>
                             <button id="accRegisterBtn" class="auth-btn auth-btn-primary" type="button">注册</button>
-                            <div id="accRegMessage" class="auth-msg" style="min-height: 20px;"></div>
+                            <div id="accRegMessage" class="auth-msg"></div>
                             <div class="auth-switch">
-                                已有账号？<a id="accShowLoginBtn" style="cursor:pointer;">返回登录</a>
+                                已有账号？<button id="accShowLoginBtn" class="auth-text-button" type="button">返回登录</button>
                             </div>
                         </div>
                     </div>
@@ -2315,7 +2319,7 @@
             { src: './js/china.js?v=20260814-announce-v1' },
             { src: './js/jiangsu.js?v=20260814-announce-v1' },
             { src: './js/japan.js' },
-            { src: './js/app.js?v=20260914-media-url-v1' },
+            { src: './js/app.js?v=20261002-membership-controls-v3' },
             { src: './js/calendar.js?v=20260530' },
             { src: './js/project-hub.js?v=20260702-hub-switch' },
             {

@@ -2920,6 +2920,31 @@ body,
 .card-header { padding: 10px 16px; }
 .card-body { padding: 14px 16px; }
 #eventMgr { margin-bottom: 14px; }
+.reviewer-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.reviewer-channel {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.reviewer-channel-chief { border-color: var(--success-border); }
+.reviewer-channel-jury { border-color: var(--pooled-border); }
+.reviewer-channel-title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:var(--fg); }
+.reviewer-channel-title .channel-dot { width:8px; height:8px; border-radius:50%; background:var(--accent-purple); flex:0 0 auto; }
+.reviewer-channel-chief .channel-dot { background:var(--accent-green); }
+.reviewer-channel-desc { margin-top:5px; color:var(--text-muted); font-size:11px; line-height:1.55; }
+.reviewer-chip-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.reviewer-chip { display:inline-flex; align-items:center; min-height:28px; padding:4px 9px; border:1px solid var(--border-color); border-radius:var(--radius-pill); color:var(--text-secondary); font-size:12px; }
+.reviewer-channel-chief .reviewer-chip { border-color:var(--success-border); color:var(--accent-green); }
+.reviewer-channel-jury .reviewer-chip { border-color:var(--pooled-border); color:var(--accent-purple); }
+.reviewer-roster-current { margin-top:12px; padding:9px 11px; border-radius:var(--radius-sm); background:var(--surface-sunken); color:var(--text-secondary); font-size:12px; }
+.reviewer-roster-empty { color:var(--text-muted); font-size:12px; }
+@media (max-width: 760px) { .reviewer-channel-grid { grid-template-columns: 1fr; } }
   .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; }
   .main-content .top-header { padding: 0 14px; }
   .main-content .content { padding: 14px; }
@@ -2927,6 +2952,7 @@ body,
 }
 </style>
 <link rel="stylesheet" href="../css/galonly-poster-theme.css">
+  <link rel="stylesheet" href="../css/button-shapes.css?v=20261002-pill-v1">
 </head>
 <body>
 
@@ -3025,6 +3051,17 @@ body,
         </div>
         <div class="card-body collapsible" id="eventMgrBody">
           <div id="eventMgrList"></div>
+        </div>
+      </div>
+
+      <!-- Reviewer channels / roster (assignment is managed in the admin console) -->
+      <div class="card" id="reviewerRosterPanel" data-component="reviewer-roster">
+        <div class="card-header">
+          <div class="card-title">审核通道与审核员名单</div>
+          <span style="font-size:12px;color:var(--text-muted);" id="reviewerRosterCount"></span>
+        </div>
+        <div class="card-body" id="reviewerRosterBody">
+          <div class="reviewer-roster-empty">正在加载审核员名单...</div>
         </div>
       </div>
 
@@ -3142,6 +3179,8 @@ var currentBoothTab = 'pending';
 var currentStaffTab = 'pending';
 var selectedEventId = 0;
 var selectedStaffEventId = 0;
+var reviewerRoster = [];
+var reviewerRosterEventId = -1;
 
 var clubNameMapCn = {};
 var clubNameMapJp = {};
@@ -3278,6 +3317,7 @@ function selectSidebarEvent(key) {
   syncStaffModeTitle();
   updateSidebarBadges();
   syncPhaseBarVisibility();
+  loadReviewerRoster(selectedEventId);
 }
 
 function updateSidebarBadges() {
@@ -3423,6 +3463,112 @@ async function loadEvents() {
   renderStaffEventConfig();
 }
 
+function reviewerRoleLabel(role) {
+  if (role === 'chief') return '总审';
+  if (role === 'jury') return '分审（陪审）';
+  return '审核员';
+}
+
+function reviewerDisplayName(row) {
+  return (row && (row.nickname || row.username)) || ('用户 #' + (row && row.user_id ? row.user_id : '?'));
+}
+
+function currentReviewRoleForEvent(eventId) {
+  var profile = currentUser && (currentUser.user || currentUser);
+  if (profile && profile.role === 'super_admin') return 'chief';
+  if (parseInt(eventId || 0, 10) <= 0) {
+    var allRole = null;
+    for (var j = 0; j < allEvents.length; j++) {
+      var candidateRole = allEvents[j].user_review_role || null;
+      if (candidateRole === 'chief') return 'chief';
+      if (candidateRole === 'jury') allRole = 'jury';
+    }
+    if (allRole) return allRole;
+    if (profile && (profile.is_audit == 1 || profile.is_audit === true)) return 'jury';
+    return null;
+  }
+  for (var i = 0; i < allEvents.length; i++) {
+    if (parseInt(allEvents[i].id, 10) === parseInt(eventId, 10)) {
+      var eventRole = allEvents[i].user_review_role || null;
+      if (eventRole) return eventRole;
+      if (profile && (profile.is_audit == 1 || profile.is_audit === true)) return 'jury';
+      return null;
+    }
+  }
+  return null;
+}
+
+function renderReviewerRoster() {
+  var body = document.getElementById('reviewerRosterBody');
+  var count = document.getElementById('reviewerRosterCount');
+  if (!body) return;
+
+  // Global assignments and event-specific assignments may both be returned;
+  // the event-specific row is the effective one for the selected activity.
+  var byUser = {};
+  (reviewerRoster || []).forEach(function(row) {
+    var uid = parseInt(row.user_id, 10);
+    if (!uid) return;
+    var existing = byUser[uid];
+    if (!existing || parseInt(row.event_id || 0, 10) > parseInt(existing.event_id || 0, 10)) byUser[uid] = row;
+  });
+  var resolved = Object.keys(byUser).map(function(uid) { return byUser[uid]; });
+  var chiefs = resolved.filter(function(row) { return row.role === 'chief'; });
+  var juries = resolved.filter(function(row) { return row.role === 'jury'; });
+  var scopeLabel = selectedEventId > 0 ? '当前活动' : '全部活动的全局名单';
+  if (count) count.textContent = resolved.length ? resolved.length + ' 名 · ' + scopeLabel : scopeLabel;
+
+  function chips(rows, emptyText) {
+    return rows.length
+      ? '<div class="reviewer-chip-list">' + rows.map(function(row) {
+          return '<span class="reviewer-chip">' + escapeHtml(reviewerDisplayName(row)) + '</span>';
+        }).join('') + '</div>'
+      : '<div class="reviewer-roster-empty" style="margin-top:10px;">' + emptyText + '</div>';
+  }
+
+  var role = currentReviewRoleForEvent(selectedEventId);
+  var currentHtml = role
+    ? '<div class="reviewer-roster-current">当前登录身份：<strong>' + escapeHtml(reviewerRoleLabel(role)) + '通道</strong>' +
+      (role === 'chief' ? ' · 可查看具名意见并作最终决定' : ' · 可提交阶段意见，最终决定由总审完成') + '</div>'
+    : '<div class="reviewer-roster-current">当前登录账号未分配到本活动的细分通道；如需参与审核，请由超级管理员在「摊位审核成员」中分配总审或分审。</div>';
+
+  body.innerHTML = '<div class="reviewer-channel-grid">' +
+    '<section class="reviewer-channel reviewer-channel-chief" aria-label="总审通道">' +
+      '<div class="reviewer-channel-title"><span class="channel-dot"></span>总审通道</div>' +
+      '<div class="reviewer-channel-desc">参考分审意见后作阶段一/阶段二最终决定，并可撤回已通过的决定。</div>' +
+      chips(chiefs, '暂无总审成员') +
+    '</section>' +
+    '<section class="reviewer-channel reviewer-channel-jury" aria-label="分审通道">' +
+      '<div class="reviewer-channel-title"><span class="channel-dot"></span>分审通道（陪审）</div>' +
+      '<div class="reviewer-channel-desc">查看申请并提交「通过 / 驳回 + 意见」；意见在分审视角保持匿名。</div>' +
+      chips(juries, '暂无分审成员') +
+    '</section>' +
+  '</div>' + currentHtml;
+}
+
+async function loadReviewerRoster(eventId) {
+  var body = document.getElementById('reviewerRosterBody');
+  var requestedEventId = parseInt(eventId || 0, 10);
+  reviewerRosterEventId = requestedEventId;
+  if (body) body.innerHTML = '<div class="reviewer-roster-empty"><span class="loading-spinner"></span>加载审核员名单...</div>';
+  try {
+    var r = await fetch('../api/galonly.php?action=list_reviewers&event_id=' + requestedEventId, { credentials: 'same-origin' });
+    var data = await r.json();
+    if (requestedEventId !== selectedEventId) return;
+    if (!data.success) {
+      reviewerRoster = [];
+      if (body) body.innerHTML = '<div class="reviewer-roster-empty">' + escapeHtml(data.message || '审核员名单暂不可用') + '</div>';
+      return;
+    }
+    reviewerRoster = Array.isArray(data.reviewers) ? data.reviewers : [];
+    renderReviewerRoster();
+  } catch (e) {
+    if (requestedEventId !== selectedEventId) return;
+    reviewerRoster = [];
+    if (body) body.innerHTML = '<div class="reviewer-roster-empty">审核员名单加载失败，请刷新页面重试</div>';
+  }
+}
+
 // ====== Applications Loading (Booth) ======
 async function loadApplications() {
   var appList = document.getElementById('boothAppList');
@@ -3452,7 +3598,8 @@ async function loadStaffApplications() {
   var appList = document.getElementById('staffAppList');
   appList.innerHTML = '<div class="empty-state"><span class="loading-spinner"></span>加载 Staff 申请列表...</div>';
   try {
-    var r = await fetch('../api/galonly.php?action=list_staff_applications', { credentials: 'same-origin' });
+    var staffEventId = parseInt(selectedEventId || 0, 10);
+    var r = await fetch('../api/galonly.php?action=list_staff_applications&event_id=' + encodeURIComponent(staffEventId), { credentials: 'same-origin' });
     var data = await r.json();
     if (!data.success) {
       appList.innerHTML = '<div class="empty-state">' + escapeHtml(data.message || '加载 Staff 申请失败') + '</div>';
@@ -3618,9 +3765,11 @@ function normalizeAuditImageSrc(src) {
   return '../' + src.replace(/^\/+/, '');
 }
 
-// 2026-08 性能修复：预览一律使用 WebP 缩略图（上传时服务端生成），原图保留供点击查看
-function galonlyThumbUrl(path) {
+// 2026-08 性能修复：服务端明确提供缩略图时优先使用；旧图/无缩略图记录直接使用原图，避免猜测不存在的 URL。
+function galonlyThumbUrl(path, knownThumbnail) {
   if (!path) return '';
+  if (String(path).indexOf('/thumbs/') !== -1 || String(path).indexOf('thumbs/') === 0) return path;
+  if (!knownThumbnail) return path;
   var m = String(path).match(/^uploads\/galonly\/(\d+)\/([^/]+)$/);
   if (!m) return path; // 已是缩略图/其他路径则原样返回
   var stem = m[2].replace(/\.[^.]+$/, '');
@@ -3661,9 +3810,10 @@ function getBoothImageItems(app) {
     var fullSrc = normalizeAuditImageSrc(full || thumb);
     if (!fullSrc || seen[fullSrc]) return;
     seen[fullSrc] = true;
-    // 预览优先缩略图约定路径；旧图无缩略图时由 img onerror 回退原图
+    var thumbValue = thumb || full;
+    var knownThumbnail = String(thumbValue || '').indexOf('/thumbs/') !== -1 || String(thumbValue || '').indexOf('thumbs/') === 0;
     items.push({
-      thumb: normalizeAuditImageSrc(galonlyThumbUrl(thumb || full)),
+      thumb: normalizeAuditImageSrc(galonlyThumbUrl(thumbValue, knownThumbnail)),
       full: fullSrc
     });
   }
@@ -3719,9 +3869,12 @@ function renderBoothAppCard(app) {
   var isBeijingEvent = eventIsBeijing(app.event_id);
   var isResolved = (app.status === 'approved' || app.status === 'confirmed' || app.status === 'shared' || app.status === 'rejected');
   var canVote = isBeijingEvent
-    ? ((phase === 1 && app.status === 'pending') || (phase === 2 && (app.status === 'phase2_pending' || app.status === 'phase2_revision')))
+    ? ((phase === 1 && app.status === 'pending') || (phase === 2 && (app.status === 'phase2_pending' || app.status === 'phase2_revision' || app.status === 'phase2_additional_pending')))
     : (app.status === 'pending');
-  var isChief = app.my_review_role === 'chief';
+  var reviewRole = app.my_review_role || '';
+  var canReview = reviewRole === 'chief' || reviewRole === 'jury';
+  var isChief = reviewRole === 'chief';
+  var canSubmitOpinion = canReview && canVote;
 
   var headerBadgeHtml;
   if (!isBeijingEvent) {
@@ -3789,11 +3942,15 @@ function renderBoothAppCard(app) {
       ? '<ul style="margin:6px 0 0;padding-left:18px;line-height:1.8;">' + items.map(function (it) {
           var imgs = (it.images || []).map(function (p) {
             var src = normalizeAuditImageSrc(p);
-            var thumbSrc = normalizeAuditImageSrc(galonlyThumbUrl(p));
+            var thumbSrc = normalizeAuditImageSrc(galonlyThumbUrl(p, String(p || '').indexOf('/thumbs/') !== -1 || String(p || '').indexOf('thumbs/') === 0));
             return '<button type="button" class="booth-image-button" data-full-src="' + escapeHtml(src) + '" onclick="openImageModal(this.dataset.fullSrc)" aria-label="查看制品图片">' +
               '<img class="app-image-thumb" data-full="' + escapeHtml(src) + '" src="' + escapeHtml(thumbSrc) + '" alt="制品图片" loading="lazy" decoding="async" onerror="galonlyImgFallback(this)"></button>';
           }).join('');
-          return '<li><strong>' + escapeHtml(it.name || '未命名制品') + '</strong>' +
+          var priceCents = Number(it.priceCents);
+          var priceHtml = Number.isSafeInteger(priceCents) && priceCents >= 0
+            ? ' <span style="color:var(--accent-gold);font-size:12px;">¥' + (priceCents / 100).toFixed(2) + '</span>'
+            : '';
+          return '<li><strong>' + escapeHtml(it.name || '未命名制品') + '</strong>' + priceHtml +
             (it.category ? ' <span style="color:var(--text-muted);font-size:12px;">[' + escapeHtml(it.category) + ']</span>' : '') +
             (it.description ? '<br><span style="color:var(--text-secondary);font-size:12px;">' + escapeHtml(it.description) + '</span>' : '') +
             (imgs ? '<div class="booth-image-list" style="margin-top:6px;">' + imgs + '</div>' : '') +
@@ -3811,9 +3968,9 @@ function renderBoothAppCard(app) {
   }
 
   // ===== 北京两阶段：分阶段审核意见（2026-08：去集票、陪审匿名、阶段一/二各自独立） =====
-  var phase1Actionable = app.status === 'pending';
-  var phase2Actionable = app.status === 'phase2_pending' || app.status === 'phase2_revision' || app.status === 'phase2_additional_pending';
-  var showReviewerNames = app.my_review_role === 'chief';
+  var phase1Actionable = canSubmitOpinion && app.status === 'pending';
+  var phase2Actionable = canSubmitOpinion && (app.status === 'phase2_pending' || app.status === 'phase2_revision' || app.status === 'phase2_additional_pending');
+  var showReviewerNames = isChief;
 
   function buildPhaseOpinions(phaseNum) {
     var phaseVotes = (app.votes || []).filter(function (v) { return parseInt(v.phase || 1, 10) === phaseNum; });
@@ -3925,7 +4082,7 @@ function renderBoothAppCard(app) {
         '<span class="voted-badge">你已投票 · ' + lvt + '</span>' +
         '<button class="btn-vote" onclick="withdrawVote(' + app.id + ')" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-color);padding:6px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:var(--transition);">撤回投票</button>' +
       '</div>';
-    } else if (!isResolved) {
+    } else if (canSubmitOpinion && !isResolved) {
       legacyActions = '<div class="vote-actions">' +
         '<button class="btn-vote approve" onclick="castVote(' + app.id + ',\'approve\',1)">通过</button>' +
         '<button class="btn-vote reject" onclick="castVote(' + app.id + ',\'reject\',1)">不通过</button>' +
@@ -3951,7 +4108,11 @@ function renderBoothAppCard(app) {
     '</div>';
   } else {
     // 北京两阶段：分阶段展示审核意见（去计数条；陪审匿名，仅总审可见姓名；总审可撤回已通过的最终决定）
+    var channelHtml = canReview
+      ? '<div class="reviewer-roster-current" style="margin-top:0;margin-bottom:10px;">当前审核通道：<strong>' + escapeHtml(reviewerRoleLabel(reviewRole)) + '</strong>' + (isChief ? ' · 可作最终决定' : ' · 仅提交分审意见') + '</div>'
+      : '<div class="reviewer-roster-current" style="margin-top:0;margin-bottom:10px;">当前账号未分配本活动审核通道，暂不能提交审核意见。</div>';
     voteSectionHtml = '<div class="vote-section">' +
+      channelHtml +
       '<div class="vote-title">阶段一 · 审核意见</div>' +
       buildPhaseOpinions(1) +
       buildPhaseMyOpinion(1, phase1Actionable) +

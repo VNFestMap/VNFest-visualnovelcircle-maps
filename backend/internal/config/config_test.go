@@ -6,6 +6,7 @@ func TestValidateProduction(t *testing.T) {
 	valid := Config{
 		Environment: "production", DBDriver: "mysql", DBHost: "db", DBName: "vnfest", DBUser: "vnfest",
 		SiteURL: "https://map.example", SessionSecret: "session-secret", AdminToken: "admin-token",
+		BoothCredentialKey: "booth-credential-secret",
 		RecognitionHMACSecret: "recognition-secret", MailDriver: "mail",
 	}
 	if err := valid.ValidateProduction(); err != nil {

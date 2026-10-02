@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -16,6 +18,69 @@ import (
 	"github.com/VNFestMap/galgame-community-map/backend/internal/store/sessionstore"
 	"github.com/VNFestMap/galgame-community-map/backend/internal/store/sqlstore"
 )
+
+func TestAutomaticAuditCapturesMultipartBusinessFields(t *testing.T) {
+	server := newAuditTestServer(t)
+	server.mux = http.NewServeMux()
+	server.mux.HandleFunc("/api/galonly.php", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Fatal(err)
+		}
+		writeJSON(w, map[string]any{"success": true, "storage": "picui", "fallback": false})
+	})
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	_ = writer.WriteField("application_id", "42")
+	_ = writer.WriteField("asset", "product")
+	_ = writer.WriteField("password", "never-log-this")
+	part, err := writer.CreateFormFile("file", "private-filename.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = part.Write([]byte("image contents"))
+	_ = writer.Close()
+	req := httptest.NewRequest(http.MethodPost, "http://test/api/galonly.php?action=upload_image&event_code=beijing", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	res := httptest.NewRecorder()
+	server.ServeHTTP(res, req)
+	var targetID int64
+	var details string
+	if err := server.db.QueryRow(`SELECT target_id,details FROM audit_logs LIMIT 1`).Scan(&targetID, &details); err != nil {
+		t.Fatal(err)
+	}
+	if targetID != 42 || !strings.Contains(details, `"application_id":"42"`) || !strings.Contains(details, `"asset":"product"`) || !strings.Contains(details, `"storage":"picui"`) || !strings.Contains(details, `"event_code":"beijing"`) {
+		t.Fatalf("multipart audit lost business fields: target=%d details=%s", targetID, details)
+	}
+	if strings.Contains(details, "never-log-this") || strings.Contains(details, "private-filename.png") || strings.Contains(details, "image contents") {
+		t.Fatalf("multipart audit recorded private input: %s", details)
+	}
+}
+
+func TestAutomaticAuditPreservesBusinessDecision(t *testing.T) {
+	server := newAuditTestServer(t)
+	server.mux = http.NewServeMux()
+	server.mux.HandleFunc("/api/galonly.php", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"success": true, "decision": "reject", "result": "rejected"})
+	})
+	req := httptest.NewRequest(http.MethodPost, "http://test/api/galonly.php?action=resolve", strings.NewReader(`{"application_id":42,"decision":"reject"}`))
+	req.Header.Set("Content-Type", "application/json")
+	server.ServeHTTP(httptest.NewRecorder(), req)
+	var details string
+	if err := server.db.QueryRow(`SELECT details FROM audit_logs LIMIT 1`).Scan(&details); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(details, `"result":"rejected"`) || !strings.Contains(details, `"decision":"reject"`) {
+		t.Fatalf("business decision overwritten: %s", details)
+	}
+}
+
+func TestBoothTrackingIsNotReportedAsSuccessfulAdminOperation(t *testing.T) {
+	server := newAuditTestServer(t)
+	req := httptest.NewRequest(http.MethodPost, "http://test/api/galonly_booths.php?action=track", strings.NewReader(`{"event_code":"beijing"}`))
+	if !server.shouldSkipAutomaticAudit(req) {
+		t.Fatal("best-effort tracking returns 204 on failure and must not become a successful operation log")
+	}
+}
 
 func newAuditTestServer(t *testing.T) *Server {
 	t.Helper()
