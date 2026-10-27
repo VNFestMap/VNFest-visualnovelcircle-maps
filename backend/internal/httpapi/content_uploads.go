@@ -226,32 +226,7 @@ func (s *Server) projectFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) projectFileDownload(w http.ResponseWriter, r *http.Request) {
-	relative := cleanProjectFilePath(r.URL.Query().Get("file"))
-	if relative == "" {
-		http.NotFound(w, r)
-		return
-	}
-	absolute := filepath.Join(s.cfg.UploadDir, "project_files", filepath.FromSlash(relative))
-	base, err := filepath.Abs(filepath.Join(s.cfg.UploadDir, "project_files"))
-	if err != nil || !withinPath(base, absolute) {
-		http.NotFound(w, r)
-		return
-	}
-	info, err := os.Stat(absolute)
-	if err != nil || !info.Mode().IsRegular() {
-		http.NotFound(w, r)
-		return
-	}
-	file, err := os.Open(absolute)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer file.Close()
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(absolute)+`"`)
-	w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
-	http.ServeContent(w, r, filepath.Base(absolute), info.ModTime(), file)
+	s.projectFileDownloadSecure(w, r)
 }
 
 func (s *Server) projectFileUpload(w http.ResponseWriter, r *http.Request) {
@@ -282,6 +257,7 @@ func (s *Server) projectFileUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	defer r.MultipartForm.RemoveAll()
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	ext = strings.TrimPrefix(ext, ".")
 	if _, ok := projectFileExt[ext]; !ok {
@@ -289,6 +265,15 @@ func (s *Server) projectFileUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectID := parsePositiveInt(r.FormValue("project_id"))
+	purpose := firstNonEmpty(r.FormValue("purpose"), "private")
+	if purpose != "public" && purpose != "private" {
+		writeJSONStatus(w, 400, map[string]any{"success": false, "message": "无效附件用途"})
+		return
+	}
+	if !s.projectUploadPermission(w, r, userID, projectID, purpose) {
+		return
+	}
+
 	directory := "general"
 	if projectID > 0 {
 		directory = strconv.FormatInt(projectID, 10)
@@ -299,9 +284,15 @@ func (s *Server) projectFileUpload(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "保存失败"})
 		return
 	}
-	publicRelative := "uploads/" + relative
+	publicRelative := projectFileURL(directory + "/" + filename)
+	record := &projectFileRecord{ID: randomHex(24), Path: directory + "/" + filename, ProjectID: projectID, UploaderID: userID, Purpose: purpose, Name: header.Filename, MIME: projectFileExt[ext], Size: header.Size, Created: time.Now().Unix()}
+	if err := s.insertProjectFile(r, record); err != nil {
+		_ = s.files.DeleteUpload(r.Context(), relative)
+		writeJSONStatus(w, 500, map[string]any{"success": false, "message": "附件归属记录保存失败"})
+		return
+	}
 	writeJSON(w, map[string]any{"success": true, "file": map[string]any{
-		"name": header.Filename, "url": publicRelative,
+		"id": record.ID, "purpose": purpose, "name": header.Filename, "url": publicRelative,
 		"download_url": "./api/project_files.php?file=" + directory + "/" + filename,
 		"size":         header.Size, "uploaded_by": userID, "created_at": time.Now().Format("2006-01-02 15:04:05"),
 	}})
@@ -309,33 +300,10 @@ func (s *Server) projectFileUpload(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) projectFileDelete(w http.ResponseWriter, r *http.Request) {
 	if !sameOrigin(r) {
-		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "请求来源无效"})
+		writeJSONStatus(w, 403, map[string]any{"success": false, "message": "请求来源无效"})
 		return
 	}
-	if _, ok := s.loggedInUserID(r); !ok {
-		writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "请先登录"})
-		return
-	}
-	var input map[string]any
-	if r.URL.Query().Get("file") != "" {
-		input = map[string]any{"file": r.URL.Query().Get("file")}
-	} else {
-		_ = decodeJSON(r, &input, 64<<10)
-	}
-	relative := cleanProjectFilePath(stringValue(input["file"]))
-	if relative == "" {
-		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "文件不存在"})
-		return
-	}
-	if err := s.files.DeleteUpload(r.Context(), filepath.ToSlash(filepath.Join("project_files", relative))); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "文件不存在"})
-		} else {
-			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "文件删除失败"})
-		}
-		return
-	}
-	writeJSON(w, map[string]any{"success": true, "message": "文件已删除"})
+	s.projectFileDeleteSecure(w, r)
 }
 
 func cleanProjectFilePath(value string) string {

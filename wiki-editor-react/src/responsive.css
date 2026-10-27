@@ -1,0 +1,297 @@
+@media (min-width: 1800px) {
+  .view-split .editor-scroll {
+    flex: 1;
+  }
+  .view-split .preview-pane {
+    flex: 1.25;
+  }
+}
+@media (max-width: 1199px) {
+  .workspace-header {
+    padding: 0 20px;
+  }
+  .workspace-toolbar {
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .public-link {
+    display: none;
+  }
+  .outline {
+    width: 178px;
+    padding: 18px 10px;
+  }
+  .editor-scroll {
+    padding: 24px 22px 60px;
+  }
+  .editor-paper {
+    padding: 26px;
+  }
+  .view-split .outline {
+    width: 156px;
+  }
+  .view-split .editor-scroll {
+    padding: 18px 12px;
+  }
+  .view-split .editor-paper {
+    padding: 20px;
+  }
+  .view-split .section-title-row {
+    grid-template-columns: 1fr;
+  }
+  .view-split .section-actions > span {
+    width: 100%;
+  }
+  .view-split .preview-pane {
+    flex: 0.9;
+  }
+}
+@media (max-width: 900px) {
+  .view-segment button:nth-child(2) {
+    display: none;
+  }
+  .view-split .preview-pane {
+    display: none;
+  }
+  .view-split .editor-scroll {
+    padding: 24px;
+  }
+  .entry-name {
+    max-width: 42vw;
+  }
+  .save-state {
+    font-size: 11px;
+  }
+  .save-state small {
+    display: none;
+  }
+  .more-button {
+    padding: 8px 12px;
+  }
+  .outline {
+    width: 174px;
+  }
+  .panel-heading {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 650px) {
+  button {
+    min-height: 44px;
+  }
+  button.icon {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .workspace-header {
+    height: 52px;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  .brand {
+    font-size: 20px;
+  }
+  .brand span {
+    font-size: 10px;
+    margin-left: 8px;
+    padding-left: 9px;
+  }
+  .entry-name {
+    font-size: 11px;
+    max-width: 40vw;
+  }
+  .back-link {
+    font-size: 11px;
+  }
+  .workspace-toolbar {
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+  .outline-toggle {
+    display: block;
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .segment {
+    padding: 2px;
+  }
+  .segment button {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .save-state {
+    order: 5;
+    margin: 0;
+    flex: 1;
+  }
+  .view-segment {
+    margin-left: auto;
+  }
+  .more-button {
+    order: 6;
+    min-height: 38px;
+    font-size: 12px;
+  }
+  .publish {
+    order: 7;
+    min-height: 40px;
+    font-size: 12px;
+    min-width: 110px;
+    padding: 8px 12px;
+  }
+  .workspace-toolbar .view-segment button {
+    min-width: 48px;
+  }
+  .outline {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 15;
+    width: 245px;
+    box-shadow: 10px 0 40px #1c345c20;
+  }
+  .outline.is-open {
+    display: flex;
+  }
+  .outline button,
+  .outline nav button {
+    min-height: 44px;
+  }
+  .drawer-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: #172b4e44;
+    border: 0;
+    border-radius: 0;
+    z-index: 14;
+  }
+  .editor-scroll,
+  .view-split .editor-scroll {
+    padding: 14px 10px calc(28px + env(safe-area-inset-bottom));
+  }
+  .editor-paper,
+  .view-split .editor-paper {
+    border-radius: 9px;
+    padding: 22px 18px;
+    box-shadow: none;
+  }
+  .panel-heading {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 23px;
+  }
+  .section-title-row {
+    grid-template-columns: minmax(0, 1fr) 100px;
+    gap: 10px;
+  }
+  .section-title-row input {
+    font-size: 17px;
+  }
+  .section-actions > span {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  .section-actions button {
+    min-height: 40px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  .block-actions .icon {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+  .format-toolbar button {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .field {
+    margin-bottom: 18px;
+  }
+  input,
+  select {
+    font-size: 16px;
+  }
+  .notice {
+    padding: 8px 12px;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .notice button {
+    min-height: 36px;
+  }
+  .draft-notice {
+    flex-wrap: wrap;
+  }
+  .draft-notice span {
+    flex-basis: 100%;
+  }
+  .tools-panel {
+    top: 166px;
+    right: 12px;
+    max-height: calc(100dvh - 180px);
+    padding: 20px;
+  }
+  .new-fact {
+    flex-wrap: wrap;
+  }
+  .new-fact input {
+    flex: 1;
+    min-width: 100px;
+  }
+  .image-primary {
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .image-primary img,
+  .image-placeholder {
+    width: 74px;
+    height: 74px;
+  }
+  .image-inputs .field {
+    margin-bottom: 8px;
+  }
+  .image-inputs input {
+    font-size: 13px;
+    padding: 8px;
+  }
+  .image-inputs button {
+    min-height: 40px;
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .preview-toolbar {
+    padding: 10px 12px;
+  }
+  .preview-surface.device-mobile {
+    border: 0;
+  }
+  .language-help {
+    font-size: 11px;
+  }
+  .add-blocks {
+    gap: 8px;
+  }
+  .add-blocks button {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  .outline > small {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

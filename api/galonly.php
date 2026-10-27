@@ -612,7 +612,7 @@ function galonlyNotifyBoothApplicant(array $application, string $status, ?array 
     $eventName = (string)($event['name'] ?? $application['event_name'] ?? 'GalOnly 活动');
     $boothName = (string)($application['booth_name'] ?? '');
     $boothText = $boothName !== '' ? '摊位「' . $boothName . '」' : '摊位申请';
-    $link = 'Galgame_events/Galonly_status.html?event_id=' . (int)($application['event_id'] ?? 0);
+    $link = 'Galgame_events/beijing/Galonly_status.html?event_id=' . (int)($application['event_id'] ?? 0);
 
     $phase = (int)($application['phase'] ?? 1);
     if ($status === 'rejected') {
@@ -971,7 +971,7 @@ switch ($action) {
 
         // 获取已获得/保留摊主资格的申请（预选通过 / 正式摊主 / 拼摊）
         $stmt = $db->prepare(
-            "SELECT id, booth_name, is_joint, joint_name, notes, image_path, display_image, created_at, booth_type, status
+            "SELECT id, booth_name, is_joint, joint_name, image_path, display_image, created_at, booth_type, status
              FROM galonly_applications
              WHERE event_id = ? AND status IN ('approved','confirmed','shared')
              ORDER BY created_at ASC"

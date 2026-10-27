@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../../js/page-i18n.js?v=20260813-language"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../../js/theme-runtime.js?v=20260702-theme"></script>
+<title>Staff 申请</title>
+<link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header" />
+<script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; transform: translateY(-8px); }
+  to { opacity: 1; max-height: 200px; transform: translateY(0); }
+}
+
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 100px;
+  --font-display: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+  --font-body: 'Jost', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --transition-theme: background 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+[data-theme="dark"] {
+  --bg: oklch(18% 0.035 275);
+  --surface: oklch(24% 0.04 272);
+  --surface-raised: oklch(30% 0.045 270);
+  --fg: oklch(93% 0.003 80);
+  --fg-soft: oklch(84% 0.015 275);
+  --fg-muted: oklch(75% 0.03 270);
+  --fg-dim: oklch(65% 0.04 268);
+  --border: oklch(30% 0.045 270 / 0.35);
+  --border-light: oklch(38% 0.05 268 / 0.35);
+  --accent: oklch(72% 0.07 290);
+  --accent-fill: oklch(58% 0.08 290);
+  --accent-muted: oklch(72% 0.05 290 / 0.15);
+  --accent-ghost: oklch(72% 0.04 290 / 0.08);
+  --shell: oklch(18% 0.035 275 / 0.85);
+  --nav-hover-bg: rgba(236,234,233,0.06);
+  --danger: oklch(70% 0.14 25);
+  --danger-bg: oklch(70% 0.10 25 / 0.12);
+  --danger-border: oklch(70% 0.10 25 / 0.3);
+  --submit-btn-fg: oklch(18% 0.035 275);
+  --select-arrow-fill: oklch(65% 0.04 268);
+  --success: oklch(72% 0.12 155);
+  --success-bg: oklch(72% 0.12 155 / 0.12);
+}
+
+[data-theme="light"] {
+  --bg: oklch(98% 0.005 270);
+  --surface: oklch(100% 0 0);
+  --surface-raised: oklch(97% 0.008 270);
+  --fg: oklch(18% 0.01 270);
+  --fg-soft: oklch(28% 0.015 270);
+  --fg-muted: oklch(43% 0.03 270);
+  --fg-dim: oklch(55% 0.03 270);
+  --border: oklch(88% 0.01 260);
+  --border-light: oklch(92% 0.01 260);
+  --accent: oklch(44% 0.14 42);
+  --accent-fill: oklch(78% 0.1 65);
+  --accent-muted: oklch(44% 0.10 42 / 0.12);
+  --accent-ghost: oklch(44% 0.08 42 / 0.06);
+  --shell: oklch(98% 0.005 270 / 0.85);
+  --nav-hover-bg: rgba(30,30,40,0.06);
+  --danger: oklch(45% 0.14 25);
+  --danger-bg: oklch(95% 0.04 25);
+  --danger-border: oklch(45% 0.10 25 / 0.3);
+  --submit-btn-fg: oklch(18% 0.01 270);
+  --select-arrow-fill: oklch(55% 0.03 270);
+  --success: oklch(45% 0.12 155);
+  --success-bg: oklch(45% 0.12 155 / 0.10);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family: var(--font-body);
+  background: var(--bg);
+  min-height:100vh;
+  color: var(--fg);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:40px 16px 60px;
+  transition: var(--transition-theme);
+}
+
+.back-link{
+  display:inline-block;
+  color: var(--fg-dim);
+  font-size:13px;
+  text-decoration:none;
+  margin-bottom:16px;
+  align-self:flex-start;
+  max-width:640px;
+  width:100%;
+  transition: var(--transition-theme);
+  animation: slideInLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.back-link:hover{color: var(--fg-muted)}
+
+.form-card{
+  max-width:640px;
+  width:100%;
+  background: var(--surface);
+  border:1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding:36px 32px;
+  transition: var(--transition-theme);
+  animation: fadeSlideUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.form-title{
+  font-family: var(--font-display);
+  font-size:24px;
+  font-weight:700;
+  color: var(--fg);
+  letter-spacing:-0.015em;
+  margin-bottom:28px;
+  transition: var(--transition-theme);
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.form-group{
+  margin-bottom:20px;
+  opacity: 0;
+  animation: fadeSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.form-label{
+  display:block;
+  font-size:13px;
+  font-weight:500;
+  color: var(--fg-soft);
+  margin-bottom:8px;
+  transition: var(--transition-theme);
+}
+.form-label .required{color: var(--accent);margin-left:2px}
+
+.form-input,
+.form-select,
+.form-textarea{
+  width:100%;
+  background: var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding:12px 16px;
+  font-size:14px;
+  color: var(--fg);
+  font-family:inherit;
+  transition: var(--transition-theme),
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.3s ease;
+  outline:none;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ghost);
+}
+.form-input::placeholder,
+.form-textarea::placeholder{
+  color: var(--fg-dim);
+}
+
+.form-select{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 16px center;
+  padding-right:36px;
+  cursor:pointer;
+}
+.form-select option{background: var(--surface);color: var(--fg)}
+
+.form-textarea{resize:vertical;min-height:80px}
+
+.form-input-static{
+  width:100%;
+  background: var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding:12px 16px;
+  font-size:14px;
+  color: var(--fg-muted);
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  transition: var(--transition-theme);
+}
+
+.form-hint{
+  font-size:12px;
+  color: var(--fg-dim);
+  margin-top:4px;
+}
+
+/* ---- Positions checkbox grid ---- */
+.positions-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px 16px;
+}
+.checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  color: var(--fg-soft);
+  cursor:pointer;
+  padding:8px 12px;
+  border-radius: var(--radius-sm);
+  border:1px solid transparent;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.2s ease,
+              border-color 0.2s ease;
+}
+.checkbox-row:hover{
+  transform: translateX(3px);
+  background: var(--accent-ghost);
+}
+.checkbox-row input[type="checkbox"]{
+  accent-color: var(--accent-fill);
+  width:16px;
+  height:16px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+
+/* ---- Highlighted confirmation checkbox ---- */
+.confirm-row{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  font-size:14px;
+  color: var(--fg-soft);
+  cursor:pointer;
+  padding:14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-ghost);
+  border:1px solid var(--accent-muted);
+  transition: var(--transition-theme),
+              border-color 0.25s ease,
+              box-shadow 0.25s ease;
+  line-height:1.5;
+}
+.confirm-row:hover{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ghost);
+}
+.confirm-row input[type="checkbox"]{
+  accent-color: var(--accent-fill);
+  width:18px;
+  height:18px;
+  cursor:pointer;
+  flex-shrink:0;
+  margin-top:2px;
+}
+
+.radio-group{
+  display:flex;
+  gap:24px;
+}
+.radio-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  color: var(--fg-soft);
+  cursor:pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.radio-row:hover{transform: translateX(3px)}
+.radio-row input[type="radio"]{
+  accent-color: var(--accent-fill);
+  width:16px;
+  height:16px;
+  cursor:pointer;
+}
+
+.separator{
+  height:1px;
+  background: var(--border);
+  margin:28px 0;
+}
+
+.error-msg{
+  background: var(--danger-bg);
+  border:1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding:10px 14px;
+  font-size:13px;
+  color: var(--danger);
+  margin-bottom:16px;
+  display:none;
+  transition: var(--transition-theme);
+}
+.error-msg.visible{display:block}
+.error-msg.visible,
+.error-shake{
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.submit-btn{
+  width:100%;
+  background: var(--accent-fill);
+  color: var(--submit-btn-fg);
+  font-size:16px;
+  font-weight:600;
+  padding:14px 32px;
+  border:none;
+  border-radius: var(--radius-full);
+  cursor:pointer;
+  transition: var(--transition-theme),
+              transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.2s ease,
+              filter 0.2s ease;
+  font-family:inherit;
+  letter-spacing:0.02em;
+}
+.submit-btn:hover{filter:brightness(1.1);transform: translateY(-2px)}
+.submit-btn:active{
+  transform: scale(0.96) translateY(0);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.submit-btn:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}
+
+.agreement-text{
+  font-size:12px;
+  color: var(--fg-dim);
+  text-align:center;
+  margin-top:16px;
+  line-height:1.6;
+}
+
+.loading-overlay{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:60px 0;
+  color: var(--fg-muted);
+  font-size:14px;
+}
+
+.circuit-breaker-warning{
+  background: var(--danger-bg);
+  border:1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding:16px 20px;
+  margin-bottom:20px;
+  font-size:14px;
+  color: var(--danger);
+  display:none;
+  transition: var(--transition-theme);
+}
+.circuit-breaker-warning.visible{display:block}
+.circuit-breaker-warning p{margin-bottom:4px}
+.circuit-breaker-warning p:last-child{margin-bottom:0}
+
+.staff-max-hint{
+  font-size:12px;
+  color: var(--fg-dim);
+  margin-top:4px;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--fg-dim);
+  font-size: 16px; line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-theme);
+  z-index: 100;
+  font-family: inherit;
+}
+.theme-toggle:hover {
+  color: var(--fg);
+  border-color: var(--fg-dim);
+  background: var(--surface-raised);
+}
+.theme-toggle:active {
+  transform: rotate(180deg) scale(0.85);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Modals ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: oklch(0% 0 0 / 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-overlay.active {
+  opacity: 1; pointer-events: auto;
+}
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%; max-width: 520px; max-height: 85vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transform: translateY(20px) scale(0.96);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.modal-overlay.active .modal-card {
+  transform: translateY(0) scale(1);
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.modal-subtitle {
+  font-size: 13px; color: var(--fg-muted);
+  margin-top: 4px;
+}
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-body h4 {
+  font-size: 13px; font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  margin: 16px 0 8px;
+}
+.modal-body h4:first-child { margin-top: 0; }
+.modal-body ul {
+  list-style: none; padding: 0; margin: 0;
+}
+.modal-body li {
+  font-size: 13px; color: var(--fg-soft);
+  line-height: 1.7;
+  padding-left: 16px;
+  position: relative;
+}
+.modal-body li::before {
+  content: '';
+  position: absolute; left: 0; top: 9px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.modal-body .info-box {
+  background: var(--accent-ghost);
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--fg-soft);
+  line-height: 1.7;
+}
+.modal-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.modal-btn {
+  padding: 9px 24px;
+  border-radius: var(--radius-full);
+  font-size: 13px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid;
+}
+.modal-btn:active {
+  transform: scale(0.94);
+}
+.modal-btn-cancel {
+  background: transparent;
+  color: var(--fg-muted);
+  border-color: var(--border);
+}
+.modal-btn-cancel:hover {
+  color: var(--fg);
+  border-color: var(--fg-dim);
+}
+.modal-btn-confirm {
+  background: var(--accent-fill);
+  color: var(--bg);
+  border-color: var(--accent-fill);
+}
+.modal-btn-confirm:hover {
+  filter: brightness(1.1);
+}
+
+/* Success modal */
+.success-icon {
+  width: 64px; height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--success-bg);
+  border: 2px solid var(--success);
+  display: flex; align-items: center; justify-content: center;
+}
+.success-icon svg {
+  width: 32px; height: 32px;
+  stroke: var(--success);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.success-icon svg .check-path {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawCheck 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+.success-body {
+  text-align: center;
+  padding: 32px 24px 8px;
+}
+.success-title {
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+.success-desc {
+  font-size: 14px;
+  color: var(--fg-muted);
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+.success-footer {
+  padding: 16px 24px 24px;
+  text-align: center;
+}
+
+/* ── Responsive: Tablet / small desktop ── */
+@media (max-width: 768px) {
+  body {
+    padding: 28px 12px 48px;
+  }
+  .back-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .form-card {
+    padding: 20px 16px;
+    border-radius: var(--radius-md);
+  }
+  .form-title {
+    font-size: 22px;
+    margin-bottom: 22px;
+  }
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+  .form-select {
+    padding-right: 40px;
+    background-position: right 14px center;
+  }
+  .form-input-static {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+  .positions-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .checkbox-row {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+  .radio-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .radio-row {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+  .confirm-row {
+    padding: 14px 14px;
+    min-height: 48px;
+  }
+  .confirm-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+  .submit-btn {
+    padding: 14px 24px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+  .theme-toggle {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  .modal-overlay {
+    padding: 16px;
+  }
+  .modal-card {
+    max-height: 88vh;
+  }
+  .modal-btn {
+    padding: 10px 22px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .error-msg {
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+}
+
+/* ── Responsive: Large phone / small tablet ── */
+@media (max-width: 600px) {
+  body {
+    padding: 20px 10px 40px;
+  }
+  .back-link {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .form-card {
+    padding: 20px 16px;
+  }
+  .form-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  .form-group {
+    margin-bottom: 18px;
+  }
+  .form-label {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .separator {
+    margin: 22px 0;
+  }
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal-card {
+    max-height: 90vh;
+    border-radius: var(--radius-md);
+  }
+  .modal-header {
+    padding: 16px 18px 14px;
+  }
+  .modal-title {
+    font-size: 18px;
+  }
+  .modal-body {
+    padding: 16px 18px;
+  }
+  .modal-footer {
+    padding: 14px 18px 18px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .modal-btn {
+    width: 100%;
+    text-align: center;
+    padding: 12px 20px;
+    min-height: 48px;
+  }
+  .success-body {
+    padding: 24px 18px 8px;
+  }
+  .success-title {
+    font-size: 20px;
+  }
+  .success-footer {
+    padding: 14px 18px 20px;
+  }
+  .success-footer .modal-btn {
+    max-width: 100% !important;
+  }
+}
+
+/* ── Responsive: Phone ── */
+@media (max-width: 480px) {
+  body {
+    padding: 16px 8px 36px;
+  }
+  .back-link {
+    font-size: 13px;
+    margin-bottom: 8px;
+    padding: 4px 0;
+  }
+  .form-card {
+    padding: 16px 12px;
+    border-radius: var(--radius-sm);
+  }
+  .form-title {
+    font-size: 19px;
+    margin-bottom: 18px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 11px 12px;
+  }
+  .form-select {
+    padding-right: 36px;
+    background-position: right 12px center;
+  }
+  .form-input-static {
+    padding: 11px 12px;
+    min-height: 44px;
+  }
+  .form-textarea {
+    min-height: 90px;
+  }
+  .positions-grid {
+    gap: 4px;
+  }
+  .checkbox-row {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .confirm-row {
+    padding: 12px;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .radio-row {
+    font-size: 14px;
+  }
+  .submit-btn {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-weight: 700;
+    min-height: 50px;
+  }
+  .agreement-text {
+    font-size: 11px;
+    margin-top: 12px;
+  }
+  .modal-overlay {
+    padding: 8px;
+  }
+  .modal-card {
+    max-height: 92vh;
+    border-radius: var(--radius-sm);
+  }
+  .modal-header {
+    padding: 14px 14px 12px;
+  }
+  .modal-title {
+    font-size: 17px;
+  }
+  .modal-subtitle {
+    font-size: 12px;
+  }
+  .modal-body {
+    padding: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-body li {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .modal-body .info-box {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .modal-footer {
+    padding: 12px 14px 16px;
+  }
+  .success-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 12px;
+  }
+  .success-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+  .success-body {
+    padding: 20px 14px 6px;
+  }
+  .success-title {
+    font-size: 19px;
+  }
+  .success-desc {
+    font-size: 13px;
+  }
+  .success-footer {
+    padding: 12px 14px 18px;
+  }
+  .circuit-breaker-warning {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+}
+
+/* ── Responsive: Small phone (iPhone SE, etc.) ── */
+@media (max-width: 375px) {
+  body {
+    padding: 12px 6px 32px;
+  }
+  .back-link {
+    font-size: 12px;
+  }
+  .form-card {
+    padding: 14px 10px;
+  }
+  .form-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .form-label {
+    font-size: 13px;
+  }
+  .form-hint {
+    font-size: 11px;
+  }
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 10px 10px;
+    font-size: 16px; /* keep 16px to prevent iOS zoom */
+  }
+  .form-select {
+    padding-right: 34px;
+    background-position: right 10px center;
+  }
+  .form-input-static {
+    padding: 10px;
+    font-size: 14px;
+  }
+  .checkbox-row {
+    padding: 6px 8px;
+    font-size: 12.5px;
+    gap: 6px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+  .confirm-row {
+    padding: 10px;
+    font-size: 12.5px;
+    gap: 8px;
+  }
+  .submit-btn {
+    padding: 13px 12px;
+    font-size: 15px;
+    min-height: 48px;
+  }
+  .modal-overlay {
+    padding: 6px;
+  }
+  .modal-header {
+    padding: 12px 12px 10px;
+  }
+  .modal-title {
+    font-size: 16px;
+  }
+  .modal-body {
+    padding: 12px;
+  }
+  .modal-footer {
+    padding: 10px 12px 14px;
+  }
+  .modal-btn {
+    padding: 11px 16px;
+    font-size: 13px;
+  }
+  .success-body {
+    padding: 18px 12px 4px;
+  }
+  .success-title {
+    font-size: 18px;
+  }
+  .success-footer {
+    padding: 10px 12px 16px;
+  }
+}
+</style>
+<script defer src="../../js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="../../css/button-shapes.css?v=20261002-pill-v1">
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题"></button>
+
+<a class="back-link" href="../galgameonly_list.html">&larr; 返回活动列表</a>
+
+<div class="form-card">
+  <div id="loading-area" class="loading-overlay">正在加载...</div>
+
+  <div id="form-wrapper" style="display:none">
+    <h1 class="form-title" id="page-title">Staff 申请</h1>
+
+    <div id="circuit-breaker-warning" class="circuit-breaker-warning"></div>
+
+    <form id="staff-form" novalidate>
+
+      <!-- 1. 活动 Event (read-only) -->
+      <div class="form-group">
+        <label class="form-label">活动</label>
+        <div class="form-input-static" id="event-name-field">--</div>
+      </div>
+
+      <!-- 2. CN（昵称） -->
+      <div class="form-group">
+        <label class="form-label" for="cn_name">CN（昵称） <span class="required">*</span></label>
+        <input type="text" class="form-input" id="cn_name" placeholder="你的昵称或CN名" required>
+      </div>
+
+      <!-- 3. QQ号 -->
+      <div class="form-group">
+        <label class="form-label" for="qq_number">QQ号 <span class="required">*</span></label>
+        <input type="text" class="form-input" id="qq_number" placeholder="输入你的QQ号" required>
+      </div>
+
+      <!-- 4. 手机号 -->
+      <div class="form-group">
+        <label class="form-label" for="phone_number">手机号 <span class="required">*</span></label>
+        <input type="tel" class="form-input" id="phone_number" placeholder="输入手机号" required>
+        <div class="form-hint">仅审核员和活动主办方可见</div>
+      </div>
+
+      <!-- 5. 所属高校社团 -->
+      <div class="form-group">
+        <label class="form-label" for="club_id">所属高校社团 <span class="required">*</span></label>
+        <select class="form-select" id="club_id" required>
+          <option value="">请选择社团</option>
+        </select>
+        <label class="confirm-row" style="margin-top:10px;">
+          <input type="checkbox" id="is_individual_applicant">
+          <span>非高校同好会成员 / 个人申请</span>
+        </label>
+      </div>
+
+      <!-- 6. 报名岗位 (multi-select checkboxes) -->
+      <div class="form-group">
+        <label class="form-label">报名岗位（可多选） <span class="required">*</span></label>
+        <div class="positions-grid" id="positions-group">
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="检票发票 (布展日)"> 检票发票 (布展日)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="检票发票 (开展日)"> 检票发票 (开展日)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="场馆搭建搬货 (布展日)"> 场馆搭建搬货 (布展日)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="搭建协助 (开展日)"> 搭建协助 (开展日)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="物料发放 (游客)"> 物料发放 (游客)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="物料发放 (摊主)"> 物料发放 (摊主)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="食品发放与看管"> 食品发放与看管</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="巡场 (安保/应急)"> 巡场 (安保/应急)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="巡场检查 (内容合规)"> 巡场检查 (内容合规)</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="舞台管理"> 舞台管理</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="问询处"> 问询处</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="痛车区域管理"> 痛车区域管理</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="交通指引"> 交通指引</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="VIP室服务"> VIP室服务</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="活动摊位负责人员"> 活动摊位负责人员</label>
+          <label class="checkbox-row"><input type="checkbox" name="position[]" value="副屏控制"> 副屏控制</label>
+        </div>
+      </div>
+
+      <!-- 7. 服务时间确认 -->
+      <div class="form-group">
+        <label class="confirm-row" id="confirm-schedule-label">
+          <input type="checkbox" id="confirm_schedule">
+          <span>我确认可以参加两天全天服务（7月25日-26日，09:00-18:00 轮岗）</span>
+        </label>
+      </div>
+
+      <!-- 8. 是否Cosplay -->
+      <div class="form-group">
+        <label class="form-label">活动期间是否Cosplay <span class="required">*</span></label>
+        <div class="radio-group" id="cosplay-group">
+          <label class="radio-row"><input type="radio" name="is_cosplay" value="1"> 是</label>
+          <label class="radio-row"><input type="radio" name="is_cosplay" value="0"> 否</label>
+        </div>
+      </div>
+
+      <!-- 8b. 三日参与 -->
+      <div class="form-group">
+        <div class="confirm-row" style="background:var(--accent-ghost);border-color:var(--accent-muted);">
+          <input type="checkbox" id="three_day_available">
+          <label for="three_day_available">
+            <span style="font-weight:500;">三日都能参与（优先招募）</span>
+            <span style="display:block;font-size:12px;color:var(--fg-dim);margin-top:2px;">布展日7.24 + 开展日7.25-7.26，三日都能到场的工作人员优先录取</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 9. 自我介绍/备注 -->
+      <div class="form-group">
+        <label class="form-label" for="self_intro">自我介绍 / 备注</label>
+        <textarea class="form-textarea" id="self_intro" placeholder="简单介绍一下自己，或补充其他信息（选填）" style="min-height:100px"></textarea>
+      </div>
+
+      <!-- 10. 信息二次确认 -->
+      <div class="form-group">
+        <label class="confirm-row" id="confirm-info-label">
+          <input type="checkbox" id="confirm_info">
+          <span>我确认以上填写的信息真实有效</span>
+        </label>
+      </div>
+
+      <!-- Separator + Error + Submit + Agreement -->
+      <div class="separator"></div>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <button type="submit" class="submit-btn" id="submit-btn" disabled>提交报名</button>
+
+      <div class="agreement-text">
+        提交即表示你同意活动组织方收集并使用上述信息用于 Staff 申请审核。
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Pre-submit Guidelines Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">提交前确认</div>
+      <div class="modal-subtitle">请再次确认以下招募须知要点</div>
+    </div>
+    <div class="modal-body">
+      <h4>工作时间</h4>
+      <ul>
+        <li>布展日：7月24日 14:00-18:00（同时进行岗前培训，要求全员尽可能到场）</li>
+        <li>开展日：7月25-26日 09:00-18:00（同一批人轮岗）</li>
+        <li>需两天全天服务，岗位为两天同一批人</li>
+      </ul>
+      <h4>任职要求</h4>
+      <ul>
+        <li>热爱视觉小说文化、有责任心、沟通能力强、身体健康，能适应高强度工作</li>
+        <li>年龄原则上要求18周岁及以上，大学生及 VNF 会员优先</li>
+        <li>必要时候需要接受组织方的指挥完成提出的职责</li>
+        <li>岗位暂时空闲时可正常游玩参展，具体以后续排班表和现场负责人指挥为准</li>
+      </ul>
+      <h4>待遇与福利</h4>
+      <ul>
+        <li>午餐补贴 + 公共交通费用补贴（室外岗另有高温补贴）</li>
+        <li>免费提供统一工作痛衣 + 工牌</li>
+        <li>饮用水及零食补给</li>
+        <li>活动纪念品/周边一份</li>
+        <li>免费双日联票（工作半天自由游玩半天）</li>
+      </ul>
+      <h4>注意事项</h4>
+      <ul>
+        <li>录用后须按时参加岗前培训及线上会议</li>
+        <li>无故缺席将取消资格</li>
+        <li>工作期间严格遵守主办方规定</li>
+      </ul>
+      <div class="info-box">
+        报名信息须真实有效。主办方保留对本次招募活动的最终解释权。<br>
+        如有疑问请联系：阜文（QQ 1178526797）或咨询QQ群 1097885812
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" id="confirmCancelBtn">返回修改</button>
+      <button class="modal-btn modal-btn-confirm" id="confirmSubmitBtn">确认无误，提交报名</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal-card">
+    <div class="success-body">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24">
+          <path class="check-path" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <div class="success-title" id="successTitle">报名提交成功</div>
+      <div class="success-desc">你的 Staff 报名已成功提交，请耐心等待审核结果。</div>
+      <div class="success-desc" style="color:var(--fg-dim);font-size:13px;margin-top:8px;">
+        审核结果将通过系统通知告知，录用后将拉入工作群进行岗前培训。
+      </div>
+    </div>
+    <div class="success-footer">
+      <button class="modal-btn modal-btn-confirm" id="successReturnBtn" style="width:100%;max-width:280px;">返回活动列表</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== THEME TOGGLE（与主站 themePreference 同步） ========== */
+function toggleTheme() {
+  if (window.VNFTheme && typeof window.VNFTheme.toggle === 'function') {
+    window.VNFTheme.toggle();
+  }
+}
+function updateThemeIcon(theme) {
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  btn.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+}
+if (window.VNFTheme && typeof window.VNFTheme.subscribe === 'function') {
+  window.VNFTheme.subscribe(function(detail) {
+    updateThemeIcon(detail.theme);
+  });
+}
+</script>
+<script src="../../js/page-background.js?v=20260812-centralized-preferences"></script>
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- state ---------- */
+  var eventId = null;
+  var applicationId = null;
+  var isEditMode = false;
+  var eventData = null;
+  var clubCountry = '';
+  var currentMemberships = [];
+  var circuitBreakerActive = false;
+
+  /* ---------- DOM refs ---------- */
+  var loadingArea       = document.getElementById('loading-area');
+  var formWrapper       = document.getElementById('form-wrapper');
+  var pageTitle         = document.getElementById('page-title');
+  var eventNameField    = document.getElementById('event-name-field');
+  var cnNameInput       = document.getElementById('cn_name');
+  var qqNumberInput     = document.getElementById('qq_number');
+  var phoneNumberInput  = document.getElementById('phone_number');
+  var clubIdSelect      = document.getElementById('club_id');
+  var individualApplicantCheckbox = document.getElementById('is_individual_applicant');
+  var positionsGroup    = document.getElementById('positions-group');
+  var confirmSchedule   = document.getElementById('confirm_schedule');
+  var cosplayGroup      = document.getElementById('cosplay-group');
+  var selfIntroInput    = document.getElementById('self_intro');
+  var confirmInfo       = document.getElementById('confirm_info');
+  var errorMsg          = document.getElementById('error-msg');
+  var submitBtn         = document.getElementById('submit-btn');
+  var cbWarning         = document.getElementById('circuit-breaker-warning');
+  var staffForm         = document.getElementById('staff-form');
+
+  /* ---------- URL params ---------- */
+  var params = new URLSearchParams(window.location.search);
+  eventId = params.get('event_id');
+  applicationId = params.get('application_id') || params.get('app_id');
+  if(applicationId) isEditMode = true;
+
+  /* ---------- init ---------- */
+  if(!eventId){
+    showError('缺少活动 ID 参数');
+    hideLoading();
+    return;
+  }
+
+  init();
+
+  async function init(){
+    try{
+      /* check login */
+      var meRes = await fetch('../../api/auth.php?action=me',{credentials:'same-origin'});
+      var meData = await meRes.json();
+      if(!(meData.logged_in || meData.success)){
+        window.location.href = '../../login.html?redirect=' + encodeURIComponent(getLoginRedirectTarget());
+        return;
+      }
+      currentMemberships = normalizeMembershipRows(meData.memberships || []);
+
+      /* load events to find this event */
+      var evRes = await fetch('../../api/galonly.php?action=list_events',{credentials:'same-origin'});
+      var evData = await evRes.json();
+      if(!evData.success){
+        showError('无法加载活动信息');
+        hideLoading();
+        return;
+      }
+
+      var events = evData.events || [];
+      eventData = null;
+      for(var i=0;i<events.length;i++){
+        if(String(events[i].id) === String(eventId)){
+          eventData = events[i];
+          break;
+        }
+      }
+      if(!eventData){
+        showError('活动不存在');
+        hideLoading();
+        return;
+      }
+
+      eventNameField.textContent = eventData.title || eventData.name || ('活动 #' + eventId);
+
+      /* check if user already has application for this event (auto edit mode) */
+      if(!applicationId && eventData.user_staff_application_id){
+        applicationId = eventData.user_staff_application_id;
+        isEditMode = true;
+      }
+
+      /* circuit breaker check */
+      checkCircuitBreaker();
+
+      /* load clubs */
+      await loadClubs();
+
+      /* load existing application in edit mode */
+      if(isEditMode){
+        await loadExistingApplication();
+      }
+
+      hideLoading();
+    }catch(e){
+      showError('初始化失败：' + (e.message || e));
+      hideLoading();
+    }
+  }
+
+  /* ---------- load clubs ---------- */
+  async function loadClubs(){
+    var clubs = [];
+    try{
+      var cnRes = await fetch('../../api/clubs.php',{credentials:'same-origin'});
+      if(cnRes.ok){
+        var cnData = await cnRes.json();
+        clubs = clubs.concat(normalizeClubRows(cnData, 'china'));
+      }
+    }catch(e){}
+
+    try{
+      var jpRes = await fetch('../../api/clubs_japan.php',{credentials:'same-origin'});
+      if(jpRes.ok){
+        var jpData = await jpRes.json();
+        clubs = clubs.concat(normalizeClubRows(jpData, 'japan'));
+      }
+    }catch(e2){}
+
+    populateClubs(filterJoinedClubs(clubs));
+  }
+
+  function normalizeMembershipRows(rows){
+    if(!Array.isArray(rows)) return [];
+    return rows.filter(function(row){
+      return row && String(row.status || 'active') === 'active' && String(row.role || '') !== 'external';
+    }).map(function(row){
+      return {
+        club_id: parseInt(row.club_id, 10),
+        country: row.country || 'china'
+      };
+    }).filter(function(row){
+      return row.club_id > 0;
+    });
+  }
+
+  function membershipKey(country, id){
+    return (country || 'china') + ':' + parseInt(id, 10);
+  }
+
+  function filterJoinedClubs(clubs){
+    var joined = {};
+    currentMemberships.forEach(function(row){
+      joined[membershipKey(row.country, row.club_id)] = true;
+    });
+    return clubs.filter(function(club){
+      return joined[membershipKey(club.country || 'china', club.id)];
+    });
+  }
+
+  function normalizeClubRows(data, country){
+    if(!data || data.success === false) return [];
+    var rows = data.clubs || data.data || [];
+    if(!Array.isArray(rows)) return [];
+    return rows.map(function(club){
+      var copy = Object.assign({}, club);
+      copy.country = copy.country || country;
+      return copy;
+    });
+  }
+
+  function populateClubs(clubs){
+    /* clear existing options */
+    clubIdSelect.innerHTML = '';
+    var defaultOpt = document.createElement('option');
+    defaultOpt.value = '';
+    defaultOpt.textContent = '请选择社团';
+    clubIdSelect.appendChild(defaultOpt);
+
+    if(!clubs.length){
+      defaultOpt.textContent = '暂无已加入的同好会';
+      return;
+    }
+
+    for(var i=0;i<clubs.length;i++){
+      var opt = document.createElement('option');
+      var country = clubs[i].country || 'china';
+      opt.value = country + ':' + clubs[i].id;
+      opt.dataset.clubId = clubs[i].id;
+      opt.dataset.country = country;
+      var countryLabel = country === 'japan' ? '日本' : '中国';
+      opt.textContent = '[' + countryLabel + '] ' + (clubs[i].display_name || clubs[i].name || clubs[i].club_name || clubs[i].school || ('社团 #' + clubs[i].id));
+      clubIdSelect.appendChild(opt);
+    }
+    updateIndividualApplicantState();
+  }
+
+  function isIndividualApplicant(){
+    return !!(individualApplicantCheckbox && individualApplicantCheckbox.checked);
+  }
+
+  function updateIndividualApplicantState(){
+    if(!individualApplicantCheckbox) return;
+    if(isIndividualApplicant()){
+      clubIdSelect.value = '';
+      clubIdSelect.disabled = true;
+      clubIdSelect.required = false;
+    }else{
+      clubIdSelect.disabled = false;
+      clubIdSelect.required = true;
+    }
+  }
+
+  /* ---------- circuit breaker ---------- */
+  function checkCircuitBreaker(){
+    var reasons = [];
+
+    /* manual override */
+    if(eventData.staff_registration_open === 0 || eventData.staff_registration_open === '0'){
+      reasons.push('Staff 报名已被管理员关闭');
+    }
+
+    /* time circuit breaker */
+    if(eventData.staff_deadline){
+      var deadline = new Date(eventData.staff_deadline.replace(/-/g,'/'));
+      if(new Date() > deadline){
+        reasons.push('Staff 报名已于 ' + eventData.staff_deadline + ' 截止');
+      }
+    }
+
+    if(reasons.length > 0 && !isEditMode){
+      circuitBreakerActive = true;
+      var html = '';
+      for(var i=0;i<reasons.length;i++){
+        html += '<p>' + escapeHtml(reasons[i]) + '</p>';
+      }
+      cbWarning.innerHTML = html;
+      cbWarning.classList.add('visible');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Staff 申请已截止';
+    }
+  }
+
+  /* ---------- load existing application ---------- */
+  async function loadExistingApplication(){
+    try{
+      var url = '../../api/galonly.php?action=get_staff_application&';
+      if(applicationId){
+        url += 'application_id=' + encodeURIComponent(applicationId);
+      }else{
+        url += 'event_id=' + encodeURIComponent(eventId);
+      }
+      var res = await fetch(url,{credentials:'same-origin'});
+      var data = await res.json();
+      if(!data.success || !data.application) return;
+
+      var app = data.application;
+      isEditMode = true;
+
+      pageTitle.textContent = '编辑 Staff 申请';
+      submitBtn.textContent = '保存修改';
+
+      /* pre-fill fields - adapt to whatever the API returns */
+      cnNameInput.value = app.cn_name || app.nickname || '';
+      qqNumberInput.value = app.qq_number || app.qq || '';
+      phoneNumberInput.value = app.phone_number || app.phone || app.contact || '';
+
+      /* club */
+      if(app.club_country === 'none' || parseInt(app.club_id || 0, 10) <= 0){
+        individualApplicantCheckbox.checked = true;
+        updateIndividualApplicantState();
+      }else if(app.club_id){
+        clubIdSelect.value = (app.club_country || 'china') + ':' + app.club_id;
+      }
+
+      /* positions */
+      var positions = app.positions || app.applied_positions || [];
+      if(typeof positions === 'string'){
+        try{ positions = JSON.parse(positions); }catch(e){ positions = []; }
+      }
+      var posCheckboxes = positionsGroup.querySelectorAll('input[type="checkbox"]');
+      for(var i=0;i<posCheckboxes.length;i++){
+        posCheckboxes[i].checked = positions.indexOf(posCheckboxes[i].value) !== -1;
+      }
+
+      /* confirm schedule */
+      if(app.confirm_schedule === 1 || app.confirm_schedule === '1'){
+        confirmSchedule.checked = true;
+      }
+
+      /* cosplay */
+      var cosplayVal = app.is_cosplay;
+      if(cosplayVal !== undefined && cosplayVal !== null){
+        var radios = cosplayGroup.querySelectorAll('input[type="radio"]');
+        for(var i=0;i<radios.length;i++){
+          radios[i].checked = String(radios[i].value) === String(cosplayVal);
+        }
+      }
+
+      /* three day availability */
+      var threeDayCheckbox = document.getElementById('three_day_available');
+      if(threeDayCheckbox && (app.three_day_available === 1 || app.three_day_available === '1')){
+        threeDayCheckbox.checked = true;
+      }
+
+      /* self intro */
+      selfIntroInput.value = app.self_intro || '';
+
+      /* confirm info - always unchecked on load, user must re-confirm */
+      confirmInfo.checked = false;
+
+      updateSubmitState();
+    }catch(e){
+      /* silent - form still usable */
+    }
+  }
+
+  /* ---------- submit button enable/disable ---------- */
+  function updateSubmitState(){
+    if(circuitBreakerActive && !isEditMode){
+      submitBtn.disabled = true;
+      return;
+    }
+    submitBtn.disabled = !(confirmSchedule.checked && confirmInfo.checked);
+  }
+
+  confirmSchedule.addEventListener('change', updateSubmitState);
+  confirmInfo.addEventListener('change', updateSubmitState);
+  if(individualApplicantCheckbox){
+    individualApplicantCheckbox.addEventListener('change', updateIndividualApplicantState);
+  }
+
+  /* ---------- form submission ---------- */
+  var pendingPayload = null;
+
+  staffForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    errorMsg.classList.remove('visible');
+
+    if(circuitBreakerActive && !isEditMode){
+      showError('Staff 申请已关闭，无法提交');
+      return;
+    }
+
+    /* validation: cn_name */
+    var cnName = cnNameInput.value.trim();
+    if(!cnName){
+      showError('请填写 CN（昵称）');
+      cnNameInput.focus();
+      return;
+    }
+
+    /* validation: qq_number (5-12 digits) */
+    var qqNumber = qqNumberInput.value.trim();
+    if(!qqNumber || !/^\d{5,12}$/.test(qqNumber)){
+      showError('QQ号应为5-12位数字');
+      qqNumberInput.focus();
+      return;
+    }
+
+    /* validation: phone_number (11 digits starting with 1) */
+    var phoneNumber = phoneNumberInput.value.trim();
+    if(!phoneNumber || !/^1\d{10}$/.test(phoneNumber)){
+      showError('手机号应为11位，且以1开头');
+      phoneNumberInput.focus();
+      return;
+    }
+
+    /* validation: club_id */
+    var selectedClub = getSelectedClub();
+    if(!selectedClub && !isIndividualApplicant()){
+      showError('请选择所属高校社团');
+      clubIdSelect.focus();
+      return;
+    }
+    if(isIndividualApplicant()){
+      selectedClub = { id: 0, country: 'none' };
+    }
+
+    /* validation: positions (at least 1) */
+    var positions = [];
+    var posCheckboxes = positionsGroup.querySelectorAll('input[type="checkbox"]');
+    for(var i=0;i<posCheckboxes.length;i++){
+      if(posCheckboxes[i].checked) positions.push(posCheckboxes[i].value);
+    }
+    if(positions.length === 0){
+      showError('请至少选择一个报名岗位');
+      return;
+    }
+
+    /* validation: confirm_schedule */
+    if(!confirmSchedule.checked){
+      showError('请确认服务时间');
+      return;
+    }
+
+    /* validation: is_cosplay */
+    var cosplayRadios = cosplayGroup.querySelectorAll('input[type="radio"]');
+    var isCosplay = null;
+    for(var i=0;i<cosplayRadios.length;i++){
+      if(cosplayRadios[i].checked) isCosplay = parseInt(cosplayRadios[i].value, 10);
+    }
+    if(isCosplay === null){
+      showError('请选择活动期间是否Cosplay');
+      return;
+    }
+
+    /* validation: confirm_info */
+    if(!confirmInfo.checked){
+      showError('请确认信息真实有效');
+      return;
+    }
+
+    /* build payload */
+    pendingPayload = {
+      event_id: parseInt(eventId, 10),
+      cn_name: cnName,
+      qq_number: qqNumber,
+      phone_number: phoneNumber,
+      club_id: selectedClub.id,
+      club_country: selectedClub.country,
+      positions: positions,
+      confirm_schedule: 1,
+      is_cosplay: isCosplay,
+      three_day_available: document.getElementById('three_day_available').checked ? 1 : 0,
+      self_intro: selfIntroInput.value.trim()
+    };
+
+    if(isEditMode){
+      pendingPayload.application_id = parseInt(applicationId, 10);
+    }
+
+    /* Show confirm modal instead of submitting directly */
+    document.getElementById('confirmModal').classList.add('active');
+  });
+
+  /* ---------- Confirm modal handlers ---------- */
+  document.getElementById('confirmCancelBtn').addEventListener('click', function(){
+    document.getElementById('confirmModal').classList.remove('active');
+    pendingPayload = null;
+  });
+
+  document.getElementById('confirmSubmitBtn').addEventListener('click', function(){
+    document.getElementById('confirmModal').classList.remove('active');
+    doActualSubmit();
+  });
+
+  /* Close confirm modal on overlay click */
+  document.getElementById('confirmModal').addEventListener('click', function(e){
+    if(e.target === this){
+      this.classList.remove('active');
+      pendingPayload = null;
+    }
+  });
+
+  /* ---------- Actual submission ---------- */
+  function doActualSubmit(){
+    if(!pendingPayload) return;
+
+    var action = isEditMode ? 'update_staff' : 'submit_staff';
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '提交中...';
+
+    fetch('../../api/galonly.php?action=' + action, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(pendingPayload),
+      credentials:'same-origin'
+    })
+    .then(readJsonResponse)
+    .then(function(data){
+      if(data.success){
+        /* Show success modal instead of redirecting */
+        document.getElementById('successTitle').textContent = isEditMode ? '修改保存成功' : '报名提交成功';
+        document.getElementById('successModal').classList.add('active');
+      }else{
+        showError(data.error || data.message || '提交失败，请重试');
+        updateSubmitState();
+        submitBtn.textContent = isEditMode ? '保存修改' : '提交报名';
+      }
+    })
+    .catch(function(e){
+      showError(e.message || '网络错误，请检查网络连接后重试');
+      updateSubmitState();
+      submitBtn.textContent = isEditMode ? '保存修改' : '提交报名';
+    });
+  }
+
+  /* ---------- Success modal handler ---------- */
+  document.getElementById('successReturnBtn').addEventListener('click', function(){
+    document.getElementById('successModal').classList.remove('active');
+    window.location.href = '../galgameonly_list.html';
+  });
+
+  /* ---------- helpers ---------- */
+  function showError(msg){
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('visible');
+    errorMsg.classList.add('error-shake');
+    setTimeout(function() { errorMsg.classList.remove('error-shake'); }, 500);
+  }
+
+  function readJsonResponse(response){
+    return response.text().then(function(text){
+      var data = null;
+      if(text){
+        try{
+          data = JSON.parse(text);
+        }catch(e){
+          throw new Error('服务器返回了非 JSON 响应（HTTP ' + response.status + '），请检查 PHP 错误日志或迁移是否已执行');
+        }
+      }
+      if(!response.ok){
+        throw new Error((data && (data.error || data.message)) || ('请求失败（HTTP ' + response.status + '）'));
+      }
+      return data || {};
+    });
+  }
+
+  function hideLoading(){
+    loadingArea.style.display = 'none';
+    formWrapper.style.display = 'block';
+    var groups = document.querySelectorAll('.form-group');
+    for (var g = 0; g < groups.length; g++) {
+      groups[g].style.animationDelay = (0.25 + g * 0.06) + 's';
+    }
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function getLoginRedirectTarget(){
+    return 'Galgame_events/shanghai/galonly_staff_submit.html' + window.location.search;
+  }
+
+  function getSelectedClub(){
+    var opt = clubIdSelect.options[clubIdSelect.selectedIndex];
+    if(!opt || !opt.value) return null;
+    var id = parseInt(opt.dataset.clubId || opt.value.split(':').pop(), 10);
+    if(!id) return null;
+    return {
+      id: id,
+      country: opt.dataset.country || opt.value.split(':')[0] || clubCountry || 'china'
+    };
+  }
+
+})();
+</script>
+</body>
+</html>

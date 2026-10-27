@@ -3,7 +3,6 @@ package httpapi
 import (
 	"bytes"
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -136,9 +135,6 @@ func (s *Server) auditActor(r *http.Request) *user {
 	userID, role := s.optionalSessionUser(r)
 	if userID != nil {
 		return &user{ID: *userID, Role: role}
-	}
-	if s.cfg.LegacyAuthEnabled && s.cfg.AdminToken != "" && subtle.ConstantTimeCompare([]byte(strings.TrimSpace(r.Header.Get("X-Admin-Token"))), []byte(s.cfg.AdminToken)) == 1 {
-		return &user{Role: "super_admin"}
 	}
 	return nil
 }

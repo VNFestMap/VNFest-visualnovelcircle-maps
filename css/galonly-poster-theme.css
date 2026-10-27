@@ -45,7 +45,7 @@
   --hero-gradient-start: oklch(14% .03 275);
   --hero-gradient-mid: oklch(18% .035 275);
   --hero-gradient-end: oklch(16% .032 275);
-  --hero-image: url('../Galgame_events/assets/galonly-poster-bg.jpg');
+  --hero-image: url('../Galgame_events/shared/assets/galonly-poster-bg.jpg');
   --hero-decor: oklch(72% .05 290 / .12);
   --grid-line: oklch(72% .04 290 / .08);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, .16);
@@ -92,7 +92,7 @@
   --hero-gradient-start: oklch(94% .04 235);
   --hero-gradient-mid: oklch(92% .03 240);
   --hero-gradient-end: oklch(97% .015 92);
-  --hero-image: url('../Galgame_events/assets/galonly-poster-bg.jpg');
+  --hero-image: url('../Galgame_events/shared/assets/galonly-poster-bg.jpg');
   --hero-decor: oklch(58% .12 235 / .12);
   --grid-line: oklch(58% .08 235 / .08);
   --shadow-sm: 0 2px 8px rgba(55, 44, 32, .08);

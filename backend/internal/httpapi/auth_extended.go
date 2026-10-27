@@ -96,8 +96,11 @@ func (s *Server) authSendCode(w http.ResponseWriter, r *http.Request, input auth
 		writeJSON(w, map[string]any{"success": false, "message": "邮箱格式不正确"})
 		return
 	}
-	if s.db == nil || s.files == nil || s.mailer == nil {
+	if s.db == nil || s.mailer == nil {
 		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "邮件服务不可用"})
+		return
+	}
+	if !s.codeSendResponse(w, r, input.Email) {
 		return
 	}
 	var userID int64
@@ -117,28 +120,13 @@ func (s *Server) authSendCode(w http.ResponseWriter, r *http.Request, input auth
 		writeJSON(w, map[string]any{"success": true, "message": "如果该邮箱已绑定账号，验证码将发送至 " + maskEmail(input.Email)})
 		return
 	}
-	code, err := sixDigitCode()
-	if err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "验证码生成失败"})
-		return
-	}
-	rows := []authCodeRow{}
-	name := "register_email_codes.json"
+	purpose := "register"
 	if reset {
-		name = "password_reset_codes.json"
+		purpose = "reset"
 	}
-	_ = s.files.ReadJSON(r.Context(), name, &rows)
-	now := time.Now().Unix()
-	filtered := rows[:0]
-	for _, row := range rows {
-		if row.Email != input.Email || row.Used || row.ExpiresAt <= now {
-			filtered = append(filtered, row)
-		}
-	}
-	row := authCodeRow{Email: input.Email, UserID: userID, Code: code, ExpiresAt: now + 300, CreatedAt: now}
-	rows = append(filtered, row)
-	if err := s.files.WriteJSONAtomic(r.Context(), name, rows); err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "验证码保存失败"})
+	code, codeID, err := s.issueSecurityCode(r, purpose, input.Email, userID)
+	if err != nil {
+		writeJSONStatus(w, 503, map[string]any{"success": false, "message": "验证码保存失败"})
 		return
 	}
 	subject := "邮箱验证码"
@@ -147,6 +135,7 @@ func (s *Server) authSendCode(w http.ResponseWriter, r *http.Request, input auth
 	}
 	body := fmt.Sprintf("您的%s是：%s\n\n验证码 5 分钟内有效。如果不是您本人操作，请忽略此邮件。\n", subject, code)
 	if err := s.mailer.Send(r.Context(), mail.Message{To: input.Email, Subject: subject, Body: body}); err != nil {
+		s.revokeSecurityCode(r, codeID)
 		writeJSON(w, map[string]any{"success": false, "message": "验证码发送失败，请稍后再试"})
 		return
 	}
@@ -193,20 +182,6 @@ func (s *Server) authRegister(w http.ResponseWriter, r *http.Request, input auth
 		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "注册服务暂时不可用"})
 		return
 	}
-	var rows []authCodeRow
-	_ = s.files.ReadJSON(r.Context(), "register_email_codes.json", &rows)
-	idx := -1
-	now := time.Now().Unix()
-	for i := range rows {
-		if rows[i].Email == input.Email && rows[i].Code == input.Code && !rows[i].Used && rows[i].ExpiresAt > now {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
-		return
-	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 12)
 	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "注册失败，请稍后再试"})
@@ -215,6 +190,11 @@ func (s *Server) authRegister(w http.ResponseWriter, r *http.Request, input auth
 	tx, err := s.db.BeginTx(r.Context(), nil)
 	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "注册失败，请稍后再试"})
+		return
+	}
+	defer tx.Rollback()
+	if !s.consumeSecurityCode(r, tx, "register", input.Email, input.Code, 0) {
+		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
 		return
 	}
 	result, err := tx.ExecContext(r.Context(), `INSERT INTO users (username, nickname, password_hash, role, status, avatar_url, email, email_verified_at, credentials_completed_at, created_at, updated_at, last_login_at) VALUES (?, ?, ?, 'visitor', 'active', '', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, input.Username, input.Username, string(hash), input.Email)
@@ -229,8 +209,7 @@ func (s *Server) authRegister(w http.ResponseWriter, r *http.Request, input auth
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "注册失败，请稍后再试"})
 		return
 	}
-	rows[idx].Used, rows[idx].UsedAt = true, now
-	if err := tx.Commit(); err != nil || s.files.WriteJSONAtomic(r.Context(), "register_email_codes.json", rows) != nil {
+	if err := tx.Commit(); err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "注册失败，请稍后再试"})
 		return
 	}
@@ -256,40 +235,37 @@ func (s *Server) authResetPassword(w http.ResponseWriter, r *http.Request, input
 		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
 		return
 	}
-	var rows []authCodeRow
-	_ = s.files.ReadJSON(r.Context(), "password_reset_codes.json", &rows)
-	idx := -1
-	now := time.Now().Unix()
-	for i := range rows {
-		if rows[i].UserID == userID && rows[i].Email == input.Email && rows[i].Code == input.Code && !rows[i].Used && rows[i].ExpiresAt > now {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
-		return
-	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), 12)
 	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "密码重置失败"})
 		return
 	}
-	if _, err = s.db.ExecContext(r.Context(), "UPDATE users SET password_hash = ?, credentials_completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", string(hash), userID); err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "密码重置失败"})
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		writeJSONStatus(w, 503, map[string]any{"success": false})
 		return
 	}
-	if store, ok := s.sessions.Store.(*sessionstore.Store); ok {
-		if err = store.InvalidateUserSessions(r.Context(), userID); err != nil {
-			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "密码重置失败"})
-			return
-		}
-	} else if _, err = s.db.ExecContext(r.Context(), "UPDATE sessions SET is_valid = 0 WHERE user_id = ?", userID); err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "密码重置失败"})
+	defer tx.Rollback()
+	if !s.consumeSecurityCode(r, tx, "reset", input.Email, input.Code, userID) {
+		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
 		return
 	}
-	rows[idx].Used, rows[idx].UsedAt = true, now
-	_ = s.files.WriteJSONAtomic(r.Context(), "password_reset_codes.json", rows)
+	if _, err = tx.ExecContext(r.Context(), "UPDATE users SET password_hash=?,credentials_completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?", string(hash), userID); err != nil {
+		writeJSONStatus(w, 500, map[string]any{"success": false})
+		return
+	}
+	if _, err = tx.ExecContext(r.Context(), "UPDATE sessions SET is_valid=0 WHERE user_id=?", userID); err != nil {
+		writeJSONStatus(w, 500, map[string]any{"success": false})
+		return
+	}
+	if _, err = tx.ExecContext(r.Context(), "UPDATE vnfest_session_bridge SET is_valid=0,updated_at=CURRENT_TIMESTAMP WHERE user_id=?", userID); err != nil && !strings.Contains(strings.ToLower(err.Error()), "no such table") {
+		writeJSONStatus(w, 500, map[string]any{"success": false})
+		return
+	}
+	if err = tx.Commit(); err != nil {
+		writeJSONStatus(w, 500, map[string]any{"success": false})
+		return
+	}
 	writeJSON(w, map[string]any{"success": true, "message": "密码已重置，请使用新密码登录"})
 }
 
@@ -358,20 +334,16 @@ func (s *Server) authSendBindCode(w http.ResponseWriter, r *http.Request, input 
 		writeJSON(w, map[string]any{"success": false, "message": "该邮箱已被其他账号绑定"})
 		return
 	}
-	code, err := sixDigitCode()
+	if !s.codeSendResponse(w, r, input.Email) {
+		return
+	}
+	code, codeID, err := s.issueSecurityCode(r, "bind", input.Email, userID)
 	if err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "验证码生成失败"})
-		return
-	}
-	if _, err := s.db.ExecContext(r.Context(), "UPDATE email_verifications SET used = 1 WHERE user_id = ? AND email = ? AND used = 0", userID, input.Email); err != nil {
-		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "邮箱验证服务不可用"})
-		return
-	}
-	if _, err := s.db.ExecContext(r.Context(), "INSERT INTO email_verifications (user_id, email, code, expires_at) VALUES (?, ?, ?, ?)", userID, input.Email, code, time.Now().Add(5*time.Minute)); err != nil {
-		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "邮箱验证服务不可用"})
+		writeJSONStatus(w, 503, map[string]any{"success": false, "message": "验证码服务不可用"})
 		return
 	}
 	if err := s.mailer.Send(r.Context(), mail.Message{To: input.Email, Subject: "邮箱验证码", Body: "您的验证码是：" + code + "\n\n验证码 5 分钟内有效。如果不是您本人操作，请忽略此邮件。\n"}); err != nil {
+		s.revokeSecurityCode(r, codeID)
 		writeJSON(w, map[string]any{"success": false, "message": "验证码发送失败，请稍后再试"})
 		return
 	}
@@ -394,18 +366,13 @@ func (s *Server) authBindEmail(w http.ResponseWriter, r *http.Request, input aut
 		return
 	}
 	defer tx.Rollback()
-	var verificationID int64
-	if err = tx.QueryRowContext(r.Context(), "SELECT id FROM email_verifications WHERE user_id = ? AND email = ? AND code = ? AND used = 0 AND expires_at > CURRENT_TIMESTAMP LIMIT 1", userID, input.Email, input.Code).Scan(&verificationID); err != nil {
+	if !s.consumeSecurityCode(r, tx, "bind", input.Email, input.Code, userID) {
 		writeJSON(w, map[string]any{"success": false, "message": "验证码无效或已过期"})
 		return
 	}
 	var other int64
 	if err = tx.QueryRowContext(r.Context(), "SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1", input.Email, userID).Scan(&other); err == nil {
 		writeJSON(w, map[string]any{"success": false, "message": "该邮箱已被其他账号绑定"})
-		return
-	}
-	if _, err = tx.ExecContext(r.Context(), "UPDATE email_verifications SET used = 1 WHERE id = ?", verificationID); err != nil {
-		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "邮箱绑定失败"})
 		return
 	}
 	if _, err = tx.ExecContext(r.Context(), "UPDATE users SET email = ?, email_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?", input.Email, userID); err != nil {

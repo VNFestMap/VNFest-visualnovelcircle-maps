@@ -7,11 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"html"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -93,10 +93,6 @@ func (s *Server) wiki(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"success": false, "message": "至少需要一个章节，且章节需要包含正文或内容块"})
 			return
 		}
-		if err := s.writeWikiContent(clubKey, content); err != nil {
-			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "保存内容失败，请联系管理员检查 wiki/content 权限"})
-			return
-		}
 		if err := s.writeWikiPageAndIndex(clubKey, content, s.wikiClub(r.Context(), match[1], clubID)); err != nil {
 			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "保存内容失败，请稍后重试"})
 			return
@@ -162,28 +158,23 @@ func (s *Server) writeWikiContent(clubKey string, content map[string]any) error 
 }
 
 func (s *Server) writeWikiPageAndIndex(clubKey string, content, club map[string]any) error {
-	zh, err := renderWikiPage(content, club, "zh")
+	zh, err := renderWikiPage(s.cfg.Root, content, club, "zh")
 	if err != nil {
+		return err
+	}
+	jaHTML, err := renderWikiPage(s.cfg.Root, content, club, "ja")
+	if err != nil {
+		return err
+	}
+	// Complete both renderings before updating the stored article.
+	if err := s.writeWikiContent(clubKey, content); err != nil {
 		return err
 	}
 	if err := writeWikiAtomic(filepath.Join(s.cfg.Root, "wiki", "pages", clubKey+".html"), []byte(zh)); err != nil {
 		return err
 	}
-	if ja, ok := content["i18n"].(map[string]any); ok {
-		if localized, ok := ja["ja"].(map[string]any); ok && stringValue(localized["title"]) != "" {
-			merged := map[string]any{}
-			for key, value := range content {
-				merged[key] = value
-			}
-			merged["title"], merged["summary"], merged["sections"] = localized["title"], localized["summary"], localized["sections"]
-			jaHTML, renderErr := renderWikiPage(merged, club, "ja")
-			if renderErr != nil {
-				return renderErr
-			}
-			if err := writeWikiAtomic(filepath.Join(s.cfg.Root, "wiki", "pages", clubKey+"-ja.html"), []byte(jaHTML)); err != nil {
-				return err
-			}
-		}
+	if err := writeWikiAtomic(filepath.Join(s.cfg.Root, "wiki", "pages", clubKey+"-ja.html"), []byte(jaHTML)); err != nil {
+		return err
 	}
 	indexPath := filepath.Join(s.cfg.Root, "wiki", "index.json")
 	manifest, exists := readWikiMap(indexPath)
@@ -191,6 +182,11 @@ func (s *Server) writeWikiPageAndIndex(clubKey string, content, club map[string]
 		manifest = map[string]any{}
 	}
 	manifest[clubKey] = map[string]any{"title": stringValue(content["title"]), "url": "./pages/" + clubKey + ".html", "country": stringValue(club["country"]), "country_label": map[string]string{"china": "中国", "japan": "日本"}[stringValue(club["country"])], "school": firstNonEmpty(stringValue(club["school"]), stringValue(club["name"])), "club_name": stringValue(club["display_name"]), "region": firstNonEmpty(stringValue(club["province"]), stringValue(club["prefecture"])), "summary": stringValue(content["summary"]), "updated_at": stringValue(content["updated_at"]), "i18n": map[string]any{}}
+	if all, ok := content["i18n"].(map[string]any); ok {
+		if ja, ok := all["ja"].(map[string]any); ok && stringValue(ja["title"]) != "" {
+			manifest[clubKey].(map[string]any)["i18n"] = map[string]any{"ja": map[string]any{"title": ja["title"], "summary": ja["summary"], "url": "./pages/" + clubKey + "-ja.html"}}
+		}
+	}
 	encoded, err := json.MarshalIndent(manifest, "", "    ")
 	if err != nil {
 		return err
@@ -275,7 +271,28 @@ func normalizeWikiContent(input map[string]any, clubKey string, club map[string]
 	}
 	if localized, ok := input["i18n"].(map[string]any); ok {
 		if ja, ok := localized["ja"].(map[string]any); ok {
-			result["i18n"] = map[string]any{"ja": map[string]any{"title": cleanProjectText(ja["title"], 300), "summary": cleanProjectText(ja["summary"], 3000), "sections": ja["sections"]}}
+			jaInput := map[string]any{}
+			for key, value := range ja {
+				if key != "i18n" {
+					jaInput[key] = value
+				}
+			}
+			normalized := normalizeWikiContent(jaInput, clubKey, club)
+			localizedContent := map[string]any{}
+			if normalized != nil {
+				for _, key := range []string{"title", "summary", "infobox", "sections", "images", "avatar", "references"} {
+					if _, exists := ja[key]; exists {
+						localizedContent[key] = normalized[key]
+					}
+				}
+				// Empty translations must keep falling back to the original language.
+				localizedContent["title"] = cleanProjectText(ja["title"], 300)
+				localizedContent["summary"] = cleanProjectText(ja["summary"], 3000)
+				if fields, ok := ja["infobox"].(map[string]any); ok && len(fields) == 0 {
+					localizedContent["infobox"] = map[string]any{}
+				}
+			}
+			result["i18n"] = map[string]any{"ja": localizedContent}
 		}
 	}
 	return result
@@ -322,71 +339,27 @@ func safeWikiHref(value string) string {
 	return value
 }
 
-func renderWikiPage(content, club map[string]any, lang string) (string, error) {
-	localized := content
-	if lang == "ja" {
-		if all, ok := content["i18n"].(map[string]any); ok {
-			if ja, ok := all["ja"].(map[string]any); ok {
-				localized = map[string]any{}
-				for key, value := range content {
-					localized[key] = value
-				}
-				for _, key := range []string{"title", "summary", "sections"} {
-					if value, exists := ja[key]; exists {
-						localized[key] = value
-					}
-				}
-			}
-		}
+// Render through the same module as editor preview and the static generator.
+// Input is sent over stdin; no content or path is interpreted by a shell.
+func renderWikiPage(root string, content, club map[string]any, lang string) (string, error) {
+	input, err := json.Marshal(map[string]any{"content": content, "club": club, "lang": lang})
+	if err != nil {
+		return "", err
 	}
-	title := html.EscapeString(stringValue(localized["title"]))
-	var body strings.Builder
-	body.WriteString("<!doctype html><html lang=\"")
-	if lang == "ja" {
-		body.WriteString("ja")
-	} else {
-		body.WriteString("zh-CN")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", filepath.Join(root, "scripts", "render-wiki-page.mjs"))
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("wiki renderer failed: %w: %.500s", err, stderr.String())
 	}
-	body.WriteString("\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
-	body.WriteString(title)
-	body.WriteString(" - 同好会维基</title><link rel=\"stylesheet\" href=\"../wiki.css\"></head><body><header class=\"wiki-header\"><a href=\"../../index.html\">Galgame 同好会地图</a><a href=\"../index.html\">VNFest WIKI</a></header><main class=\"wiki-page wiki-reading-page\"><article class=\"wiki-article\"><header><h1>")
-	body.WriteString(title)
-	body.WriteString("</h1></header><p class=\"wiki-summary\">")
-	body.WriteString(wikiFormatText(stringValue(localized["summary"])))
-	body.WriteString("</p>")
-	for _, raw := range anySlice(localized["sections"]) {
-		section, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-		level := 2
-		if integerValue(section["level"]) == 3 {
-			level = 3
-		}
-		body.WriteString(fmt.Sprintf("<section class=\"wiki-section\"><h%d>%s</h%d>", level, html.EscapeString(stringValue(section["heading"])), level))
-		for _, rawBlock := range anySlice(section["blocks"]) {
-			block, ok := rawBlock.(map[string]any)
-			if !ok {
-				continue
-			}
-			switch stringValue(block["type"]) {
-			case "paragraph":
-				body.WriteString("<p>" + wikiFormatText(stringValue(block["text"])) + "</p>")
-			case "image":
-				imageURL := html.EscapeString(safeWikiHref(stringValue(block["url"])))
-				body.WriteString("<figure><img loading=\"lazy\" src=\"" + imageURL + "\" alt=\"" + html.EscapeString(stringValue(block["alt"])) + "\"><figcaption>" + wikiFormatText(stringValue(block["caption"])) + "</figcaption></figure>")
-			}
-		}
-		body.WriteString("</section>")
+	if !bytes.Contains(output, []byte(`data-wiki-article="true"`)) {
+		return "", fmt.Errorf("wiki renderer returned incomplete HTML")
 	}
-	body.WriteString("<footer>最后更新：" + html.EscapeString(stringValue(content["updated_at"])) + "</footer></article></main></body></html>")
-	return body.String(), nil
-}
-
-func wikiFormatText(value string) string {
-	value = html.EscapeString(strings.ReplaceAll(value, "\r\n", "\n"))
-	value = strings.ReplaceAll(value, "\n", "<br>")
-	return value
+	return string(output), nil
 }
 
 func readWikiMap(path string) (map[string]any, bool) {

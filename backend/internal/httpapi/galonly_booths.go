@@ -364,12 +364,7 @@ func (s *Server) requireBoothAdmin(w http.ResponseWriter, r *http.Request) (*use
 	return admin, true
 }
 
-func requireBoothSameOrigin(r *http.Request) bool {
-	if strings.TrimSpace(r.Header.Get("Origin")) == "" && strings.TrimSpace(r.Referer()) == "" {
-		return true
-	}
-	return sameOrigin(r)
-}
+func requireBoothSameOrigin(r *http.Request) bool { return sameOrigin(r) }
 
 func (s *Server) galonlyBoothEventID(ctx context.Context, eventCode string) (int64, error) {
 	_, eventID, err := s.galonlyMapEvent(ctx, eventCode)

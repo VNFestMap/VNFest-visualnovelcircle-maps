@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://www.map.vnfest.top"><img alt="Website" src="https://img.shields.io/badge/🌐_在线访问-map.vnfest.top-2ecc71?style=flat-square"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.4.0-2ecc71?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.5.0-2ecc71?style=flat-square">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26-00ADD8?style=flat-square&logo=go&logoColor=white">
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7.x-646cff?style=flat-square&logo=vite&logoColor=white">
@@ -35,6 +35,10 @@
 在线访问：[https://www.map.vnfest.top](https://www.map.vnfest.top)
 
 访客无需注册即可浏览地图、同好会信息、Wiki 和公开活动。需要发布内容、加入同好会、发送私信或执行管理操作时，再使用对应账号登录。
+
+## v2.5.0 更新日志
+
+本版整理 2026-10-03 至 2026-10-25 已交付到线上项目的更新，包括同好会考核与徽章、GalOnly 活动目录、反馈和隐私保护、联名信、Wiki 编辑器、公告显示及同好会提交页。未发布的列表模式和年度同好会投票平台迭代不计入本版。详细内容见 [2.5.0 更新日志](RELEASE_NOTES_2.5.0.md)。GitHub 源码归档、网站静态文件交付和生产业务验收分别记录；本日志不表示执行了新的数据库迁移或全站部署。
 
 ## v2.4.0 更新日志
 

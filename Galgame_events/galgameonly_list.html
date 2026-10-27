@@ -273,6 +273,12 @@ a{color:var(--accent);text-decoration:none}
 }
 .apply-row-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .apply-row-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.local-preview{margin-top:16px;padding:14px 16px;border:1px dashed var(--border);border-radius:var(--radius-md);background:var(--accent-ghost)}
+.local-preview[hidden]{display:none}
+.local-preview-heading{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--fg-soft);font-size:13px}
+.local-preview-heading span{color:var(--fg-dim);font-size:12px}
+.local-preview-links{display:flex;flex-wrap:wrap;gap:8px}
+.local-preview-links .btn{min-height:36px}
 
 /* ============================================================
    Status badges — pill-shaped with semantic oklch colors
@@ -867,7 +873,7 @@ html,
     <span class="site-title">GalOnly</span>
   </div>
   <nav class="header-nav" role="navigation" aria-label="主导航">
-    <a href="Beijing_Galonly_showcase.html">活动展示</a>
+    <a href="beijing/Beijing_Galonly_showcase.html">活动展示</a>
     <a href="galgameonly_list.html" class="active" aria-current="page">活动列表</a>
     <a href="../index.html?guest=1">地图主页</a>
     <a href="../admin/Galonly_audit.html" id="auditNavLink" style="display:none">审核活动</a>
@@ -888,6 +894,26 @@ html,
       <p>正在加载活动列表...</p>
     </div>
   </div>
+  <article class="event-card visible" id="wuhanPreview" aria-label="武汉 Galgame Only 预告">
+    <h2 class="event-name">武汉 Galgame Only</h2>
+    <div class="event-meta"><span>2027 年 1 月 1 日</span><span>武汉欧亚国际会展酒店</span></div>
+    <p class="event-desc">湖北省武汉市金银湖路 20 号。高校摊位与 Staff 通道正在筹备中，报名安排及具体须知后续公布。</p>
+    <div class="event-footer"><div class="apply-section">
+      <div class="apply-row"><div class="apply-row-left"><span class="apply-type-label">摊位</span><span class="status-badge status-pending">筹备中</span></div><div class="apply-row-right"><span class="btn btn-disabled">暂未开放报名</span></div></div>
+      <div class="apply-divider" role="separator"></div>
+      <div class="apply-row"><div class="apply-row-left"><span class="apply-type-label">Staff</span><span class="status-badge status-pending">筹备中</span></div><div class="apply-row-right"><span class="btn btn-disabled">暂未开放报名</span></div></div>
+    </div></div>
+    <aside class="local-preview" id="wuhanLocalPreviewLinks" hidden aria-label="武汉 GalOnly 本地页面预览">
+      <div class="local-preview-heading"><strong>页面交互预览</strong><span>本机测试数据，不会开放真实报名</span></div>
+      <div class="local-preview-links">
+        <a class="btn btn-apply" href="/__preview/login?role=register">填写摊位报名</a>
+        <a class="btn btn-edit" href="/__preview/login">摊位中控面板</a>
+        <a class="btn btn-edit" href="/Wuhan_Galonly_material.html?application_id=1&amp;event_id=1&amp;material_key=tickets">填写社团票名单</a>
+        <a class="btn btn-edit" href="/__preview/login?role=reviewer">材料审核工作区</a>
+        <a class="btn btn-edit" href="/__preview/login?role=admin">活动与材料设置</a>
+      </div>
+    </aside>
+  </article>
 </main>
 
 <!-- FOOTER -->
@@ -907,6 +933,9 @@ html,
 
   /* ========== INIT ========== */
   document.addEventListener('DOMContentLoaded', function() {
+    var localPreview = document.getElementById('wuhanLocalPreviewLinks');
+    var isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (localPreview && isLocalHost) localPreview.hidden = false;
     checkLogin().then(function() {
       if (isAuditor) {
         var nav = document.getElementById('auditNavLink');
@@ -963,6 +992,8 @@ html,
       html += buildEventCard(events[i]);
     }
     container.innerHTML = html;
+    var preview = document.getElementById('wuhanPreview');
+    if (preview) preview.hidden = events.some(function(ev) { return String(ev.event_code || '').toLowerCase() === 'wuhan'; });
     /* stagger reveal */
     var cards = container.querySelectorAll('.event-card');
     cards.forEach(function(card, idx) {
@@ -974,6 +1005,7 @@ html,
   function buildEventCard(ev) {
     var loggedIn = !!currentUser;
     var staffOnly = ev.staff_only === 1 || ev.staff_only === '1' || ev.staff_only === true;
+    var isWuhanEvent = String(ev.event_code || '').toLowerCase() === 'wuhan';
 
     /* meta */
     var isPlaceholderDate = staffOnly && String(ev.date || '').slice(0, 10) === '2026-09-19';
@@ -1022,8 +1054,22 @@ html,
           + '</div>'
         + '</div>'
       + '</div>'
+      + (isWuhanEvent && (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? buildWuhanPreviewLinks() : '')
     + '</article>';
     return card;
+  }
+
+  function buildWuhanPreviewLinks() {
+    return '<aside class="local-preview" aria-label="武汉 GalOnly 本地页面预览">'
+      + '<div class="local-preview-heading"><strong>页面交互预览</strong><span>本机测试数据，不会开放真实报名</span></div>'
+      + '<div class="local-preview-links">'
+        + '<a class="btn btn-apply" href="/__preview/login?role=register">填写摊位报名</a>'
+        + '<a class="btn btn-edit" href="/__preview/login">摊位中控面板</a>'
+        + '<a class="btn btn-edit" href="/Wuhan_Galonly_material.html?application_id=1&event_id=1&material_key=tickets">填写社团票名单</a>'
+        + '<a class="btn btn-edit" href="/__preview/login?role=reviewer">材料审核工作区</a>'
+        + '<a class="btn btn-edit" href="/__preview/login?role=admin">活动与材料设置</a>'
+      + '</div>'
+    + '</aside>';
   }
 
   /* ========== BOOTH STATUS BADGE ========== */
@@ -1044,6 +1090,7 @@ html,
       case 'rejected':         return '<span class="status-badge status-rejected">已驳回</span>';
       case 'phase2_pending':   return '<span class="status-badge status-pending">制品审核中</span>';
       case 'phase2_revision':  return '<span class="status-badge status-revision">打回修改</span>';
+      case 'registered':       return '<span class="status-badge status-pending">报名已登记 · 材料待审</span>';
       case 'confirmed':        return '<span class="status-badge status-approved">正式摊主</span>';
       case 'shared':           return '<span class="status-badge staff-pooled">拼摊</span>';
       default:                 return '<span class="status-badge status-none">未申请</span>';
@@ -1060,27 +1107,39 @@ html,
     var maxApp = ev.max_applicants;
     var fullBadge = ev.is_full;
     var isBeijing = String(ev.event_code || '').toLowerCase() === 'beijing';
-    var boothSubmitPage = isBeijing ? 'Beijing_Galonly_submit.html' : 'Shanghai_Galonly_submit.html';
-    var guidelinesPage = isBeijing ? 'Beijing_Galonly_guidelines.html' : null;
+    // Unknown cities must never inherit Shanghai's application form.
+    var isShanghai = !ev.event_code || String(ev.event_code).toLowerCase() === 'shanghai';
+    var boothSubmitPage = isBeijing ? 'beijing/Beijing_Galonly_submit.html' : (isShanghai ? 'shanghai/Shanghai_Galonly_submit.html' : null);
+    var guidelinesPage = isBeijing ? 'beijing/Beijing_Galonly_guidelines.html' : null;
 
-    var statusHref = 'Galonly_status.html?event_id=' + eventId + (appId ? '&application_id=' + appId : '');
+    if (ev.registration_mode === 'auto_material_review') {
+      if (appId) return '<a class="btn btn-edit" href="' + (ev.dashboard_url || 'wuhan/Wuhan_Galonly_dashboard.html?application_id=' + Number(appId)) + '">摊位中控面板</a>';
+      if (!regOpen || regOpen === '0') return '<span class="btn btn-disabled">报名筹备中／已关闭</span>';
+      if (deadline && new Date(String(deadline).replace(' ', 'T') + (/[Zz]|[+-]\d\d:\d\d$/.test(deadline) ? '' : '+08:00')) < new Date()) return '<span class="btn btn-disabled">报名已截止</span>';
+      if (ev.is_full) return '<span class="btn btn-disabled">报名已满</span>';
+      return '<a class="btn btn-apply" href="wuhan/Wuhan_Galonly_submit.html?event_id=' + Number(eventId) + '">' + (loggedIn ? '同好会摊位报名' : '登录后报名') + '</a>';
+    }
+
+    var statusHref = 'beijing/Galonly_status.html?event_id=' + eventId + (appId ? '&application_id=' + appId : '');
     var statusBtn = '<a class="btn btn-edit" href="' + statusHref + '" aria-label="查询申请状态">查询状态</a>';
 
-    if (!status && (regOpen === 0 || regOpen === '0')) {
+    if (!boothSubmitPage) return status ? statusBtn : '<span class="btn btn-disabled">筹备中</span>';
+
+    if (!status && (regOpen === 0 || regOpen === '0' || regOpen === false)) {
       return '<span class="btn btn-disabled">申请已关闭</span>';
     }
 
     if (!loggedIn) {
-      return '<span class="btn btn-login">请先登录</span>';
+      return '<a class="btn btn-login" href="../login.html">请先登录</a>';
     }
 
     /* deadline passed */
-    if (deadline && new Date(deadline) < new Date()) {
+    if (!status && deadline && new Date(deadline) < new Date()) {
       return '<span class="btn btn-disabled">申请已截止</span>';
     }
 
     /* full */
-    if (fullBadge || (maxApp && ev.current_applicants >= maxApp)) {
+    if (!status && (fullBadge === true || fullBadge === 1 || fullBadge === '1' || (Number(maxApp) > 0 && Number(ev.current_applicants) >= Number(maxApp)))) {
       return '<span class="badge-full">摊位已满</span>';
     }
 
@@ -1115,7 +1174,7 @@ html,
 
     if (status === 'approved') {
       /* phase 1 passed: unlock merchandise form (Beijing) */
-      var merchBtn = '<a class="btn btn-apply" href="Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="提交制品表单">提交制品</a>';
+      var merchBtn = '<a class="btn btn-apply" href="beijing/Beijing_Galonly_merchandise.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="提交制品表单">提交制品</a>';
       var editHref2 = boothSubmitPage + '?event_id=' + eventId + '&application_id=' + appId;
       return merchBtn + statusBtn + '<a class="btn btn-edit" href="' + editHref2 + '" aria-label="编辑摊位申请">编辑</a>';
     }
@@ -1125,7 +1184,7 @@ html,
     }
 
     if (status === 'confirmed') {
-      return '<a class="btn btn-apply" href="Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="查看确认函">确认函</a>'
+      return '<a class="btn btn-apply" href="beijing/Galonly_confirmation.html?event_id=' + eventId + '&application_id=' + appId + '" aria-label="查看确认函">确认函</a>'
         + statusBtn;
     }
 
@@ -1160,11 +1219,16 @@ html,
     var deadline = ev.staff_deadline;
     var maxApp = Number(ev.staff_max_applicants || 0);
     var isBeijingEvent = String(ev.event_code || '').toLowerCase() === 'beijing';
-    var guidelinesPage = isBeijingEvent ? 'Beijing_Galonly_staff_guidelines.html' : 'galonly_staff_guidelines.html';
-    var submitPage = isBeijingEvent ? 'Beijing_Galonly_staff_submit.html' : 'galonly_staff_submit.html';
+    var guidelinesPage = isBeijingEvent ? 'beijing/Beijing_Galonly_staff_guidelines.html' : 'shanghai/galonly_staff_guidelines.html';
+    var submitPage = isBeijingEvent ? 'beijing/Beijing_Galonly_staff_submit.html' : 'shanghai/galonly_staff_submit.html';
+
+    var isShanghaiEvent = !ev.event_code || String(ev.event_code).toLowerCase() === 'shanghai';
+    if (!isBeijingEvent && !isShanghaiEvent) {
+      return '<span class="btn btn-disabled">通道筹备中</span>';
+    }
 
     if (!loggedIn) {
-      return '<span class="btn btn-login">请先登录</span>';
+      return '<a class="btn btn-login" href="../login.html">请先登录</a>';
     }
 
     if (status === 'pending' || status === 'pooled' || status === 'rejected') {
@@ -1179,7 +1243,7 @@ html,
     }
 
     /* manual override */
-    if (regOpen === 0 || regOpen === '0') {
+    if (regOpen === 0 || regOpen === '0' || regOpen === false) {
       return '<span class="btn btn-disabled">Staff申请已关闭</span>';
     }
 

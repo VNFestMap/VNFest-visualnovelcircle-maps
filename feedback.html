@@ -7,9 +7,9 @@
   <script defer src="./js/page-i18n.js?v=20260813-language"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bug 反馈与功能建议 - VNFest 同好会地图</title>
-<link rel="stylesheet" href="./css/auth-transition.css?v=20261001-page-smooth-v5" />
-<script src="./js/auth-transition.js?v=20261001-page-smooth-v5"></script>
+  <title>视觉小说学园祭 · Bug 反馈与功能建议</title>
+<link rel="stylesheet" href="./css/auth-transition.css?v=20261013-chibi-v3" />
+<script src="./js/auth-transition.js?v=20261014-chibi-handoff-v5"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -112,12 +112,12 @@
 
         <div class="field">
           <label for="title">标题 <span class="required">*</span></label>
-          <input id="title" type="text" maxlength="120" required placeholder="一句话描述问题或建议">
+          <input id="title" type="text" minlength="2" maxlength="120" required placeholder="一句话描述问题或建议">
         </div>
 
         <div class="field">
           <label for="content">详细说明 <span class="required">*</span></label>
-          <textarea id="content" maxlength="3000" required placeholder="请描述复现步骤、期望效果、实际现象，或你希望新增的功能场景。"></textarea>
+          <textarea id="content" minlength="10" maxlength="3000" required placeholder="请描述复现步骤、期望效果、实际现象，或你希望新增的功能场景。"></textarea>
           <span class="hint">如果是 Bug，建议写清楚设备、浏览器/客户端、发生在哪个页面。</span>
         </div>
 
@@ -166,8 +166,8 @@
         device: document.getElementById('device').value.trim(),
       };
 
-      if (!payload.title || !payload.content) {
-        showMessage(errorMsg, '请填写标题和详细说明。');
+      if ([...payload.title].length < 2 || [...payload.content].length < 10) {
+        showMessage(errorMsg, '标题至少填写 2 字，详细说明至少填写 10 字。');
         return;
       }
 

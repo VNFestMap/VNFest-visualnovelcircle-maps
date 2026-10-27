@@ -193,7 +193,7 @@ func Load(root string) (Config, error) {
 		SessionCookieDomain:          os.Getenv("SESSION_COOKIE_DOMAIN"),
 		SessionCookieSecure:          envBool("SESSION_COOKIE_SECURE", strings.HasPrefix(strings.ToLower(siteURL), "https://")),
 		LegacyPHPUpstream:            strings.TrimRight(os.Getenv("LEGACY_PHP_UPSTREAM"), "/"),
-		LegacyAuthEnabled:            envBool("LEGACY_AUTH_ENABLED", true),
+		LegacyAuthEnabled:            envBool("LEGACY_AUTH_ENABLED", false),
 	}
 	return cfg, nil
 }

@@ -1095,7 +1095,7 @@ button.insights-kpi { font: inherit; cursor: pointer; }
       <button class="nav-item" data-module="galonly-reviewers" onclick="switchModule('galonly-reviewers')" id="galonlyReviewersNav" style="display:none;">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><path d="M2 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/><path d="M8.5 14c0-2.5 1.5-4 3-4s3 1.5 3 4"/></svg></span> 摊位审核成员
       </button>
-      <a class="nav-item" href="../Galgame_events/Beijing_GalOnly_booth_admin.html?event_code=beijing">
+      <a class="nav-item" href="../Galgame_events/beijing/Beijing_GalOnly_booth_admin.html?event_code=beijing">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6.5h12v7H2z"/><path d="M1 6.5l1.5-4h11L15 6.5"/><path d="M5 6.5v7M11 6.5v7M5 4.5h6"/></svg></span> 摊位资料控制台
       </a>
       <button class="nav-item" data-module="clubs" onclick="switchModule('clubs')">
@@ -1663,6 +1663,7 @@ let insightIssueFilter = 'all';
 let insightIssueType = 'all';
 let insightIssuePage = 1;
 let insightIssueTotal = 0;
+let insightIssuesLoadToken = 0;
 
 // Review data
 let clubSubmissions = [];
@@ -2120,11 +2121,13 @@ function insightsRangeParams() {
 }
 
 function insightNumber(value) {
+  if (value === null || value === undefined || value === '') return '—';
   const number = Number(value);
   return Number.isFinite(number) ? number.toLocaleString('zh-CN') : '—';
 }
 
 function insightHours(value) {
+  if (value === null || value === undefined || value === '') return '—';
   const hours = Number(value);
   if (!Number.isFinite(hours)) return '—';
   if (hours >= 24) return `${Math.floor(hours / 24)}天 ${Math.round(hours % 24)}小时`;
@@ -2163,8 +2166,8 @@ function renderDashboardInsights(data) {
   if (strip) strip.style.display = '';
   insightsSetText('dashboardInsightPending', insightNumber(data.queue?.pending));
   insightsSetText('dashboardInsightOverdue', insightNumber(data.queue?.overdue_72h));
-  insightsSetText('dashboardInsightOwners', insightNumber(insightsIssueCount(data.quality?.governance?.issue_counts, 'no_representative')));
-  insightsSetText('dashboardInsightQuality', insightNumber(insightsLowQualityCount(data.quality?.public)));
+  insightsSetText('dashboardInsightOwners', data.quality?.governance?.evaluated ? insightNumber(insightsIssueCount(data.quality.governance.issue_counts, 'no_representative')) : '—');
+  insightsSetText('dashboardInsightQuality', data.quality?.public?.evaluated ? insightNumber(insightsLowQualityCount(data.quality.public)) : '—');
 }
 
 function setInsightsLoading() {
@@ -2190,6 +2193,7 @@ async function loadInsights(options = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!data || data.success !== true) throw new Error(data?.message || '运营洞察接口返回无效数据');
+    if (!data.meta?.range || !Array.isArray(data.queue?.by_type) || !Array.isArray(data.review?.trend) || !Array.isArray(data.quality?.public?.buckets) || !Array.isArray(data.quality?.governance?.issue_counts)) throw new Error('运营洞察响应结构不完整');
     if (token !== insightsLoadToken) return;
     insightsData = data;
     renderDashboardInsights(data);
@@ -2201,10 +2205,11 @@ async function loadInsights(options = {}) {
     if (token !== insightsLoadToken) return;
     if (options.dashboardOnly) {
       const strip = document.getElementById('insightsSummaryStrip');
-      if (strip) strip.style.display = 'none';
+      if (strip) { strip.style.display = ''; ['dashboardInsightPending','dashboardInsightOverdue','dashboardInsightOwners','dashboardInsightQuality'].forEach(id => insightsSetText(id, '不可用')); }
       return;
     }
     insightsData = null;
+    document.querySelectorAll('#insightsKpiGrid strong').forEach(el => { el.textContent = '不可用'; });
     const message = error?.message || '网络错误';
     const notice = document.getElementById('insightsNotice');
     if (notice) notice.textContent = `运营洞察加载失败：${message}。请检查权限、数据库迁移和数据文件状态后重试。`;
@@ -2228,22 +2233,23 @@ function renderInsights(data) {
     : `处理时长覆盖 ${insightNumber(coverage.reliable)}/${insightNumber(coverage.terminal_records)} · ${Number(coverage.percentage).toFixed(1)}%`;
   insightsSetText('insightCoverageLabel', coverageText);
   const notice = document.getElementById('insightsNotice');
-  if (notice) notice.textContent = `当前待办和资料质量是最新快照；日期范围只影响审核效率趋势。统计生成于 ${insightDate(data.meta?.generated_at)}${sourceEntries.length ? ` · ${sourceEntries.length} 个数据源需检查` : ''}。`;
+  if (notice) notice.textContent = `当前待办和资料质量是最新快照；日期范围只影响审核效率趋势。统计生成于 ${insightDate(data.meta?.generated_at)}${sourceEntries.length ? ` · ${sourceEntries.length} 个数据源不可用，当前统计可能不完整` : ''}。`;
 
   const queue = data.queue || {};
+  const queueComplete = ['submissions.json','submissions_event.json','submissions_publication.json','feedback.json','club_memberships'].every(key => !data.meta?.sources?.[key] || data.meta.sources[key].status === 'ok');
   const review = data.review || {};
   const publicQuality = data.quality?.public || {};
   const governance = data.quality?.governance || {};
-  insightsSetText('insightKpiPending', insightNumber(queue.pending));
-  insightsSetText('insightKpiOverdue24', insightNumber(queue.overdue_24h));
-  insightsSetText('insightKpiOverdue72', insightNumber(queue.overdue_72h));
-  insightsSetText('insightKpiOldest', insightHours(queue.oldest_wait_hours));
+  insightsSetText('insightKpiPending', queueComplete ? insightNumber(queue.pending) : '不完整');
+  insightsSetText('insightKpiOverdue24', queueComplete ? insightNumber(queue.overdue_24h) : '不完整');
+  insightsSetText('insightKpiOverdue72', queueComplete ? insightNumber(queue.overdue_72h) : '不完整');
+  insightsSetText('insightKpiOldest', queueComplete ? insightHours(queue.oldest_wait_hours) : '不完整');
   insightsSetText('insightKpiProcessed', insightNumber(review.processed));
   insightsSetText('insightKpiProcessedHint', `${insightNumber(review.approved)} 通过 · ${insightNumber(review.rejected)} 拒绝`);
   insightsSetText('insightKpiMedian', insightHours(review.median_hours));
   insightsSetText('insightKpiMedianHint', coverage.percentage === null || coverage.percentage === undefined ? '可靠记录不足' : `覆盖 ${Number(coverage.percentage).toFixed(1)}%`);
-  insightsSetText('insightKpiLowQuality', insightNumber(insightsLowQualityCount(publicQuality)));
-  insightsSetText('insightKpiNoOwner', insightNumber(insightsIssueCount(governance.issue_counts, 'no_representative')));
+  insightsSetText('insightKpiLowQuality', publicQuality.evaluated ? insightNumber(insightsLowQualityCount(publicQuality)) : '—');
+  insightsSetText('insightKpiNoOwner', governance.evaluated ? insightNumber(insightsIssueCount(governance.issue_counts, 'no_representative')) : '—');
 
   renderInsightQueue(queue.by_type || []);
   renderInsightReview(review);
@@ -2355,6 +2361,7 @@ function renderInsightCountList(id, rows, labeler) {
 
 async function loadInsightIssues(severity = insightIssueFilter, type = insightIssueType, resetPage = true) {
   if (!isSuperAdmin) return;
+  const token = ++insightIssuesLoadToken;
   if (resetPage) insightIssuePage = 1;
   insightIssueFilter = ['all', 'urgent', 'warning', 'info'].includes(severity) ? severity : 'all';
   insightIssueType = ['all', 'queue', 'public_quality', 'governance'].includes(type) ? type : 'all';
@@ -2366,6 +2373,8 @@ async function loadInsightIssues(severity = insightIssueFilter, type = insightIs
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!data || data.success !== true) throw new Error(data?.message || '问题清单返回无效数据');
+    if (!Array.isArray(data.issues) || !Number.isFinite(Number(data.total)) || !Number.isFinite(Number(data.page))) throw new Error('问题清单响应结构不完整');
+    if (token !== insightIssuesLoadToken) return;
     insightIssueTotal = Number(data.total || 0);
     renderInsightIssues(data.issues || []);
     const pages = Math.max(1, Math.ceil(insightIssueTotal / Number(data.per_page || 50)));
@@ -2375,6 +2384,7 @@ async function loadInsightIssues(severity = insightIssueFilter, type = insightIs
     if (prev) prev.disabled = insightIssuePage <= 1;
     if (next) next.disabled = insightIssuePage >= pages;
   } catch (error) {
+    if (token !== insightIssuesLoadToken) return;
     if (body) body.innerHTML = `<tr><td colspan="6" class="insights-empty">问题清单加载失败：${escapeHtml(error?.message || '网络错误')}</td></tr>`;
     showToast('问题清单加载失败：' + (error?.message || '网络错误'), 'error');
   }
@@ -2549,6 +2559,7 @@ async function loadAnalytics() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     if (!data || data.success !== true) throw new Error(data?.message || '统计接口返回无效数据');
+    if (!data.meta?.range || !data.periods?.lifetime || !data.selected || !Array.isArray(data.trend) || !data.breakdowns) throw new Error('访问统计响应结构不完整');
     if (token !== analyticsLoadToken) return;
     analyticsData = data;
     renderAnalytics(data);
@@ -2655,7 +2666,7 @@ function renderAnalyticsTables(breakdowns) {
   }, 5);
   const sourceLabels = { direct: '直接访问', internal: '站内跳转', search: '搜索引擎', social: '社交平台', external: '其他外链' };
   const sourcesBody = document.getElementById('analyticsSourcesBody');
-  if (sourcesBody) sourcesBody.innerHTML = renderRows(sources, item => `<td>${escapeHtml(sourceLabels[item.source_category] || item.source_category || '其他外链')}</td><td class="text-muted">${escapeHtml(item.referrer_host || '—')}</td><td>${analyticsNumber(item.uv)}</td><td>${analyticsNumber(item.pv)}</td>`, 4);
+  if (sourcesBody) sourcesBody.innerHTML = renderRows(sources, item => `<td>${escapeHtml(sourceLabels[item.source_category] || item.source_category || '其他外链')}</td><td class="text-muted">${escapeHtml(item.referrer_host || '—')}</td><td>${item.uv_available === false ? '—' : analyticsNumber(item.uv)}</td><td>${analyticsNumber(item.pv)}</td>`, 4);
 
   const deviceLabels = { desktop: '桌面端', mobile: '移动端', tablet: '平板', unknown: '未知' };
   const browserLabels = { chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox', safari: 'Safari', other: '其他' };
@@ -3317,7 +3328,7 @@ function renderEventReviewCards() {
       actions.push({ label: '拒绝', onclick: `rejectEvent(${item.id})`, danger: true });
     }
     actions.push({ label: '联系提交者', onclick: `showSubmitterModal('event', ${item.id})` });
-    if (item.link) actions.push({ label: '打开链接', onclick: `window.open('${escapeHtml(item.link)}','_blank')` });
+    if (safeReviewURL(item.link)) actions.push({ label: '打开链接', onclick: `openReviewURL('event', ${Number(item.id)})` });
     if (item.description) actions.push({ label: '查看简介', onclick: `showEventDescModal(${item.id})` });
     actions.push({ label: '删除记录', onclick: `deleteEventSubmission(${item.id})`, danger: true });
     return `<div class="review-card ${item.status || 'pending'}" data-type="event" data-id="${item.id}">
@@ -3357,7 +3368,7 @@ function renderPublicationReviewCards() {
       actions.push({ label: '拒绝', onclick: `rejectPublication(${item.id})`, danger: true });
     }
     actions.push({ label: '联系提交者', onclick: `showSubmitterModal('publication', ${item.id})` });
-    if (item.submitLink) actions.push({ label: '打开投稿链接', onclick: `window.open('${escapeHtml(item.submitLink)}','_blank')` });
+    if (safeReviewURL(item.submitLink)) actions.push({ label: '打开投稿链接', onclick: `openReviewURL('publication', ${Number(item.id)})` });
     actions.push({ label: '删除记录', onclick: `deletePublicationSubmission(${item.id})`, danger: true });
     return `<div class="review-card ${item.status || 'pending'}" data-type="publication" data-id="${item.id}">
       <div class="review-card-header">
@@ -3414,6 +3425,22 @@ function renderMembershipReviewCards() {
   }).join('');
 }
 
+function safeReviewURL(value) {
+  const text = String(value || '').trim();
+  if (!text || /[\u0000-\u0020\u007f\ufffd]/.test(text)) return '';
+  try {
+    const url = new URL(text);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && url.hostname ? url.href : '';
+  } catch (_) { return ''; }
+}
+
+function openReviewURL(type, id) {
+  const rows = type === 'feedback' ? feedbackItems : type === 'event' ? eventSubmissions : publicationSubmissions;
+  const item = rows.find(row => Number(row.id) === Number(id));
+  const url = safeReviewURL(item && (type === 'feedback' ? item.page_url : type === 'event' ? item.link : item.submitLink));
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function renderFeedbackReviewCards() {
   const filtered = getFilteredData(feedbackItems, 'submitted_at');
   const container = document.getElementById('reviewListContainer');
@@ -3429,7 +3456,7 @@ function renderFeedbackReviewCards() {
       actions.push({ label: '标记已处理', onclick: `markFeedbackStatus(${item.id}, 'approved')`, primary: true });
       actions.push({ label: '暂不处理', onclick: `markFeedbackStatus(${item.id}, 'rejected')` });
     }
-    if (item.page_url) actions.push({ label: '打开相关页面', onclick: `window.open('${escapeHtml(item.page_url)}','_blank')` });
+    if (safeReviewURL(item.page_url)) actions.push({ label: '打开相关页面', onclick: `openReviewURL('feedback', ${Number(item.id)})` });
     if (item.contact) actions.push({ label: '联系反馈者', onclick: `showSubmitterModal('feedback', ${item.id})` });
     actions.push({ label: '查看设备信息', onclick: `showFeedbackDeviceModal(${item.id})` });
     actions.push({ label: '删除反馈', onclick: `deleteFeedbackItem(${item.id})`, danger: true });
@@ -3443,7 +3470,7 @@ function renderFeedbackReviewCards() {
         <div class="row"><span class="label">提交时间</span>${formatDate(item.submitted_at)}</div>
         ${item.contact ? `<div class="row"><span class="label">联系方式</span>${escapeHtml(item.contact)}</div>` : ''}
         ${item.device ? `<div class="row"><span class="label">设备环境</span>${escapeHtml(item.device)}</div>` : ''}
-        ${item.page_url ? `<div class="row"><span class="label">相关页面</span><a href="${escapeHtml(item.page_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.page_url)}</a></div>` : ''}
+        ${item.page_url ? `<div class="row"><span class="label">相关页面</span>${safeReviewURL(item.page_url) ? `<a href="${escapeHtml(safeReviewURL(item.page_url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.page_url)}</a>` : escapeHtml(item.page_url)}</div>` : ''}
         <div class="row" style="margin-top:6px;white-space:pre-wrap;"><span class="label">说明</span>${escapeHtml(item.content)}</div>
       </div>
       <div class="review-card-actions">${buildInlineActions(actions)}</div>

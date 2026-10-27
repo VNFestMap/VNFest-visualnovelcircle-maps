@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "date": "2026-10-10",
+  "files": [
+    {
+      "old": "Galgame_events/Beijing_GalOnly_booth_admin.html",
+      "new": "Galgame_events/beijing/Beijing_GalOnly_booth_admin.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_GalOnly_booth_portal.html",
+      "new": "Galgame_events/beijing/Beijing_GalOnly_booth_portal.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_guidelines.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_guidelines.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_merchandise.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_merchandise.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_showcase.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_showcase.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_staff_guidelines.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_staff_guidelines.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_staff_submit.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_staff_submit.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_Galonly_submit.html",
+      "new": "Galgame_events/beijing/Beijing_Galonly_submit.html"
+    },
+    {
+      "old": "Galgame_events/galgameonly_list.html",
+      "new": "Galgame_events/galgameonly_list.html"
+    },
+    {
+      "old": "Galgame_events/Galonly_confirmation.html",
+      "new": "Galgame_events/beijing/Galonly_confirmation.html"
+    },
+    {
+      "old": "Galgame_events/Galonly_manual.html",
+      "new": "Galgame_events/beijing/Galonly_manual.html"
+    },
+    {
+      "old": "Galgame_events/galonly_staff_guidelines.html",
+      "new": "Galgame_events/shanghai/galonly_staff_guidelines.html"
+    },
+    {
+      "old": "Galgame_events/galonly_staff_submit.html",
+      "new": "Galgame_events/shanghai/galonly_staff_submit.html"
+    },
+    {
+      "old": "Galgame_events/Galonly_status.html",
+      "new": "Galgame_events/beijing/Galonly_status.html"
+    },
+    {
+      "old": "Galgame_events/galo_poster.html",
+      "new": "Galgame_events/shanghai/galo_poster.html"
+    },
+    {
+      "old": "Galgame_events/Shanghai_Galonly_staff.html",
+      "new": "Galgame_events/shanghai/Shanghai_Galonly_staff.html"
+    },
+    {
+      "old": "Galgame_events/Shanghai_Galonly_submit.html",
+      "new": "Galgame_events/shanghai/Shanghai_Galonly_submit.html"
+    },
+    {
+      "old": "Galgame_events/Beijing_galo_map/beitou-visitor-v0.1.html",
+      "new": "Galgame_events/beijing/Beijing_galo_map/beitou-visitor-v0.1.html"
+    }
+  ]
+}

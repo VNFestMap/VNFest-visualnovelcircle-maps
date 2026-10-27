@@ -207,7 +207,7 @@ func (s *Server) submissionHeaders(w http.ResponseWriter, methods string) {
 
 func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	if _, ok := s.adminUserID(r); !ok {
-		requireAdminResponse(w)
+		s.adminDenied(w, r)
 		return false
 	}
 	return true

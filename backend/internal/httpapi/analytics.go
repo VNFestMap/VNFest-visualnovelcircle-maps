@@ -16,8 +16,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"database/sql"
 )
 
 var analyticsUUIDRE = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
@@ -135,7 +133,7 @@ func (s *Server) analyticsSummary(ctx context.Context, fromRaw, toRaw string) (m
 	if err != nil {
 		return nil, err
 	}
-	var tracking, historical sql.NullString
+	var tracking, historical analyticsDay
 	if err := s.db.QueryRowContext(ctx, "SELECT MIN(day_key) FROM analytics_pageviews").Scan(&tracking); err != nil {
 		return nil, err
 	}
@@ -174,7 +172,7 @@ func (s *Server) analyticsSummary(ctx context.Context, fromRaw, toRaw string) (m
 	breakdowns["auth"] = auth
 	return map[string]any{
 		"success":  true,
-		"meta":     map[string]any{"timezone": "Asia/Shanghai", "tracking_started_at": analyticsNullString(tracking), "historical_pv_from": analyticsNullString(historical), "historical_pv_only": historical.Valid, "range": map[string]any{"from": from, "to": to}},
+		"meta":     map[string]any{"timezone": "Asia/Shanghai", "tracking_started_at": analyticsNullString(tracking), "historical_pv_from": analyticsNullString(historical), "historical_pv_only": historical != "", "range": map[string]any{"from": from, "to": to}},
 		"periods":  periods,
 		"selected": map[string]any{"from": from, "to": to, "uv": selected.UV, "pv": selected.PV, "exact_pv": selected.ExactPV, "historical_pv": selected.HistoricalPV, "uv_available": selected.UVAvailable, "authenticated_pv": auth.AuthenticatedPV, "anonymous_pv": auth.AnonymousPV, "historical_unknown_pv": auth.HistoricalUnknownPV},
 		"trend":    trend, "breakdowns": breakdowns,
@@ -222,13 +220,17 @@ func (s *Server) analyticsTrend(ctx context.Context, from, to string, start, end
 	}
 	exact := map[string]trendRow{}
 	for rows.Next() {
-		var day string
+		var day analyticsDay
 		var row trendRow
 		if err := rows.Scan(&day, &row.pv, &row.uv, &row.auth, &row.anon); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		exact[day] = row
+		exact[string(day)] = row
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
 	}
 	rows.Close()
 	historical, err := s.analyticsHistoricalTrend(ctx, from, to)
@@ -253,12 +255,12 @@ func (s *Server) analyticsHistoricalTrend(ctx context.Context, from, to string) 
 	defer rows.Close()
 	result := map[string]int64{}
 	for rows.Next() {
-		var day string
+		var day analyticsDay
 		var count int64
 		if err := rows.Scan(&day, &count); err != nil {
 			return nil, err
 		}
-		result[day] = count
+		result[string(day)] = count
 	}
 	return result, rows.Err()
 }
@@ -308,7 +310,84 @@ func (s *Server) analyticsBreakdown(ctx context.Context, kind, from, to string) 
 		}
 		result = append(result, row)
 	}
-	sort.SliceStable(result, func(i, j int) bool { return integerValue(result[i]["pv"]) > integerValue(result[j]["pv"]) })
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	// Historical logs add PV only; identities and login state cannot be recovered.
+	group, columns := "page_path", "page_path, MAX(page_title)"
+	switch kind {
+	case "sources":
+		group, columns = "source_category, referrer_host", "source_category, referrer_host"
+	case "devices":
+		group, columns = "device_type", "device_type"
+	case "browsers":
+		group, columns = "browser_name", "browser_name"
+	}
+	keyFor := func(row map[string]any) string {
+		switch kind {
+		case "pages":
+			return stringValue(row["page_path"])
+		case "sources":
+			return stringValue(row["source_category"]) + "\x00" + stringValue(row["referrer_host"])
+		case "devices":
+			return stringValue(row["device_type"])
+		default:
+			return stringValue(row["browser_name"])
+		}
+	}
+	byKey := map[string]map[string]any{}
+	for _, row := range result {
+		byKey[keyFor(row)] = row
+	}
+	history, err := s.db.QueryContext(ctx, "SELECT "+columns+", COALESCE(SUM(pv_count),0) FROM analytics_historical_pv WHERE day_key>=? AND day_key<=? GROUP BY "+group, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer history.Close()
+	for history.Next() {
+		var first, second string
+		var pv int64
+		row := map[string]any{"pv": int64(0), "uv": int64(0), "uv_available": false}
+		if kind == "pages" || kind == "sources" {
+			if err := history.Scan(&first, &second, &pv); err != nil {
+				return nil, err
+			}
+			if kind == "pages" {
+				row["page_path"], row["page_title"] = first, second
+			} else {
+				row["source_category"], row["referrer_host"] = first, second
+			}
+		} else {
+			if err := history.Scan(&first, &pv); err != nil {
+				return nil, err
+			}
+			row[group] = first
+		}
+		key := keyFor(row)
+		if existing, ok := byKey[key]; ok {
+			existing["pv"] = integerValue(existing["pv"]) + pv
+			if kind == "pages" && stringValue(existing["page_title"]) == "" {
+				existing["page_title"] = second
+			}
+		} else {
+			row["pv"] = pv
+			result = append(result, row)
+			byKey[key] = row
+		}
+	}
+	if err := history.Err(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		if integerValue(result[i]["pv"]) != integerValue(result[j]["pv"]) {
+			return integerValue(result[i]["pv"]) > integerValue(result[j]["pv"])
+		}
+		if integerValue(result[i]["uv"]) != integerValue(result[j]["uv"]) {
+			return integerValue(result[i]["uv"]) > integerValue(result[j]["uv"])
+		}
+		return keyFor(result[i]) < keyFor(result[j])
+	})
 	if len(result) > 20 {
 		result = result[:20]
 	}
@@ -532,9 +611,9 @@ func firstAllowed(value string, allowed []string, fallback string) string {
 	return fallback
 }
 
-func analyticsNullString(value sql.NullString) any {
-	if value.Valid {
-		return value.String
+func analyticsNullString(value analyticsDay) any {
+	if value != "" {
+		return string(value)
 	}
 	return nil
 }
@@ -544,4 +623,36 @@ func firstError(first, second error) error {
 		return first
 	}
 	return second
+}
+
+// analyticsDay normalizes SQL DATE without shifting a calendar date between zones.
+// MySQL parseTime returns time.Time; SQLite and PDO-style fixtures return text.
+type analyticsDay string
+
+func (day *analyticsDay) Scan(value any) error {
+	if value == nil {
+		*day = ""
+		return nil
+	}
+	if value, ok := value.(time.Time); ok {
+		*day = analyticsDay(value.Format("2006-01-02"))
+		return nil
+	}
+	var text string
+	switch value := value.(type) {
+	case string:
+		text = value
+	case []byte:
+		text = string(value)
+	default:
+		return fmt.Errorf("unsupported analytics date type %T", value)
+	}
+	if len(text) < 10 {
+		return fmt.Errorf("invalid analytics date")
+	}
+	if _, err := time.Parse("2006-01-02", text[:10]); err != nil {
+		return err
+	}
+	*day = analyticsDay(text[:10])
+	return nil
 }

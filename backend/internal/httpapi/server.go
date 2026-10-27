@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -36,6 +37,8 @@ type Server struct {
 	mailer         *mailintegration.Mailer
 	picui          *picui.Client
 	picuiPendingMu sync.Mutex
+	jsonMu         sync.Mutex
+	authMu         sync.Mutex
 	mux            *http.ServeMux
 	legacy         http.Handler
 }
@@ -70,6 +73,9 @@ func New(cfg config.Config, db *sqlstore.DB, files *filestore.Store, sessions *s
 		}
 		server.legacy = proxy
 	}
+	if err := server.initializeProjectFiles(); err != nil {
+		return nil, fmt.Errorf("project attachment reconciliation: %w", err)
+	}
 	server.routes()
 	return server, nil
 }
@@ -100,6 +106,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/notifications.php", s.notifications)
 	s.mux.HandleFunc("/api/narrative_auth.php", s.narrativeAuth)
 	s.mux.HandleFunc("/api/feedback.php", s.feedback)
+	s.mux.HandleFunc("/api/joint_letter.php", s.jointLetter)
+	s.mux.HandleFunc("/admin/joint-letter.html", s.jointLetterAdminPage)
 	s.mux.HandleFunc("/api/bot.php", s.bot)
 	s.mux.HandleFunc("/api/submit.php", s.submit)
 	s.mux.HandleFunc("/api/submit_event.php", s.submitEvent)
@@ -177,6 +185,17 @@ func (s *Server) routes() {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !s.securityRequest(w, r) {
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/") && !strings.HasPrefix(r.URL.Path, "/api/public/") && r.URL.Path != "/api/galonly_public.php" && r.URL.Path != "/api/quiz_auth.php" || strings.HasPrefix(r.URL.Path, "/club-operation-portrait/api/") {
+		w = privateResponseWriter{w}
+	}
+	switch r.URL.Path {
+	case "/api/feedback.php", "/api/submit.php", "/api/submit_event.php", "/api/submit_publication.php", "/api/toggle_visibility.php", "/api/manuscripts.php", "/api/projects.php", "/api/project_items.php", "/api/project_participations.php", "/api/project_files.php":
+		s.jsonMu.Lock()
+		defer s.jsonMu.Unlock()
+	}
 	requestID := make([]byte, 8)
 	if _, err := rand.Read(requestID); err == nil {
 		w.Header().Set("X-Request-ID", hex.EncodeToString(requestID))
@@ -202,6 +221,10 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.healthHeaders(w)
+	if r.URL.Query().Get("detail") != "1" || !net.ParseIP(remoteHost(r.RemoteAddr)).IsLoopback() || r.Header.Get("X-Forwarded-For") != "" || r.Header.Get("X-Real-IP") != "" {
+		writeJSON(w, map[string]any{"status": "ok"})
+		return
+	}
 	started := time.Now()
 	status := "ok"
 	checks := map[string]any{
@@ -299,6 +322,8 @@ func (s *Server) forumArchived(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) auth(w http.ResponseWriter, r *http.Request) {
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
 	s.authHeaders(w)
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -398,15 +423,29 @@ func (s *Server) authLoginLocal(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"success": false, "message": "请输入用户名和密码"})
 		return
 	}
+	loginAction := "login:" + filePathHash(s.cfg.Root)
+	accountKey := "login-account|" + filePathHash(s.cfg.Root) + "|" + filePathHash(strings.ToLower(strings.TrimSpace(input.Username)))
+	if !allowRequest(r, loginAction, 10, time.Minute) {
+		waitResponse(w, rateKeyWait(loginAction+"|"+clientIP(r), time.Minute))
+		return
+	}
+	if rateKeyBlocked(accountKey, 10, 15*time.Minute) {
+		waitResponse(w, rateKeyWait(accountKey, 15*time.Minute))
+		return
+	}
 	user, err := s.findUserByLogin(r.Context(), strings.TrimSpace(input.Username))
 	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "登录失败，请稍后再试"})
 		return
 	}
 	if user == nil || !verifyPassword(input.Password, user.PasswordHash) {
+		allowRateKey(accountKey, 10, 15*time.Minute)
+		// Account identifiers are digested; passwords and codes are never logged.
+		slog.Warn("login rejected", "account_digest", filePathHash(strings.ToLower(strings.TrimSpace(input.Username))), "client_ip", clientIP(r))
 		writeJSON(w, map[string]any{"success": false, "message": "用户名或密码错误"})
 		return
 	}
+	clearRateKey(accountKey)
 	userID := user.ID
 	if err := s.createAuthSession(r.Context(), w, r, userID); err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "登录失败，请稍后再试"})
@@ -580,8 +619,30 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clean := path.Clean("/" + r.URL.Path)
+	// Protect collection records and the admin document on case-insensitive hosts too.
+	if strings.EqualFold(path.Base(clean), jointLetterFile) {
+		http.NotFound(w, r)
+		return
+	}
+	if strings.EqualFold(clean, "/admin/joint-letter.html") {
+		if _, ok := s.adminUserID(r); !ok {
+			s.adminDenied(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	if strings.Contains(clean, "..") {
 		http.NotFound(w, r)
+		return
+	}
+	if s.secureStatic(w, r, clean) {
+		return
+	}
+	if target := galonlyLegacyLocation(clean); target != "" {
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
 	// These are deployment mount points, not necessarily children of the
@@ -598,7 +659,18 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) {
 		s.serveStaticVolume(w, r, "/wiki/uploads/", s.cfg.WikiUploadDir)
 		return
 	}
-	http.FileServer(http.Dir(s.cfg.Root)).ServeHTTP(w, r)
+	relative := strings.TrimPrefix(clean, "/")
+	if relative == "" {
+		relative = "index.html"
+	}
+	if info, err := os.Stat(filepath.Join(s.cfg.Root, filepath.FromSlash(relative))); err == nil && info.IsDir() {
+		relative = strings.TrimSuffix(relative, "/") + "/index.html"
+	}
+	if file, ok := regularStaticFile(s.cfg.Root, relative); ok {
+		http.ServeFile(w, r, file)
+	} else {
+		http.NotFound(w, r)
+	}
 }
 
 func (s *Server) serveStaticVolume(w http.ResponseWriter, r *http.Request, prefix, root string) {
@@ -612,7 +684,11 @@ func (s *Server) serveStaticVolume(w http.ResponseWriter, r *http.Request, prefi
 	// root. Applying StripPrefix a second time would make every /uploads/ and
 	// /data/ request miss with 404 (for example /uploads/galonly/x.png would
 	// be looked up as /uploads/galonly/x.png inside the uploads root).
-	http.FileServer(http.Dir(root)).ServeHTTP(w, copyRequest)
+	if file, ok := regularStaticFile(root, copyRequest.URL.Path); ok {
+		http.ServeFile(w, copyRequest, file)
+	} else {
+		http.NotFound(w, r)
+	}
 }
 
 func decodeJSON(r *http.Request, dst any, max int64) error {

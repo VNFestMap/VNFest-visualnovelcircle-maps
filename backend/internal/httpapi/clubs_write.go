@@ -175,12 +175,6 @@ func (s *Server) clubListWrite(w http.ResponseWriter, r *http.Request, fileName,
 }
 
 func (s *Server) clubWriteUser(w http.ResponseWriter, r *http.Request, adminRequired bool) (*user, bool) {
-	// Check the transition token before the session helper writes a 401.
-	if adminRequired && s.cfg.LegacyAuthEnabled && strings.TrimSpace(r.Header.Get("X-Admin-Token")) != "" {
-		if _, valid := s.adminUserID(r); valid {
-			return &user{Role: "super_admin"}, true
-		}
-	}
 	user, ok := s.clubCodeUserResponse(w, r)
 	if ok {
 		if adminRequired && user.Role != "super_admin" && !s.hasAnyManagementRole(r.Context(), user.ID) {

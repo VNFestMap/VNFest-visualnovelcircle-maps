@@ -44,6 +44,24 @@ func (s *Server) portraitAnalyze(w http.ResponseWriter, r *http.Request, complet
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"error": "请求体不完整，需要 basic_info, dimensions, base_scores"})
 		return
 	}
+	userID, ok := s.loggedInUserID(r)
+	if !ok {
+		writeJSONStatus(w, 401, map[string]any{"error": "请先登录"})
+		return
+	}
+	if !sameOrigin(r) {
+		writeJSONStatus(w, 403, map[string]any{"error": "请求来源无效"})
+		return
+	}
+	key := "portrait-user|" + strconvInt(userID)
+	if !allowRateKey(key, 5, time.Hour) {
+		waitResponse(w, rateKeyWait(key, time.Hour))
+		return
+	}
+	if !allowRequest(r, "portrait", 20, time.Hour) {
+		waitResponse(w, rateKeyWait("portrait|"+clientIP(r), time.Hour))
+		return
+	}
 	var input map[string]any
 	if err := decodeJSON(r, &input, 2<<20); err != nil || input == nil || input["basic_info"] == nil || input["dimensions"] == nil || input["base_scores"] == nil {
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"error": "请求体不完整，需要 basic_info, dimensions, base_scores"})

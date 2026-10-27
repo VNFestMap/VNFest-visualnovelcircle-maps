@@ -97,12 +97,10 @@ func (s *Server) bot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) botAuthenticate(w http.ResponseWriter, r *http.Request) (botAuthInfo, bool) {
-	token := strings.TrimSpace(r.URL.Query().Get("token"))
-	if token == "" {
-		header := strings.TrimSpace(r.Header.Get("Authorization"))
-		if len(header) >= 7 && strings.EqualFold(header[:7], "bearer ") {
-			token = strings.TrimSpace(header[7:])
-		}
+	token := ""
+	header := strings.TrimSpace(r.Header.Get("Authorization"))
+	if len(header) >= 7 && strings.EqualFold(header[:7], "bearer ") {
+		token = strings.TrimSpace(header[7:])
 	}
 	if strings.HasPrefix(token, "gmap_club_") {
 		if s.db == nil {
@@ -138,9 +136,7 @@ func (s *Server) botAuthenticate(w http.ResponseWriter, r *http.Request) (botAut
 		return botAuthInfo{}, false
 	}
 	expected := strings.TrimSpace(s.cfg.BotAPIKey)
-	if expected == "" && s.cfg.LegacyAuthEnabled {
-		expected = strings.TrimSpace(s.cfg.AdminToken)
-	}
+
 	if expected == "" {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "error": "BOT_API_KEY 未配置"})
 		return botAuthInfo{}, false

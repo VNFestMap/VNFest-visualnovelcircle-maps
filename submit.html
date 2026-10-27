@@ -1,1287 +1,416 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <script src="./js/language-runtime.js?v=20260813-language"></script>
-  <script src="./js/language-catalog.js?v=20260813-language"></script>
-  <script src="./js/language-static-ja.js?v=20260813-account-language"></script>
-  <script defer src="./js/page-i18n.js?v=20260813-language"></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>提交同好会信息 - 全国视觉小说同好会地图</title>
-    <style>
-        /* ==============================
-           MD3 Design Tokens — Orange
-           ============================== */
-        :root {
-            --md-primary: #FF6D00;
-            --md-on-primary: #FFFFFF;
-            --md-primary-container: #FFF3E0;
-            --md-on-primary-container: #4A1A00;
-            --md-secondary: #FFAB00;
-            --md-surface: #FFFCF8;
-            --md-surface-container: #FFFFFF;
-            --md-surface-container-high: #F5F5F5;
-            --md-surface-variant: #F0EDEA;
-            --md-on-surface: #1A1A1A;
-            --md-on-surface-variant: #666666;
-            --md-outline: #DDDDDD;
-            --md-outline-focus: #FF6D00;
-            --md-error: #E74C3C;
-            --md-shadow-1: 0 1px 3px rgba(0,0,0,0.06);
-            --md-shadow-2: 0 4px 12px rgba(255,109,0,0.10);
-            --md-shadow-3: 0 8px 32px rgba(0,0,0,0.08);
-            --md-elevation-card: 0 1px 3px rgba(0,0,0,0.06), 0 6px 16px rgba(255,109,0,0.12), 0 16px 48px rgba(0,0,0,0.08);
-            --md-radius-card: 28px;
-            --md-radius-input: 12px;
-            --md-radius-pill: 40px;
-            --md-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
-            --md-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* ==============================
-           Dark Mode Tokens
-           ============================== */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --md-primary: #FF9E40;
-                --md-on-primary: #1A1A1A;
-                --md-primary-container: #4A2800;
-                --md-on-primary-container: #FFE0B2;
-                --md-secondary: #FFC107;
-                --md-surface: #1A1412;
-                --md-surface-container: #2C2420;
-                --md-surface-container-high: #3A302C;
-                --md-surface-variant: #2C2420;
-                --md-on-surface: #F0EDEA;
-                --md-on-surface-variant: #9E9E9E;
-                --md-outline: #444444;
-                --md-outline-focus: #FF9E40;
-                --md-error: #EF5350;
-                --md-elevation-card: 0 1px 3px rgba(0,0,0,0.3), 0 6px 16px rgba(255,158,64,0.08), 0 16px 48px rgba(0,0,0,0.4);
-            }
-        }
-        html[data-theme="dark"] {
-            --md-primary: #FF9E40;
-            --md-on-primary: #1A1A1A;
-            --md-primary-container: #4A2800;
-            --md-on-primary-container: #FFE0B2;
-            --md-secondary: #FFC107;
-            --md-surface: #1A1412;
-            --md-surface-container: #2C2420;
-            --md-surface-container-high: #3A302C;
-            --md-surface-variant: #2C2420;
-            --md-on-surface: #F0EDEA;
-            --md-on-surface-variant: #9E9E9E;
-            --md-outline: #444444;
-            --md-outline-focus: #FF9E40;
-            --md-error: #EF5350;
-            --md-elevation-card: 0 1px 3px rgba(0,0,0,0.3), 0 6px 16px rgba(255,158,64,0.08), 0 16px 48px rgba(0,0,0,0.4);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            min-height: 100vh;
-            padding: 40px 20px;
-            background: linear-gradient(160deg, #FFF3E0 0%, #FFE0B2 40%, #FFCC80 100%);
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            transition: background 0.3s ease;
-            position: relative;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Dark mode background */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background: linear-gradient(160deg, #1A1412 0%, #2C2018 40%, #3A2820 100%);
-            }
-        }
-        html[data-theme="dark"] body {
-            background: linear-gradient(160deg, #1A1412 0%, #2C2018 40%, #3A2820 100%);
-        }
-
-        /* 壁纸遮罩层 */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.15);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* ==============================
-           MD3 Elevated Card
-           ============================== */
-        .md3-card {
-            background: var(--md-surface-container);
-            border-radius: var(--md-radius-card);
-            padding: 36px 32px;
-            box-shadow: var(--md-elevation-card);
-            transition: box-shadow 0.4s var(--md-ease-standard);
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* ==============================
-           Header
-           ============================== */
-        .form-header {
-            margin-bottom: 8px;
-        }
-
-        .form-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--md-primary);
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .form-label svg {
-            width: 16px;
-            height: 16px;
-            stroke: var(--md-primary);
-            fill: none;
-            stroke-width: 2;
-        }
-
-        .form-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--md-on-surface);
-            margin: 0 0 4px 0;
-            line-height: 1.3;
-        }
-
-        .form-desc {
-            font-size: 14px;
-            color: var(--md-on-surface-variant);
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        /* ==============================
-           Section Divider
-           ============================== */
-        .section-divider {
-            border: none;
-            border-top: 1px solid var(--md-outline);
-            margin: 28px 0;
-            opacity: 0.5;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        .section-accent {
-            width: 4px;
-            height: 20px;
-            background: var(--md-primary);
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--md-on-surface);
-            margin: 0;
-        }
-
-        .section-desc {
-            font-size: 13px;
-            color: var(--md-on-surface-variant);
-            margin: 0 0 20px 14px;
-            line-height: 1.5;
-        }
-
-        /* ==============================
-           Form Fields (MD3 Outlined)
-           ============================== */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label-field {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--md-on-surface);
-            margin-bottom: 6px;
-            line-height: 1.4;
-        }
-
-        .required {
-            color: var(--md-error);
-            margin-left: 2px;
-        }
-
-        .optional-tag {
-            color: var(--md-on-surface-variant);
-            font-weight: 400;
-            font-size: 12px;
-            margin-left: 6px;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1.5px solid var(--md-outline);
-            border-radius: var(--md-radius-input);
-            font-size: 15px;
-            font-family: inherit;
-            transition: border-color 0.2s var(--md-ease-standard), box-shadow 0.2s var(--md-ease-standard), background 0.2s var(--md-ease-standard);
-            background: var(--md-surface);
-            color: var(--md-on-surface);
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--md-outline-focus);
-            background: var(--md-surface-container);
-            box-shadow: 0 0 0 4px rgba(255, 109, 0, 0.12);
-        }
-
-        input:hover, select:hover, textarea:hover {
-            border-color: #bbb;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-            line-height: 1.6;
-        }
-
-        select {
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 14px center;
-            padding-right: 40px;
-        }
-
-        .field-helper {
-            font-size: 12px;
-            color: var(--md-on-surface-variant);
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        /* ==============================
-           Radio Group (MD3 Chips)
-           ============================== */
-        .chip-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .chip-option {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 10px 20px;
-            border: 1.5px solid var(--md-outline);
-            border-radius: var(--md-radius-pill);
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--md-on-surface-variant);
-            background: transparent;
-            transition: all 0.2s var(--md-ease-standard);
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .chip-option:hover {
-            border-color: var(--md-primary);
-            background: rgba(255, 109, 0, 0.04);
-        }
-
-        .chip-option input {
-            display: none;
-        }
-
-        .chip-option.active {
-            border-color: var(--md-primary);
-            background: var(--md-primary-container);
-            color: var(--md-on-primary-container);
-        }
-
-        .chip-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            border: 1.5px solid var(--md-outline);
-            flex-shrink: 0;
-            transition: all 0.2s var(--md-ease-standard);
-        }
-
-        .chip-option.active .chip-dot {
-            background: var(--md-primary);
-            border-color: var(--md-primary);
-            box-shadow: 0 0 0 2px var(--md-primary-container);
-        }
-
-        /* ==============================
-           Submit Button (MD3 Filled)
-           ============================== */
-        .btn-submit {
-            width: 100%;
-            padding: 16px 24px;
-            background: var(--md-primary);
-            border: none;
-            border-radius: var(--md-radius-pill);
-            color: var(--md-on-primary);
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: box-shadow 0.2s var(--md-ease-standard), transform 0.15s var(--md-ease-standard), opacity 0.2s var(--md-ease-standard);
-            box-shadow: 0 2px 8px rgba(255, 109, 0, 0.3);
-            margin-top: 8px;
-            position: relative;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .btn-submit:hover {
-            box-shadow: 0 4px 16px rgba(255, 109, 0, 0.4);
-        }
-
-        .btn-submit:active {
-            transform: scale(0.98);
-        }
-
-        .btn-submit:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Ripple */
-        .btn-submit .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(0);
-            animation: ripple-anim 0.6s ease-out;
-            pointer-events: none;
-        }
-
-        @keyframes ripple-anim {
-            to {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-
-        /* Loading state */
-        .btn-loading {
-            position: relative;
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        .btn-loading .btn-text {
-            visibility: hidden;
-        }
-
-        .btn-loading::after {
-            content: '';
-            position: absolute;
-            width: 22px;
-            height: 22px;
-            top: 50%;
-            left: 50%;
-            margin: -11px 0 0 -11px;
-            border: 2.5px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* ==============================
-           Footer
-           ============================== */
-        .form-footer {
-            text-align: center;
-            margin-top: 20px;
-            padding: 12px 16px;
-            background: var(--md-surface-container-high);
-            border-radius: 12px;
-            font-size: 12px;
-            color: var(--md-on-surface-variant);
-            line-height: 1.5;
-        }
-
-        /* ==============================
-           MD3 Alert Dialog
-           ============================== */
-        .dialog-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-            animation: fadeIn 0.2s var(--md-ease-standard);
-        }
-
-        .dialog-overlay.open {
-            display: flex;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .dialog-card {
-            background: var(--md-surface-container);
-            border-radius: var(--md-radius-card);
-            padding: 32px 28px 20px;
-            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-            animation: dialogIn 0.3s var(--md-ease-emphasized);
-        }
-
-        @keyframes dialogIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .dialog-icon {
-            width: 64px;
-            height: 64px;
-            background: #E8F5E9;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-        }
-
-        .dialog-icon svg {
-            width: 32px;
-            height: 32px;
-            stroke: #2E7D32;
-            fill: none;
-            stroke-width: 2.5;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .dialog-title {
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--md-on-surface);
-            margin: 0 0 8px 0;
-        }
-
-        .dialog-desc {
-            font-size: 14px;
-            color: var(--md-on-surface-variant);
-            margin: 0 0 24px 0;
-            line-height: 1.6;
-        }
-
-        .dialog-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
-
-        .dialog-btn {
-            padding: 10px 24px;
-            border-radius: var(--md-radius-pill);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: box-shadow 0.2s var(--md-ease-standard), background 0.2s var(--md-ease-standard);
-            border: none;
-            font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .dialog-btn:active {
-            transform: scale(0.97);
-        }
-
-        .dialog-btn-outline {
-            background: transparent;
-            border: 1.5px solid var(--md-outline);
-            color: var(--md-on-surface);
-        }
-
-        .dialog-btn-outline:hover {
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        .dialog-btn-filled {
-            background: var(--md-primary);
-            color: var(--md-on-primary);
-            box-shadow: 0 2px 8px rgba(255, 109, 0, 0.3);
-        }
-
-        .dialog-btn-filled:hover {
-            box-shadow: 0 4px 16px rgba(255, 109, 0, 0.4);
-        }
-
-        /* ==============================
-           Error inline message
-           ============================== */
-        .error-inline {
-            background: #FFF0F0;
-            border: 1px solid #FFD0D0;
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: var(--md-error);
-            display: none;
-            line-height: 1.5;
-        }
-
-        .error-inline.show {
-            display: block;
-            animation: slideDown 0.2s var(--md-ease-standard);
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ==============================
-           Theme Toggle Button
-           ============================== */
-        .theme-toggle {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 100;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: none;
-            background: var(--md-surface-container);
-            color: var(--md-on-surface-variant);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: background 0.2s var(--md-ease-standard), box-shadow 0.2s var(--md-ease-standard);
-            -webkit-tap-highlight-color: transparent;
-        }
-        .theme-toggle:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-        }
-        .theme-toggle svg {
-            width: 22px;
-            height: 22px;
-        }
-        .theme-toggle .theme-icon-dark { display: none; }
-        html[data-theme="dark"] .theme-toggle .theme-icon-light { display: none; }
-        html[data-theme="dark"] .theme-toggle .theme-icon-dark { display: block; }
-        @media (max-width: 560px) {
-            .theme-toggle { top: 12px; right: 12px; width: 40px; height: 40px; }
-            .theme-toggle svg { width: 20px; height: 20px; }
-        }
-
-        /* ==============================
-           Responsive
-           ============================== */
-        @media (max-width: 560px) {
-            body {
-                padding: 16px 12px;
-            }
-            .md3-card {
-                padding: 24px 18px;
-                border-radius: 24px;
-            }
-            .form-title {
-                font-size: 22px;
-            }
-            .chip-group {
-                gap: 8px;
-            }
-            .chip-option {
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-            input, select, textarea {
-                padding: 12px 14px;
-                font-size: 14px;
-            }
-            .dialog-card {
-                padding: 28px 20px 16px;
-            }
-            .dialog-actions {
-                flex-direction: column;
-            }
-            .dialog-btn {
-                width: 100%;
-                padding: 12px 20px;
-            }
-        }
-
-        /* ==============================
-           壁纸主题预设
-           ============================== */
-        body.theme-default {
-            background: linear-gradient(160deg, #FFF3E0 0%, #FFE0B2 40%, #FFCC80 100%);
-        }
-        body.theme-dark {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        }
-        body.theme-ocean {
-            background: linear-gradient(135deg, #006994 0%, #004e6e 100%);
-        }
-        body.theme-sunset {
-            background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
-        }
-        body.theme-forest {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        /* ==============================
-           Dark Mode Component Overrides
-           ============================== */
-        @media (prefers-color-scheme: dark) {
-            body::before { background: rgba(0, 0, 0, 0.4); }
-            input, select, textarea { background: var(--md-surface); color: var(--md-on-surface); }
-            input:focus, select:focus, textarea:focus { background: var(--md-surface-container); }
-            select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); }
-            .chip-option:hover { background: rgba(255, 158, 64, 0.08); }
-            .chip-option.active { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-            .chip-option.active .chip-dot { box-shadow: 0 0 0 2px var(--md-primary-container); }
-            .form-footer { background: var(--md-surface-container-high); }
-            .dialog-overlay { background: rgba(0, 0, 0, 0.6); }
-            .dialog-card { background: var(--md-surface-container); }
-            .dialog-icon { background: rgba(46, 125, 50, 0.2); }
-            .dialog-btn-outline { border-color: var(--md-outline); color: var(--md-on-surface); }
-            .dialog-btn-outline:hover { background: rgba(255, 255, 255, 0.06); }
-            .error-inline { background: rgba(239, 83, 80, 0.1); border-color: rgba(239, 83, 80, 0.3); color: #EF5350; }
-        }
-        html[data-theme="dark"] {
-            body::before { background: rgba(0, 0, 0, 0.4); }
-            input, select, textarea { background: var(--md-surface); color: var(--md-on-surface); }
-            input:focus, select:focus, textarea:focus { background: var(--md-surface-container); }
-            select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); }
-            .chip-option:hover { background: rgba(255, 158, 64, 0.08); }
-            .chip-option.active { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-            .chip-option.active .chip-dot { box-shadow: 0 0 0 2px var(--md-primary-container); }
-            .form-footer { background: var(--md-surface-container-high); }
-            .dialog-overlay { background: rgba(0, 0, 0, 0.6); }
-            .dialog-card { background: var(--md-surface-container); }
-            .dialog-icon { background: rgba(46, 125, 50, 0.2); }
-            .dialog-btn-outline { border-color: var(--md-outline); color: var(--md-on-surface); }
-            .dialog-btn-outline:hover { background: rgba(255, 255, 255, 0.06); }
-            .error-inline { background: rgba(239, 83, 80, 0.1); border-color: rgba(239, 83, 80, 0.3); color: #EF5350; }
-        }
-    </style>
-<script defer src="js/analytics.js?v=20260905-analytics"></script>
-  <link rel="stylesheet" href="css/button-shapes.css?v=20261002-pill-v1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#08090A">
+  <title>提交同好会信息 · VNFest</title>
+  <meta name="description" content="从一封邀请开始，向 VNFest 介绍你们的视觉小说同好会。">
+  <link rel="icon" type="image/x-icon" href="./favicon.ico?v=20261025-submit-logo-1">
+  <link rel="stylesheet" href="./css/submit-v2.css?v=20261025-submit-live-1">
+  <link rel="stylesheet" href="./css/submit-v2-polish.css?v=20261025-submit-mobile-1">
+  <link rel="stylesheet" href="./css/submit-live.css?v=20261025-submit-live-1">
+  <script defer src="./js/app-core.js?v=20260914-media-url-v1"></script>
+  <script defer src="./js/vnfest-logo.js?v=20261025-submit-live-1"></script>
+  <script defer src="./js/lib/gsap-3.13.0.min.js?v=20261025-submit-live-1"></script>
+  <script defer src="./js/submit-v2.js?v=20261025-submit-mobile-1"></script>
 </head>
-<body>
-    <div class="container">
-        <!-- Theme toggle -->
-        <button class="theme-toggle" id="themeToggle" title="切换主题" aria-label="切换主题">
-            <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-        <div class="md3-card">
-            <!-- Header -->
-            <div class="form-header">
-                <div class="form-label">
-                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                    SUBMIT · 提交信息
+<body class="v2-body" data-submit-mode="production">
+  <section id="v2AuthGate" class="v2-auth-gate" aria-labelledby="v2AuthTitle">
+    <div class="v2-auth-card">
+      <p class="v2-form-eyebrow">VNFEST / YOUR NEXT CHAPTER</p>
+      <h1 id="v2AuthTitle">让故事相遇。</h1>
+      <p id="v2AuthMessage" role="status">正在确认登录状态…</p>
+      <p class="v2-auth-hint">使用当前账号提交，审核通过后将为你绑定同好会身份。</p>
+      <button type="button" id="v2AuthRetry" class="v2-primary" hidden>重新尝试</button>
+      <a class="v2-ghost" href="./">返回首页</a>
+    </div>
+  </section>
+
+  <!-- ============ 背景舞台：网格 / 信号点 / 噪点 / 扫描线 ============ -->
+  <div class="v2-bg" aria-hidden="true">
+    <canvas id="v2Canvas" class="v2-canvas"></canvas>
+    <div class="v2-glare" id="v2Glare"></div>
+    <div class="v2-noise"></div>
+    <div class="v2-scan"></div>
+  </div>
+
+  <!-- ============ ACT 1 · 邀请 ============ -->
+  <section id="v2Boot" class="v2-boot" aria-label="VNFest 的邀请">
+    <button type="button" id="bootSkip" class="v2-skip v2-mono">跳过<span class="v2-key">ESC</span></button>
+
+    <div class="v2-boot-loading" id="bootLoading" aria-hidden="true">
+      <svg class="v2-ring" viewBox="0 0 120 120">
+        <circle class="v2-ring-track" cx="60" cy="60" r="54"></circle>
+        <circle class="v2-ring-bar" id="bootRing" cx="60" cy="60" r="54"></circle>
+      </svg>
+      <p class="v2-loading-pct"><span id="bootPct">0</span><i>%</i></p>
+    </div>
+
+    <div class="v2-boot-center">
+      <div class="v2-boot-logo" id="bootLogo" aria-hidden="true"></div>
+
+      <div class="v2-boot-lines" id="bootLines">
+        <article class="v2-boot-line" data-line>
+          <p class="v2-boot-text">欢迎来到 VNFest。</p>
+          <p class="v2-boot-meta">VISUAL NOVEL FESTIVAL</p>
+        </article>
+        <article class="v2-boot-line" data-line>
+          <p class="v2-boot-text">在不同的高校、地区，乃至国家，<br>我们因视觉小说而相遇。</p>
+          <p class="v2-boot-meta">ACROSS CAMPUSES · REGIONS · COUNTRIES</p>
+        </article>
+        <article class="v2-boot-line" data-line>
+          <p class="v2-boot-text">我们希望，让分散的同好彼此认识，<br>也让每个社群的历史被记录、被延续。</p>
+          <p class="v2-boot-meta">交流 · 记录 · 协作 · 传承</p>
+        </article>
+        <article class="v2-boot-line" data-line>
+          <p class="v2-boot-text">从共同的兴趣出发，<br>让一次相识，成为长期合作的开始。</p>
+          <p class="v2-boot-meta">FROM ONE ENCOUNTER TO LONG-TERM COOPERATION</p>
+        </article>
+        <article class="v2-boot-line" data-line>
+          <p class="v2-boot-text">现在，让我们认识你们。</p>
+          <p class="v2-boot-meta">NEXT / INTRODUCE YOURSELVES</p>
+          <button type="button" id="bootEnter" class="v2-boot-cta" hidden>介绍你们的同好会<span aria-hidden="true">↗</span></button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACT 2 · 揭开遮罩 ============ -->
+  <div id="v2Veil" class="v2-veil" aria-hidden="true"><i id="v2VeilHole" class="v2-veil-hole"></i></div>
+
+  <!-- ============ ACT 3 · 引导式表单 ============ -->
+  <div id="v2Stage" class="v2-stage">
+    <header class="v2-top">
+      <a class="v2-brand" href="./" aria-label="VNFest 首页">
+        <span class="v2-brand-mark" id="brandMark" aria-hidden="true"></span>
+        <span class="v2-brand-caption">同好会入驻</span>
+      </a>
+      <span class="v2-top-mid">将你们的热爱，写进共同的地图。</span>
+      <span class="v2-top-right"><i class="v2-live-dot" aria-hidden="true"></i>审核后展示<span id="v2Clock" hidden>00:00</span></span>
+    </header>
+
+    <main class="v2-main">
+      <!-- 左栏：叙事。每屏的标题、导语、章节号与角色都在这里，随步骤切换 -->
+      <div class="v2-tales">
+        <nav class="v2-rail" aria-label="章节">
+          <ol>
+            <li class="v2-rail-item is-active" data-rail="0"><span class="v2-rail-num">01</span><span class="v2-rail-name">认识</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+            <li class="v2-rail-item" data-rail="1"><span class="v2-rail-num">02</span><span class="v2-rail-name">坐标</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+            <li class="v2-rail-item" data-rail="2"><span class="v2-rail-num">03</span><span class="v2-rail-name">相遇</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+            <li class="v2-rail-item" data-rail="3"><span class="v2-rail-num">04</span><span class="v2-rail-name">故事</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+            <li class="v2-rail-item" data-rail="4"><span class="v2-rail-num">05</span><span class="v2-rail-name">关于你</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+            <li class="v2-rail-item" data-rail="5"><span class="v2-rail-num">06</span><span class="v2-rail-name">核对</span><i class="v2-rail-dot" aria-hidden="true"></i></li>
+          </ol>
+        </nav>
+
+        <div class="v2-tales-body">
+          <div class="v2-tales-stack" id="v2Tales">
+            <article class="v2-tale is-current" data-tale="0">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>01 / 认识你们</span></p>
+              <h2 class="v2-tale-title">每一段相遇，<br><span>从名字开始。</span></h2>
+              <p class="v2-tale-lede">它会出现在地图上，成为其他同好找到你们的第一行坐标。</p>
+            </article>
+            <article class="v2-tale" data-tale="1">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>02 / 你们在哪里</span></p>
+              <h2 class="v2-tale-title">你们的坐标在哪里？</h2>
+              <p class="v2-tale-lede">无论相隔多远，共同的兴趣总能在地图上找到一个点。</p>
+            </article>
+            <article class="v2-tale" data-tale="2">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>03 / 如何相遇</span></p>
+              <h2 class="v2-tale-title">让下一位同好找到你们。</h2>
+              <p class="v2-tale-lede">留下一扇门，等待下一次「原来你也喜欢」。</p>
+            </article>
+            <article class="v2-tale" data-tale="3">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>04 / 留下故事</span></p>
+              <h2 class="v2-tale-title">也为你们的故事，留下一页。</h2>
+              <p class="v2-tale-lede">这一屏可以留白，之后补充也没关系。</p>
+            </article>
+            <article class="v2-tale" data-tale="4">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>05 / 介绍你自己</span></p>
+              <h2 class="v2-tale-title">最后，认识一下正在填写的你。</h2>
+              <p class="v2-tale-lede">谢谢你，为这个社群留下这份介绍。</p>
+            </article>
+            <article class="v2-tale" data-tale="5">
+              <p class="v2-kicker"><span class="v2-dot"></span><span>06 / 核对信息</span></p>
+              <h2 class="v2-tale-title">再确认一次。</h2>
+              <p class="v2-tale-lede">这就是你们即将留在本页上的内容。</p>
+            </article>
+          </div>
+
+          <div class="v2-orbit" aria-hidden="true">
+            <span class="v2-orbit-ring is-outer"></span>
+            <span class="v2-orbit-ring is-mid"></span>
+            <span class="v2-orbit-ring is-inner"></span>
+            <figure class="v2-tale-chibi" id="v2DecoChibi">
+              <img id="v2DecoImg" class="v2-tale-img" alt="" width="200" height="200" decoding="async">
+            </figure>
+            <span class="v2-orbit-tag v2-mono" id="v2OrbitTag">NAME</span>
+          </div>
+        </div>
+
+        <footer class="v2-tales-foot">
+          <span class="v2-deco-num" id="v2DecoNum">01</span>
+          <span class="v2-deco-name v2-mono" id="v2DecoName">INTAKE</span>
+        </footer>
+
+        <span class="v2-tales-rule" id="v2TalesRule" aria-hidden="true">
+          <i data-tick="0"></i><i data-tick="1"></i><i data-tick="2"></i>
+          <i data-tick="3"></i><i data-tick="4"></i><i data-tick="5"></i>
+        </span>
+      </div>
+
+      <!-- 右栏：填写 -->
+      <div class="v2-column">
+        <div class="v2-form-heading">
+          <div><p class="v2-form-eyebrow">LET YOUR STORY BEGIN</p><h1>介绍你们的同好会</h1></div>
+          <span class="v2-form-flower" aria-hidden="true">✳</span>
+        </div>
+        <div class="v2-scroll" id="v2Scroll">
+          <form id="v2Form" novalidate autocomplete="off">
+
+            <!-- 01 -->
+            <section class="v2-step is-current" data-step="0" aria-labelledby="v2h0">
+              <h2 class="v2-sr" id="v2h0" tabindex="-1">先从名字开始。</h2>
+
+              <div class="v2-fieldset" role="radiogroup" aria-labelledby="v2TypeLabel">
+                <span class="v2-label" id="v2TypeLabel">你们是什么样的组织 <span class="v2-req">*</span></span>
+                <div class="v2-choices">
+                  <label class="v2-choice">
+                    <input type="radio" name="clubType" value="school" checked>
+                    <span class="v2-choice-idx v2-mono">01</span>
+                    <span class="v2-choice-body"><strong>高校同好会</strong><small>在校园里，找到同频的人</small></span>
+                    <span class="v2-choice-mark" aria-hidden="true"></span>
+                  </label>
+                  <label class="v2-choice">
+                    <input type="radio" name="clubType" value="region">
+                    <span class="v2-choice-idx v2-mono">02</span>
+                    <span class="v2-choice-body"><strong>地区高校联合</strong><small>跨越校园，让热爱彼此连接</small></span>
+                    <span class="v2-choice-mark" aria-hidden="true"></span>
+                  </label>
+                  <label class="v2-choice">
+                    <input type="radio" name="clubType" value="vnfest">
+                    <span class="v2-choice-idx v2-mono">03</span>
+                    <span class="v2-choice-body"><strong>视觉小说学园祭</strong><small>为相同的热爱，创造一次相聚</small></span>
+                    <span class="v2-choice-mark" aria-hidden="true"></span>
+                  </label>
                 </div>
-                <h1 class="form-title">提交同好会信息</h1>
-                <p class="form-desc">你的贡献将帮助更多同好找到组织。所有信息需经管理员审核后发布。</p>
-            </div>
+              </div>
 
-            <hr class="section-divider">
+              <div class="v2-field">
+                <label class="v2-label" for="clubName">同好会名称 <span class="v2-req">*</span></label>
+                <input class="v2-input" id="clubName" type="text" placeholder="例：北京大学视觉小说同好会" required aria-describedby="e-clubName">
+                <p class="v2-error v2-mono" id="e-clubName" hidden></p>
+              </div>
 
-            <!-- Error message -->
-            <div id="errorMsg" class="error-inline"></div>
+              <div class="v2-field" id="schoolGroup">
+                <label class="v2-label" for="schoolName">学校名称 <span class="v2-req">*</span></label>
+                <input class="v2-input" id="schoolName" type="text" placeholder="例：北京大学" aria-describedby="h-schoolName e-schoolName">
+                <p class="v2-hint" id="h-schoolName">所属高校的全称。地区联合或学园祭可选择上方类型后跳过。</p>
+                <p class="v2-error v2-mono" id="e-schoolName" hidden></p>
+              </div>
 
-            <form id="submitForm" novalidate>
-                <!-- ===== 基本信息 ===== -->
-                <div class="section-header">
-                    <div class="section-accent"></div>
-                    <h2 class="section-title">基本信息</h2>
-                </div>
-                <p class="section-desc">同好会的名称和所属学校，这是在地图上定位和展示的核心信息。</p>
+              <p class="v2-step-foot is-foot"><span aria-hidden="true">↗</span>组织类型决定地图上的分类；名称与学校会显示在同好会卡片上。</p>
+            </section>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="clubName">同好会名称 <span class="required">*</span></label>
-                    <input type="text" id="clubName" required placeholder="例：北京大学视觉小说同好会">
-                    <div class="field-helper">你所在学校的 Galgame / 视觉小说社团全称</div>
-                </div>
+            <!-- 02 -->
+            <section class="v2-step" data-step="1" aria-labelledby="v2h1">
+              <h2 class="v2-sr" id="v2h1" tabindex="-1">你们的坐标在哪里？</h2>
 
-                <div class="form-group" id="schoolGroup">
-                    <label class="form-label-field" for="schoolName">学校名称 <span class="required" id="schoolRequired">*</span></label>
-                    <input type="text" id="schoolName" placeholder="例：北京大学">
-                    <div class="field-helper" id="schoolHelper">所属高校的全称。如为地区联合或学园祭可不填写。</div>
-                </div>
+              <div class="v2-field">
+                <label class="v2-label" for="country">所属国家 <span class="v2-req">*</span></label>
+                <select class="v2-input" id="country">
+                  <option value="china">中国</option>
+                  <option value="japan">日本</option>
+                  <option value="overseas">海外</option>
+                </select>
+              </div>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="country">所属国家 <span class="required">*</span></label>
-                    <select id="country" required>
-                        <option value="china">中国</option>
-                        <option value="japan">日本</option>
-                        <option value="overseas">海外</option>
-                    </select>
-                </div>
+              <div class="v2-field" id="provinceGroup">
+                <label class="v2-label" for="province">省份 <span class="v2-req">*</span></label>
+                <select class="v2-input" id="province" aria-describedby="e-province">
+                  <option value="">请选择省份</option>
+                  <optgroup label="直辖市"><option>北京</option><option>上海</option><option>天津</option><option>重庆</option></optgroup>
+                  <optgroup label="省份"><option>广东</option><option>江苏</option><option>浙江</option><option>四川</option><option>湖北</option><option>湖南</option><option>安徽</option><option>福建</option><option>山东</option><option>河南</option><option>河北</option><option>陕西</option><option>辽宁</option><option>吉林</option><option>黑龙江</option><option>江西</option><option>广西</option><option>海南</option><option>山西</option><option>云南</option><option>贵州</option><option>甘肃</option><option>青海</option><option>台湾</option></optgroup>
+                  <optgroup label="自治区"><option>内蒙古</option><option>新疆</option><option>宁夏</option><option>西藏</option></optgroup>
+                  <optgroup label="特别行政区"><option>香港</option><option>澳门</option></optgroup>
+                </select>
+                <p class="v2-error v2-mono" id="e-province" hidden></p>
+              </div>
 
-                <div class="form-group" id="provinceGroup">
-                    <label class="form-label-field" for="province">省份 <span class="required">*</span></label>
-                    <select id="province" required>
-                        <option value="">请选择省份</option>
-                        <optgroup label="直辖市">
-                            <option>北京</option><option>上海</option><option>天津</option><option>重庆</option>
-                        </optgroup>
-                        <optgroup label="省份">
-                            <option>广东</option><option>江苏</option><option>浙江</option><option>四川</option>
-                            <option>湖北</option><option>湖南</option><option>安徽</option><option>福建</option>
-                            <option>山东</option><option>河南</option><option>河北</option><option>陕西</option>
-                            <option>辽宁</option><option>吉林</option><option>黑龙江</option><option>江西</option>
-                            <option>广西</option><option>海南</option><option>山西</option><option>云南</option>
-                            <option>贵州</option><option>甘肃</option><option>青海</option><option>台湾</option>
-                        </optgroup>
-                        <optgroup label="自治区">
-                            <option>内蒙古</option><option>新疆</option><option>宁夏</option><option>西藏</option>
-                        </optgroup>
-                        <optgroup label="特别行政区">
-                            <option>香港</option><option>澳门</option>
-                        </optgroup>
-                    </select>
-                </div>
+              <div class="v2-field" id="prefectureGroup">
+                <label class="v2-label" for="prefecture">都道府县 <span class="v2-req">*</span></label>
+                <select class="v2-input" id="prefecture" aria-describedby="e-prefecture">
+                  <option value="">请选择都道府县</option>
+                </select>
+                <p class="v2-error v2-mono" id="e-prefecture" hidden></p>
+              </div>
 
-                <div class="form-group" id="prefectureGroup" style="display:none;">
-                    <label class="form-label-field" for="prefecture">都道府县 <span class="required">*</span></label>
-                    <select id="prefecture">
-                        <option value="">请选择都道府县</option>
-                    </select>
-                </div>
+              <div class="v2-readout" id="v2OriginReadout">
+                <span class="v2-readout-dot" aria-hidden="true"></span>
+                <span class="v2-readout-label">MAP PIN</span>
+                <span class="v2-readout-value is-empty" id="v2OriginValue" aria-live="polite">尚未定位</span>
+              </div>
 
-                <hr class="section-divider">
+              <p class="v2-aside is-foot"><span class="v2-aside-mark" aria-hidden="true">↗</span>一个小小的坐标，也是一段故事的起点。</p>
+            </section>
 
-                <!-- ===== 联系方式 ===== -->
-                <div class="section-header">
-                    <div class="section-accent"></div>
-                    <h2 class="section-title">联系方式</h2>
-                </div>
-                <p class="section-desc">用于同好联系和地图上展示的联络方式。</p>
+            <!-- 03 -->
+            <section class="v2-step" data-step="2" aria-labelledby="v2h2">
+              <h2 class="v2-sr" id="v2h2" tabindex="-1">让下一位同好找到你们。</h2>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="contact">群号 / 联系方式 <span class="required">*</span></label>
-                    <input type="text" id="contact" required placeholder="例：123456789  或  https://discord.gg/xxx">
-                    <div class="field-helper">QQ群、微信群、Discord、Telegram 等均可</div>
-                </div>
+              <div class="v2-field">
+                <label class="v2-label" for="contact">群号 / 联系方式 <span class="v2-req">*</span></label>
+                <input class="v2-input" id="contact" type="text" placeholder="QQ 群号，或你们的社群邀请链接" required aria-describedby="h-contact e-contact">
+                <p class="v2-hint" id="h-contact">QQ群、微信群、Discord、Telegram 均可。这是同好会的公开联络方式，会显示在地图上。</p>
+                <p class="v2-error v2-mono" id="e-contact" hidden></p>
+              </div>
 
-                <hr class="section-divider">
+              <blockquote class="v2-quote is-foot">
+                <span aria-hidden="true">↗</span>
+                <p>也许某一天，有人会因为这一行字，<br>找到一直在寻找的组织。</p>
+              </blockquote>
+            </section>
 
-                <!-- ===== 详细信息 ===== -->
-                <div class="section-header">
-                    <div class="section-accent"></div>
-                    <h2 class="section-title">详细信息</h2>
-                </div>
-                <p class="section-desc">补充信息，帮助其他同好更好地了解你的组织。</p>
+            <!-- 04 -->
+            <section class="v2-step" data-step="3" aria-labelledby="v2h3">
+              <h2 class="v2-sr" id="v2h3" tabindex="-1">也为你们的故事，留下一页。</h2>
 
-                <div class="form-group">
-                    <label class="form-label-field">组织类型 <span class="required">*</span></label>
-                    <div class="chip-group" id="clubTypeGroup">
-                        <label class="chip-option active">
-                            <input type="radio" name="clubType" value="school" checked>
-                            <span class="chip-dot"></span>
-                            高校同好会
-                        </label>
-                        <label class="chip-option">
-                            <input type="radio" name="clubType" value="region">
-                            <span class="chip-dot"></span>
-                            地区高校联合
-                        </label>
-                        <label class="chip-option">
-                            <input type="radio" name="clubType" value="vnfest">
-                            <span class="chip-dot"></span>
-                            视觉小说学园祭
-                        </label>
+              <div class="v2-field is-raised">
+                <label class="v2-label" id="v2DateLabel" for="v2DateTrigger">成立时间 <span class="v2-opt">可选</span></label>
+                <div class="v2-datepicker" id="v2Datepicker">
+                  <button type="button" class="v2-date-trigger" id="v2DateTrigger"
+                          aria-haspopup="dialog" aria-expanded="false" aria-controls="v2DatePanel" aria-labelledby="v2DateLabel v2DateText">
+                    <span class="v2-date-text is-empty" id="v2DateText">选择日期</span>
+                    <svg class="v2-date-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect>
+                      <path d="M8 2.8v3.4M16 2.8v3.4M3.5 10h17"></path>
+                    </svg>
+                  </button>
+                  <input type="hidden" id="createdAt" value="">
+                  <div class="v2-date-panel" id="v2DatePanel" role="dialog" aria-label="选择成立时间" hidden>
+                    <div class="v2-date-head">
+                      <select class="v2-date-select" id="v2DateYear" aria-label="年份"></select>
+                      <select class="v2-date-select" id="v2DateMonth" aria-label="月份"></select>
+                      <span class="v2-date-nav">
+                        <button type="button" class="v2-date-arrow" id="v2DatePrev" aria-label="上个月">‹</button>
+                        <button type="button" class="v2-date-arrow" id="v2DateNext" aria-label="下个月">›</button>
+                      </span>
                     </div>
-                    <div class="field-helper" id="typeHelper">选择「高校同好会」时需填写学校名称。</div>
+                    <div class="v2-date-week" aria-hidden="true">
+                      <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+                    </div>
+                    <div class="v2-date-grid" id="v2DateGrid"></div>
+                    <div class="v2-date-foot">
+                      <button type="button" class="v2-date-action" id="v2DateToday">今天</button>
+                      <button type="button" class="v2-date-action" id="v2DateClear">清除</button>
+                      <button type="button" class="v2-date-action is-primary" id="v2DateDone">确定</button>
+                    </div>
+                  </div>
                 </div>
+              </div>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="createdAt">成立时间 <span class="optional-tag">可选</span></label>
-                    <input type="date" id="createdAt">
-                </div>
+              <div class="v2-field">
+                <label class="v2-label" for="remark">群简介 / 备注 <span class="v2-opt">可选</span></label>
+                <textarea class="v2-input v2-textarea" id="remark" rows="6" placeholder="你们如何相遇？平时一起做些什么？&#10;也可以写下活动、入群要求，或想对新同好说的话。" aria-describedby="h-remark"></textarea>
+                <p class="v2-hint" id="h-remark">没有固定格式。几句话，也足以让彼此更近一点。</p>
+              </div>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="remark">群简介 / 备注 <span class="optional-tag">可选</span></label>
-                    <textarea id="remark" placeholder="介绍一下你的同好会，比如日常活动、入群要求等……"></textarea>
-                </div>
+              <p class="v2-step-foot is-foot"><span aria-hidden="true">↗</span>这两项都可以留空，之后联系管理员补上。</p>
+            </section>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="submitter">你的联系方式 <span class="optional-tag">可选</span></label>
-                    <input type="text" id="submitter" placeholder="QQ / 微信 / 邮箱，审核通过后可能联系你">
-                    <div class="field-helper">仅用于审核沟通，不会公开发布。</div>
-                </div>
+            <!-- 05 -->
+            <section class="v2-step" data-step="4" aria-labelledby="v2h4">
+              <h2 class="v2-sr" id="v2h4" tabindex="-1">最后，认识一下正在填写的你。</h2>
 
-                <div class="form-group">
-                    <label class="form-label-field" for="applicantRole">你在这个同好会中的角色 <span class="required">*</span></label>
-                    <select id="applicantRole" required>
-                        <option value="external">其他</option>
-                        <option value="member" selected>成员</option>
-                        <option value="manager">管理员</option>
-                        <option value="representative">负责人</option>
-                    </select>
-                    <div class="field-helper">审核通过后会自动为你绑定该同好会的对应身份。</div>
-                </div>
+              <div class="v2-field">
+                <label class="v2-label" for="applicantRole">你在同好会中的角色 <span class="v2-req">*</span></label>
+                <select class="v2-input" id="applicantRole" aria-describedby="h-role e-applicantRole">
+                  <option value="external">其他</option>
+                  <option value="member" selected>成员</option>
+                  <option value="manager">管理员</option>
+                  <option value="representative">负责人</option>
+                </select>
+                <p class="v2-hint" id="h-role">审核通过后，会为当前登录账号绑定对应的同好会身份。</p>
+                <p class="v2-error v2-mono" id="e-applicantRole" hidden></p>
+              </div>
 
-                <button type="submit" class="btn-submit" id="submitBtn">
-                    <span class="btn-text">提交信息</span>
-                </button>
-            </form>
+              <div class="v2-field">
+                <label class="v2-label" for="submitter">你的联系方式 <span class="v2-opt">可选</span></label>
+                <input class="v2-input" id="submitter" type="text" placeholder="QQ / 微信 / 邮箱" aria-describedby="h-submitter">
+                <p class="v2-hint" id="h-submitter">仅用于审核沟通，不会公开发布。</p>
+              </div>
 
-            <div class="form-footer">
-                提交后管理员会尽快审核，审核通过后将在同好会地图上展示，并自动为你绑定对应同好会身份。
-            </div>
+              <div class="v2-readout is-foot" id="v2RoleReadout">
+                <span class="v2-readout-dot" aria-hidden="true"></span>
+                <span class="v2-readout-label">BINDING</span>
+                <span class="v2-readout-value" id="v2RoleValue" aria-live="polite">成员</span>
+              </div>
+            </section>
+
+            <!-- 06 -->
+            <section class="v2-step" data-step="5" aria-labelledby="v2h5">
+              <h2 class="v2-sr" id="v2h5" tabindex="-1">再确认一次。</h2>
+              <div class="v2-review" id="v2Review"></div>
+              <p class="v2-review-note is-foot">正式提交后，信息需经管理员审核才会在地图展示，并为当前登录账号绑定对应身份。</p>
+            </section>
+
+          </form>
         </div>
+
+        <p id="v2SubmitError" class="v2-submit-error" role="alert" tabindex="-1" hidden></p>
+        <footer class="v2-nav">
+          <button type="button" id="v2Back" class="v2-ghost v2-mono" disabled><span aria-hidden="true">←</span> 返回</button>
+          <span class="v2-nav-progress">
+            <span class="v2-nav-count v2-mono" id="v2NavCount">01 / 06</span>
+            <span class="v2-track" aria-hidden="true"><i id="v2Progress"></i></span>
+          </span>
+          <button type="button" id="v2Next" class="v2-primary"><span class="v2-next-label">继续</span><span aria-hidden="true">↗</span></button>
+        </footer>
+      </div>
+    </main>
+
+    <div id="v2Shutter" class="v2-shutter" aria-hidden="true"></div>
+    <p id="v2Live" class="v2-sr" aria-live="polite"></p>
+  </div>
+
+  <!-- ============ ACT 4 · 完成 ============ -->
+  <section id="v2Done" class="v2-done" hidden aria-labelledby="v2DoneTitle">
+    <div class="v2-dialog">
+      <span class="v2-done-beam" aria-hidden="true"></span>
+      <img class="v2-done-chibi" src="./image/chibi-web/character-134-384.webp" srcset="./image/chibi-web/character-134-256.webp 256w, ./image/chibi-web/character-134-384.webp 384w" sizes="144px" alt="" width="144" height="144" decoding="async">
+      <p class="v2-kicker"><span class="v2-dot"></span><span>SUBMISSION RECEIVED</span></p>
+      <h1 class="v2-done-title" id="v2DoneTitle" tabindex="-1">已收到你们的故事。<br>等待审核。</h1>
+      <p class="v2-done-status v2-mono">提交成功 · 等待管理员审核</p>
+      <p class="v2-done-desc">谢谢你认真介绍了你们的同好会。<br>管理员审核通过后，信息将在地图展示，并为当前账号绑定相应身份。</p>
+      <p class="v2-done-demo" id="v2Receipt">提交成功 · 等待管理员审核</p>
+      <div class="v2-done-actions">
+        <button type="button" id="v2Restart" class="v2-primary">再填一份<span aria-hidden="true">↻</span></button>
+        <a class="v2-ghost" href="./">返回首页<span aria-hidden="true">↗</span></a>
+      </div>
     </div>
+  </section>
 
-    <!-- MD3 Submit Success Dialog -->
-    <div class="dialog-overlay" id="successDialog">
-        <div class="dialog-card">
-            <div class="dialog-icon">
-                <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
-            </div>
-            <h2 class="dialog-title">提交成功</h2>
-            <p class="dialog-desc">感谢你的贡献！<br>管理员会尽快审核，审核通过后将在同好会地图上展示。</p>
-            <div class="dialog-actions">
-                <button class="dialog-btn dialog-btn-outline" id="dialogReset">再填一份</button>
-                <button class="dialog-btn dialog-btn-filled" id="dialogHome">返回首页</button>
-            </div>
-        </div>
+  <noscript>
+    <div class="v2-noscript">
+      <h1>提交同好会信息</h1>
+      <p>请启用 JavaScript 后登录并提交同好会信息。你也可以返回首页，查看已有的同好会。</p>
+      <p>字段：同好会名称、学校名称、所属国家、省份 / 都道府县、群号或联系方式、组织类型、成立时间、群简介、你的联系方式、你在同好会中的角色。</p>
     </div>
+  </noscript>
 
-    <script src="./js/app-core.js?v=20260914-media-url-v1"></script>
-    <script>
-        // ===== WallpaperAPI =====
-        window.WallpaperAPI = {
-            setImage: function(imageUrl) {
-                document.body.style.background = "url('" + imageUrl + "') center/cover fixed";
-                document.body.style.backgroundBlendMode = 'overlay';
-            },
-            setGradient: function(gradient) {
-                document.body.style.background = gradient;
-            },
-            reset: function() {
-                document.body.style.background = 'linear-gradient(160deg, #FFF3E0 0%, #FFE0B2 40%, #FFCC80 100%)';
-            },
-            setTheme: function(themeName) {
-                var themes = {
-                    default: 'linear-gradient(160deg, #FFF3E0 0%, #FFE0B2 40%, #FFCC80 100%)',
-                    dark: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-                    ocean: 'linear-gradient(135deg, #006994 0%, #004e6e 100%)',
-                    sunset: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)',
-                    forest: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
-                };
-                if (themes[themeName]) {
-                    document.body.style.background = themes[themeName];
-                }
-            }
-        };
-
-        (function() {
-            var params = new URLSearchParams(window.location.search);
-            var wallpaper = params.get('wallpaper');
-            if (wallpaper) {
-                if (wallpaper.startsWith('http')) {
-                    WallpaperAPI.setImage(wallpaper);
-                } else {
-                    WallpaperAPI.setTheme(wallpaper);
-                }
-            }
-        })();
-
-        // ===== Theme initialization (matches project-wide pattern) =====
-        (function() {
-            var html = document.documentElement;
-            var MQ = window.matchMedia('(prefers-color-scheme: dark)');
-            function resolveTheme() {
-                var saved = localStorage.getItem('themePreference');
-                if (saved === 'light' || saved === 'dark') return saved;
-                return MQ.matches ? 'dark' : 'light';
-            }
-            function applyTheme(t) { html.setAttribute('data-theme', t); }
-            function handleChange() {
-                var saved = localStorage.getItem('themePreference');
-                if (!saved || saved === 'system') applyTheme(resolveTheme());
-            }
-            applyTheme(resolveTheme());
-            if (typeof MQ.addEventListener === 'function') {
-                MQ.addEventListener('change', handleChange);
-            } else if (typeof MQ.addListener === 'function') {
-                MQ.addListener(handleChange);
-            }
-        })();
-
-        // ===== Theme toggle button =====
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            var html = document.documentElement;
-            var current = html.getAttribute('data-theme') || 'light';
-            var next = current === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', next);
-            try { localStorage.setItem('themePreference', next); } catch (e) {}
-        });
-
-        // ===== 登录校验：提交信息需要登录，审批通过后会自动绑定当前账号 =====
-        window.__submitAuthReady = false;
-        (function() {
-            fetch('./api/auth.php?action=me', { credentials: 'same-origin' })
-                .then(function(resp) { return resp.json(); })
-                .then(function(data) {
-                    if (data && data.logged_in) {
-                        window.__submitAuthReady = true;
-                    } else {
-                        window.location.replace('./login.html?redirect=submit.html');
-                    }
-                })
-                .catch(function() {
-                    window.location.replace('./login.html?redirect=submit.html');
-                });
-        })();
-
-        // ===== DOM refs =====
-        var clubName = document.getElementById('clubName');
-        var schoolName = document.getElementById('schoolName');
-        var schoolGroup = document.getElementById('schoolGroup');
-        var schoolRequired = document.getElementById('schoolRequired');
-        var schoolHelper = document.getElementById('schoolHelper');
-        var countrySelect = document.getElementById('country');
-        var provinceGroup = document.getElementById('provinceGroup');
-        var prefectureGroup = document.getElementById('prefectureGroup');
-        var provinceSelect = document.getElementById('province');
-        var prefectureSelect = document.getElementById('prefecture');
-        var contact = document.getElementById('contact');
-        var createdAt = document.getElementById('createdAt');
-        var remark = document.getElementById('remark');
-        var submitter = document.getElementById('submitter');
-        var applicantRole = document.getElementById('applicantRole');
-        var submitBtn = document.getElementById('submitBtn');
-        var errorMsg = document.getElementById('errorMsg');
-        var successDialog = document.getElementById('successDialog');
-        var typeHelper = document.getElementById('typeHelper');
-
-        // ===== Prefecture rendering =====
-        function renderSubmitPrefectureSelect(selectedValue) {
-            if (!prefectureSelect || !Array.isArray(window.JAPAN_PREFECTURES)) return;
-            selectedValue = selectedValue || '';
-            var selectedKey = Utils.normalizeJapanPrefecture(selectedValue);
-            var groups = {};
-            window.JAPAN_PREFECTURES.forEach(function(item) {
-                if (!groups[item.regionZh]) groups[item.regionZh] = [];
-                groups[item.regionZh].push(item);
-            });
-            var html = '<option value="">请选择都道府县</option>';
-            var regionNames = Object.keys(groups);
-            for (var r = 0; r < regionNames.length; r++) {
-                var region = regionNames[r];
-                var items = groups[region];
-                html += '<optgroup label="' + Utils.escapeHTML(region) + '">';
-                for (var i = 0; i < items.length; i++) {
-                    var item = items[i];
-                    var selected = item.jaName === selectedKey ? ' selected' : '';
-                    html += '<option value="' + Utils.escapeHTML(item.jaName) + '"' + selected + '>' + Utils.escapeHTML(item.zhName) + '</option>';
-                }
-                html += '</optgroup>';
-            }
-            prefectureSelect.innerHTML = html;
-        }
-
-        renderSubmitPrefectureSelect(prefectureSelect.value);
-
-        // ===== Country toggle =====
-        function toggleCountryFields() {
-            var val = countrySelect.value;
-            if (val === 'japan') {
-                provinceGroup.style.display = 'none';
-                prefectureGroup.style.display = 'block';
-                provinceSelect.required = false;
-                prefectureSelect.required = true;
-            } else if (val === 'overseas') {
-                provinceGroup.style.display = 'none';
-                prefectureGroup.style.display = 'none';
-                provinceSelect.required = false;
-                prefectureSelect.required = false;
-            } else {
-                provinceGroup.style.display = 'block';
-                prefectureGroup.style.display = 'none';
-                provinceSelect.required = true;
-                prefectureSelect.required = false;
-            }
-        }
-
-        countrySelect.addEventListener('change', toggleCountryFields);
-        toggleCountryFields();
-
-        // ===== School field dynamic (based on club type) =====
-        function updateSchoolField() {
-            var selected = document.querySelector('input[name="clubType"]:checked');
-            var type = selected ? selected.value : 'school';
-
-            if (type === 'school') {
-                schoolGroup.style.display = 'block';
-                schoolName.required = true;
-                schoolRequired.style.display = 'inline';
-                schoolHelper.textContent = '所属高校的全称。';
-                typeHelper.textContent = '选择「地区高校联合」或「学园祭」可不填写学校名称。';
-            } else {
-                schoolGroup.style.display = 'none';
-                schoolName.required = false;
-                schoolName.value = '';
-                typeHelper.textContent = type === 'region' ? '地区性多个高校联合组织。' : '视觉小说学园祭相关活动组织。';
-            }
-        }
-
-        // ===== Chip toggle logic =====
-        var chipOptions = document.querySelectorAll('.chip-option');
-        for (var c = 0; c < chipOptions.length; c++) {
-            chipOptions[c].addEventListener('click', function(e) {
-                // Don't toggle if the click is directly on the input
-                if (e.target.tagName === 'INPUT') return;
-                var input = this.querySelector('input[type="radio"]');
-                if (input) {
-                    input.checked = true;
-                    // Trigger change event manually
-                    var evt = document.createEvent('HTMLEvents');
-                    evt.initEvent('change', true, true);
-                    input.dispatchEvent(evt);
-                }
-            });
-        }
-
-        document.querySelectorAll('input[name="clubType"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                document.querySelectorAll('.chip-option').forEach(function(chip) {
-                    chip.classList.remove('active');
-                });
-                this.closest('.chip-option').classList.add('active');
-                updateSchoolField();
-            });
-        });
-
-        // Initial state
-        updateSchoolField();
-
-        // ===== Ripple effect =====
-        function createRipple(e, btn) {
-            var rect = btn.getBoundingClientRect();
-            var size = Math.max(rect.width, rect.height);
-            var x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width / 2) - rect.left - size / 2;
-            var y = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height / 2) - rect.top - size / 2;
-            var ripple = document.createElement('span');
-            ripple.className = 'ripple';
-            ripple.style.width = ripple.style.height = size + 'px';
-            ripple.style.left = x + 'px';
-            ripple.style.top = y + 'px';
-            btn.appendChild(ripple);
-            setTimeout(function() { ripple.remove(); }, 600);
-        }
-
-        submitBtn.addEventListener('click', function(e) {
-            createRipple(e, this);
-        });
-
-        // ===== Dialog =====
-        function openDialog() {
-            successDialog.classList.add('open');
-        }
-
-        function closeDialog() {
-            successDialog.classList.remove('open');
-        }
-
-        document.getElementById('dialogReset').addEventListener('click', function() {
-            closeDialog();
-            document.getElementById('submitForm').reset();
-            // Reset to defaults
-            document.querySelector('input[name="clubType"][value="school"]').checked = true;
-            document.querySelectorAll('.chip-option').forEach(function(chip, idx) {
-                chip.classList.toggle('active', idx === 0);
-            });
-            countrySelect.value = 'china';
-            toggleCountryFields();
-            updateSchoolField();
-        });
-
-        document.getElementById('dialogHome').addEventListener('click', function() {
-            window.location.href = './';
-        });
-
-        // Close dialog on overlay click
-        successDialog.addEventListener('click', function(e) {
-            if (e.target === this) closeDialog();
-        });
-
-        // ===== Form submission =====
-        document.getElementById('submitForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            // Hide previous error
-            errorMsg.classList.remove('show');
-
-            if (!window.__submitAuthReady) {
-                showError('请先登录后再提交，页面正在跳转登录...');
-                window.location.replace('./login.html?redirect=submit.html');
-                return;
-            }
-
-            // Collect type
-            var clubType = '';
-            document.querySelectorAll('input[name="clubType"]').forEach(function(radio) {
-                if (radio.checked) clubType = radio.value;
-            });
-
-            var country = countrySelect.value;
-
-            var region = '';
-            if (country === 'japan') {
-                region = Utils.normalizeJapanPrefecture(prefectureSelect.value);
-                if (!region) {
-                    showError('请选择都道府县');
-                    return;
-                }
-            } else if (country === 'overseas') {
-                region = '海外';
-            } else {
-                region = provinceSelect.value;
-                if (!region) {
-                    showError('请选择省份');
-                    return;
-                }
-            }
-
-            var nameVal = clubName.value.trim();
-            var schoolVal = schoolName.value.trim();
-            var contactVal = contact.value.trim();
-
-            if (!nameVal) {
-                showError('请填写同好会名称');
-                clubName.focus();
-                return;
-            }
-            if (clubType === 'school' && !schoolVal) {
-                showError('请填写学校名称');
-                schoolName.focus();
-                return;
-            }
-            if (!contactVal) {
-                showError('请填写联系方式');
-                contact.focus();
-                return;
-            }
-
-            var data = {
-                name: nameVal,
-                school: schoolVal,
-                country: country,
-                province: country === 'china' ? region : country === 'overseas' ? region : '',
-                prefecture: country === 'japan' ? region : '',
-                info: contactVal,
-                type: clubType,
-                created_at: createdAt.value || '',
-                remark: remark.value.trim(),
-                submitter: submitter.value.trim(),
-                applicant_role: applicantRole.value,
-                timestamp: new Date().toISOString(),
-                status: 'pending'
-            };
-
-            submitBtn.disabled = true;
-            submitBtn.classList.add('btn-loading');
-
-            try {
-                var response = await fetch('./api/submit.php', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                var result = await response.json();
-
-                if (result.success) {
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove('btn-loading');
-                    openDialog();
-                } else {
-                    if (result.logged_in === false) {
-                        window.location.replace('./login.html?redirect=submit.html');
-                        return;
-                    }
-                    throw new Error(result.message || '提交失败');
-                }
-            } catch (err) {
-                console.error('提交失败:', err);
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('btn-loading');
-                showError(err && err.message ? err.message : '提交失败，请稍后重试或联系管理员。');
-            }
-        });
-
-        function showError(msg) {
-            errorMsg.textContent = msg;
-            errorMsg.classList.add('show');
-            errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    </script>
-    <script src="js/page-background.js?v=20260812-centralized-preferences"></script>
+  <script>
+    // 资源加载失败时保留登录门禁，提供刷新入口，不展示不可提交的表单。
+    (function () {
+      window.setTimeout(function () {
+        if (window.__vnfestV2) return;
+        var message = document.getElementById('v2AuthMessage');
+        var retry = document.getElementById('v2AuthRetry');
+        if (message) message.textContent = '页面资源未能加载，请刷新后重试。';
+        if (retry) { retry.hidden = false; retry.addEventListener('click', function () { location.reload(); }, { once: true }); }
+      }, 4000);
+    })();
+  </script>
 </body>
 </html>

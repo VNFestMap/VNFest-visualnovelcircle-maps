@@ -1678,3 +1678,6 @@ body {
     transition: none;
   }
 }
+
+/* Long links and mixed CJK text must remain inside narrow reading viewports. */
+.wiki-article-main { min-width: 0; overflow-wrap: anywhere; }

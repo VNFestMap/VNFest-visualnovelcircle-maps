@@ -113,7 +113,7 @@ func (s *Server) clubAvatarUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		rawID = intString(id)
 	} else {
-		if _, ok := s.adminUserID(r); !ok {
+		if !s.canManageContentImage(r, userID, scope, parsePositiveInt(rawID)) {
 			writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "权限不足"})
 			return
 		}
@@ -165,12 +165,6 @@ func (s *Server) recognitionImageUpload(w http.ResponseWriter, r *http.Request, 
 		writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "请先登录"})
 		return
 	}
-	if kind != "submission" {
-		if _, ok := s.adminUserID(r); !ok {
-			writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "权限不足"})
-			return
-		}
-	}
 	// Keep the multipart envelope bounded before parsing fields and files.
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20+256<<10)
 	if err := r.ParseMultipartForm(10<<20 + 256<<10); err != nil {
@@ -190,6 +184,20 @@ func (s *Server) recognitionImageUpload(w http.ResponseWriter, r *http.Request, 
 	country := r.FormValue("country")
 	if country != "japan" && country != "overseas" {
 		country = "china"
+	}
+	if kind == "quiz" || kind == "badge" {
+		user, err := s.findUser(r.Context(), userID)
+		allowed := err == nil && user != nil && s.growthFindClub(r.Context(), country, clubID) != nil
+		if allowed && kind == "badge" {
+			allowed = s.recognitionCanBadge(r.Context(), user, clubID, country)
+		}
+		if allowed && kind == "quiz" {
+			allowed = s.recognitionCanDesign(r.Context(), user, clubID, country)
+		}
+		if !allowed {
+			writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权管理该同好会图片"})
+			return
+		}
 	}
 	dir, prefix, name, successMessage := "submission_images", "data/submission_images/", "sub_"+intString(userID)+"_", "图片上传成功"
 	if kind == "quiz" {
@@ -325,4 +333,33 @@ func valueOrZero(value *int64) int64 {
 		return 0
 	}
 	return *value
+}
+
+func (s *Server) canManageContentImage(r *http.Request, userID int64, scope string, id int64) bool {
+	current, e := s.findUser(r.Context(), userID)
+	if e != nil || current == nil {
+		return false
+	}
+	if current.Role == "super_admin" {
+		return true
+	}
+	if id <= 0 {
+		return false
+	}
+	file, key := "publications.json", "publications"
+	if scope == "event" {
+		file, key = "events.json", "events"
+	} else if scope != "publication" {
+		return false
+	}
+	for _, row := range s.projectHubRows(r.Context(), file, key) {
+		if integerValue(row["id"]) == id {
+			for _, club := range normalizeProjectClubs(row["club_ids"]) {
+				if s.publicationCanManage(r.Context(), current, integerValue(club["id"]), firstNonEmpty(stringValue(club["country"]), "china")) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

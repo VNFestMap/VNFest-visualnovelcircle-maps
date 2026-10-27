@@ -266,11 +266,22 @@ func (s *Server) oauthSendCode(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusUnprocessableEntity, map[string]any{"success": false, "code": "EMAIL_INVALID", "message": "邮箱格式不正确"})
 		return
 	}
-	code, _ := sixDigitCode()
+	if !s.codeSendResponse(w, r, input.Email) {
+		return
+	}
+	if intValue(pending["attempts"]) >= 5 {
+		writeJSONStatus(w, 422, map[string]any{"success": false, "code": "OAUTH_CODE_INVALID", "message": "验证次数已用尽，请重新开始授权"})
+		return
+	}
+	code, codeErr := sixDigitCode()
+	if codeErr != nil {
+		writeJSONStatus(w, 503, map[string]any{"success": false})
+		return
+	}
+
 	pending["email"] = input.Email
 	pending["code_hash"] = oauthCodeHash(session.ID, code, s.cfg.SessionSecret)
 	pending["code_expires_at"] = time.Now().Add(5 * time.Minute).Unix()
-	pending["attempts"] = 0
 	pending["verified"] = false
 	if err := s.sessions.Store.Save(r.Context(), session); err != nil || s.mailer.Send(r.Context(), mail.Message{To: input.Email, Subject: "社交账号登录验证码", Body: "您的验证码是：" + code + "\n\n验证码 5 分钟内有效。如果不是您本人操作，请忽略此邮件。\n"}) != nil {
 		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "code": "OAUTH_CODE_SEND_FAILED", "message": "验证码发送失败，请稍后再试"})

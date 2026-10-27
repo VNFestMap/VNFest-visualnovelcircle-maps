@@ -116,19 +116,24 @@ func (s *Server) recognitionProgramDetail(w http.ResponseWriter, r *http.Request
 		viewer, _ = s.findUser(r.Context(), *viewerID)
 		isManager = viewer != nil && s.recognitionCanDesign(r.Context(), viewer, program.ClubID, program.Country)
 	}
-	if program.Status == "draft" && !isManager {
+	editView := r.URL.Query().Get("view") == "edit"
+	if editView && !isManager {
+		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权编辑该考核"})
+		return
+	}
+	if program.Status == "draft" && !editView {
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "考核不存在"})
 		return
 	}
-	version, _ := s.recognitionVersion(r.Context(), id, !isManager)
+	version, _ := s.recognitionVersion(r.Context(), id, editView)
 	content := map[string]any{}
 	if version != nil {
 		content = version["content"].(map[string]any)
-		if !isManager {
+		if !editView {
 			content = recognitionStripAnswers(content)
 		}
 	}
-	result := map[string]any{"success": true, "program": map[string]any{"id": program.ID, "club_id": program.ClubID, "country": program.Country, "club_name": s.recognitionClubName(r.Context(), program.ClubID, program.Country), "type": program.Type, "title": program.Title, "intro": program.Intro, "participant_difficulty": program.Difficulty, "status": program.Status, "open_at": recognitionNull(program.OpenAt), "close_at": recognitionNull(program.CloseAt), "max_attempts": program.MaxAttempts, "cooldown_minutes": program.Cooldown, "tier": recognitionTier(recognitionAugmentCaps(recognitionDecodeCaps(program.Capabilities), *program)), "is_manager": isManager}, "version": version}
+	result := map[string]any{"success": true, "program": map[string]any{"id": program.ID, "club_id": program.ClubID, "country": program.Country, "club_name": s.recognitionClubName(r.Context(), program.ClubID, program.Country), "type": program.Type, "title": program.Title, "intro": program.Intro, "participant_difficulty": program.Difficulty, "status": program.Status, "open_at": recognitionNull(program.OpenAt), "close_at": recognitionNull(program.CloseAt), "max_attempts": program.MaxAttempts, "cooldown_minutes": program.Cooldown, "credential_ttl_days": program.CredentialTTL, "max_issuance": program.MaxIssuance, "tier": recognitionTier(recognitionAugmentCaps(recognitionDecodeCaps(program.Capabilities), *program)), "is_manager": isManager}, "version": version}
 	if version != nil {
 		result["version"].(map[string]any)["content"] = content
 	}
@@ -184,18 +189,28 @@ func (s *Server) recognitionProgramCreate(w http.ResponseWriter, r *http.Request
 	if content == nil {
 		content = map[string]any{}
 	}
-	if err := recognitionValidateContent(content, typ); err != "" {
+	if err := s.recognitionValidateContent(r.Context(), content, typ, clubID, country); err != "" {
 		writeJSON(w, map[string]any{"success": false, "message": err})
 		return
 	}
 	caps := recognitionDeriveCaps(content, typ, integerValue(input["credential_ttl_days"]), integerValue(input["max_issuance"]))
-	result, err := s.db.ExecContext(r.Context(), `INSERT INTO recognition_programs (club_id,country,type,title,intro,participant_difficulty,visibility,status,capabilities,max_attempts,cooldown_minutes,open_at,close_at,max_issuance,credential_ttl_days,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, clubID, country, typ, title, cleanProjectText(input["intro"], 5000), recognitionDifficulty(input["participant_difficulty"]), "public", "draft", jsonString(caps), maxInt64(integerValue(input["max_attempts"]), 0), maxInt64(integerValue(input["cooldown_minutes"]), 0), nullableInputString(input["open_at"]), nullableInputString(input["close_at"]), maxInt64(integerValue(input["max_issuance"]), 0), maxInt64(integerValue(input["credential_ttl_days"]), 0), user.ID)
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "创建失败"})
+		return
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(r.Context(), `INSERT INTO recognition_programs (club_id,country,type,title,intro,participant_difficulty,visibility,status,capabilities,max_attempts,cooldown_minutes,open_at,close_at,max_issuance,credential_ttl_days,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, clubID, country, typ, title, cleanProjectText(input["intro"], 5000), recognitionDifficulty(input["participant_difficulty"]), "public", "draft", jsonString(caps), maxInt64(integerValue(input["max_attempts"]), 0), maxInt64(integerValue(input["cooldown_minutes"]), 0), nullableInputString(input["open_at"]), nullableInputString(input["close_at"]), maxInt64(integerValue(input["max_issuance"]), 0), maxInt64(integerValue(input["credential_ttl_days"]), 0), user.ID)
 	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "创建失败"})
 		return
 	}
 	programID, _ := result.LastInsertId()
-	if _, err := s.db.ExecContext(r.Context(), "INSERT INTO recognition_program_versions(program_id,version_no,status,content_snapshot) VALUES(?,?,?,?)", programID, "v0.1", "draft", jsonString(content)); err != nil {
+	if _, err := tx.ExecContext(r.Context(), "INSERT INTO recognition_program_versions(program_id,version_no,status,content_snapshot) VALUES(?,?,?,?)", programID, "v0.1", "draft", jsonString(content)); err != nil {
+		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "创建失败"})
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "创建失败"})
 		return
 	}
@@ -230,7 +245,20 @@ func (s *Server) recognitionProgramUpdate(w http.ResponseWriter, r *http.Request
 		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权修改该考核"})
 		return
 	}
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "更新失败"})
+		return
+	}
+	defer tx.Rollback()
 	sets, args := []string{}, []any{}
+	effectiveTTL, effectiveMax := program.CredentialTTL, program.MaxIssuance
+	if value, exists := input["credential_ttl_days"]; exists {
+		effectiveTTL = maxInt64(integerValue(value), 0)
+	}
+	if value, exists := input["max_issuance"]; exists {
+		effectiveMax = maxInt64(integerValue(value), 0)
+	}
 	for _, field := range []string{"title", "intro", "participant_difficulty", "open_at", "close_at", "max_attempts", "cooldown_minutes", "max_issuance", "credential_ttl_days"} {
 		if value, exists := input[field]; exists {
 			if field == "title" {
@@ -248,27 +276,42 @@ func (s *Server) recognitionProgramUpdate(w http.ResponseWriter, r *http.Request
 			contentMap = map[string]any{}
 		}
 		typ := firstNonEmpty(stringValue(input["type"]), program.Type)
-		if err := recognitionValidateContent(contentMap, typ); err != "" {
+		if err := recognitionValidateContentExec(r.Context(), tx, contentMap, typ, program.ClubID, program.Country); err != "" {
 			writeJSON(w, map[string]any{"success": false, "message": err})
 			return
 		}
 		sets = append(sets, "capabilities=?", "type=?")
-		args = append(args, jsonString(recognitionDeriveCaps(contentMap, typ, integerValue(input["credential_ttl_days"]), integerValue(input["max_issuance"]))), typ)
-		version, _ := s.recognitionVersion(r.Context(), programID, true)
-		if version != nil {
-			_, _ = s.db.ExecContext(r.Context(), "UPDATE recognition_program_versions SET content_snapshot=? WHERE id=?", jsonString(contentMap), integerValue(version["id"]))
-		} else {
+		args = append(args, jsonString(recognitionDeriveCaps(contentMap, typ, effectiveTTL, effectiveMax)), typ)
+		var draftID int64
+		draftQuery := "SELECT id FROM recognition_program_versions WHERE program_id=? AND status='draft' ORDER BY id DESC LIMIT 1"
+		if s.db.Driver == "mysql" {
+			draftQuery += " FOR UPDATE"
+		}
+		err = tx.QueryRowContext(r.Context(), draftQuery, programID).Scan(&draftID)
+		if err == nil {
+			_, err = tx.ExecContext(r.Context(), "UPDATE recognition_program_versions SET content_snapshot=? WHERE id=? AND status='draft'", jsonString(contentMap), draftID)
+		} else if err == sql.ErrNoRows {
 			var count int64
-			_ = s.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM recognition_program_versions WHERE program_id=?", programID).Scan(&count)
-			_, _ = s.db.ExecContext(r.Context(), "INSERT INTO recognition_program_versions(program_id,version_no,status,content_snapshot) VALUES(?,?,?,?)", programID, "v0."+strconvInt(count+1), "draft", jsonString(contentMap))
+			err = tx.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM recognition_program_versions WHERE program_id=?", programID).Scan(&count)
+			if err == nil {
+				_, err = tx.ExecContext(r.Context(), "INSERT INTO recognition_program_versions(program_id,version_no,status,content_snapshot) VALUES(?,?,?,?)", programID, "v0."+strconvInt(count+1), "draft", jsonString(contentMap))
+			}
+		}
+		if err != nil {
+			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "草稿保存失败"})
+			return
 		}
 	}
 	if len(sets) > 0 {
 		args = append(args, programID)
-		if _, err := s.db.ExecContext(r.Context(), "UPDATE recognition_programs SET "+strings.Join(sets, ",")+" WHERE id=?", args...); err != nil {
+		if _, err := tx.ExecContext(r.Context(), "UPDATE recognition_programs SET "+strings.Join(sets, ",")+" WHERE id=?", args...); err != nil {
 			writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "更新失败"})
 			return
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "更新失败"})
+		return
 	}
 	writeJSON(w, map[string]any{"success": true})
 }
@@ -302,6 +345,20 @@ func (s *Server) recognitionProgramPublish(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, map[string]any{"success": false, "message": "没有可发布的草稿版本"})
 		return
 	}
+	var snapshot string
+	if err := s.db.QueryRowContext(r.Context(), "SELECT content_snapshot FROM recognition_program_versions WHERE id=? AND status='draft'", integerValue(version["id"])).Scan(&snapshot); err != nil {
+		writeJSON(w, map[string]any{"success": false, "message": "草稿状态已变化，请刷新后重试"})
+		return
+	}
+	content := map[string]any{}
+	if err := json.Unmarshal([]byte(snapshot), &content); err != nil {
+		writeJSON(w, map[string]any{"success": false, "message": "草稿内容损坏"})
+		return
+	}
+	if err := s.recognitionValidateContent(r.Context(), content, program.Type, program.ClubID, program.Country); err != "" {
+		writeJSON(w, map[string]any{"success": false, "message": err})
+		return
+	}
 	versionID := integerValue(version["id"])
 	tx, err := s.db.BeginTx(r.Context(), nil)
 	if err != nil {
@@ -313,8 +370,13 @@ func (s *Server) recognitionProgramPublish(w http.ResponseWriter, r *http.Reques
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "发布失败"})
 		return
 	}
-	if _, err := tx.ExecContext(r.Context(), "UPDATE recognition_program_versions SET status='published', published_by=?, published_at=? WHERE id=?", user.ID, time.Now().Format("2006-01-02 15:04:05"), versionID); err != nil {
+	published, err := tx.ExecContext(r.Context(), "UPDATE recognition_program_versions SET status='published', published_by=?, published_at=?,content_snapshot=? WHERE id=? AND status='draft' AND content_snapshot=?", user.ID, time.Now().Format("2006-01-02 15:04:05"), jsonString(content), versionID, snapshot)
+	if err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "发布失败"})
+		return
+	}
+	if changed, err := published.RowsAffected(); err != nil || changed != 1 {
+		writeJSON(w, map[string]any{"success": false, "message": "草稿状态已变化，请刷新后重试"})
 		return
 	}
 	if _, err := tx.ExecContext(r.Context(), "UPDATE recognition_programs SET status='published' WHERE id=?", programID); err != nil {
@@ -387,7 +449,7 @@ func (s *Server) recognitionProgramManage(w http.ResponseWriter, r *http.Request
 		row["tier"] = recognitionTier(recognitionAugmentCaps(recognitionDecodeCaps(program.Capabilities), program))
 		var issuedTotal int64
 		_ = s.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM recognition_credentials WHERE program_id=?", program.ID).Scan(&issuedTotal)
-		row["issued_total"] = issuedTotal
+		row["issued_total"], row["issued_count"] = issuedTotal, issuedTotal
 		result = append(result, row)
 	}
 	writeJSON(w, map[string]any{"success": true, "programs": result})
@@ -448,6 +510,11 @@ func (s *Server) recognitionBadgeUpdate(w http.ResponseWriter, r *http.Request) 
 	country := clubCodeCountry(stringValue(input["country"]))
 	if !s.recognitionCanBadge(r.Context(), user, clubID, country) {
 		writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权管理该同好会徽章"})
+		return
+	}
+	var existingID int64
+	if err := s.db.QueryRowContext(r.Context(), "SELECT id FROM recognition_badges WHERE id=? AND club_id=? AND country=?", badgeID, clubID, country).Scan(&existingID); err != nil {
+		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "徽章不存在或不属于该同好会"})
 		return
 	}
 	sets, args := []string{}, []any{}
@@ -658,22 +725,10 @@ func recognitionDeriveCaps(content map[string]any, typ string, ttl, maxIssuance 
 	}
 	return uniqueStrings(result)
 }
-func recognitionValidateContent(content map[string]any, typ string) string {
-	if typ == "assessment" {
-		quiz, ok := content["quiz"].(map[string]any)
-		if !ok || len(anySlice(quiz["questions"])) == 0 {
-			return "答题类考核至少需要一道题目"
-		}
-	}
-	if typ == "submission" && content["submission"] == nil {
-		return "作品提交配置不能为空"
-	}
-	return ""
-}
 func recognitionStripAnswers(input map[string]any) map[string]any {
 	output := map[string]any{}
 	for key, value := range input {
-		if key == "answer" || key == "answers" || key == "correct_answer" {
+		if key == "answer" || key == "answers" || key == "correct_answer" || key == "answer_text" || key == "answer_texts" {
 			continue
 		}
 		if row, ok := value.(map[string]any); ok {

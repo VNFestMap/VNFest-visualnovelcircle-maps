@@ -73,15 +73,12 @@ func (s *Server) clubList(w http.ResponseWriter, r *http.Request, fileName, coun
 		} else {
 			infoHidden = !isMember && !hasPending && !visibleDefault && !canSeeAll
 		}
-		item["info_hidden"] = infoHidden
+		setClubInfoVisibility(item, infoHidden)
 		item["can_apply"] = userID != nil && !isMember && !hasPending
 		if membership.status != "" {
 			item["membership_status"] = membership.status
 		} else {
 			item["membership_status"] = nil
-		}
-		if infoHidden {
-			item["info"] = "申请绑定后可见"
 		}
 		item["country"] = itemCountry
 		item["share_url"] = "./club_share.html?club=" + url.QueryEscape(itemCountry+":"+strconv.FormatInt(id, 10))
@@ -100,6 +97,19 @@ func (s *Server) clubList(w http.ResponseWriter, r *http.Request, fileName, coun
 	document["total"] = len(rows)
 	document["data"] = rows
 	writeJSON(w, document)
+}
+
+func setClubInfoVisibility(item map[string]any, infoHidden bool) {
+	item["info_hidden"] = infoHidden
+	if !infoHidden {
+		return
+	}
+
+	item["info"] = "申请绑定后可见"
+	// Legacy rows may duplicate private contact details in raw_text. Keep the
+	// pending-member visibility flow, but never send this source field to users
+	// who are not allowed to see the contact information.
+	delete(item, "raw_text")
 }
 
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {

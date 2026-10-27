@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../../js/page-i18n.js?v=20260813-language"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../../js/theme-runtime.js?v=20260702-theme"></script>
+<title>申请摊位 - GalOnly</title>
+<link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header" />
+<script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Noto Sans SC', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1a0a0a 0%, #2d0f0f 50%, #1a0a0a 100%);
+    min-height: 100vh;
+    color: #fff;
+    padding: 40px 20px;
+}
+
+/* Back link */
+.back-link {
+    display: inline-block; color: rgba(255,255,255,0.4); text-decoration: none;
+    font-size: 13px; margin-bottom: 16px; transition: color 0.2s;
+}
+.back-link:hover { color: rgba(255,255,255,0.7); }
+
+/* Header */
+.header {
+    max-width: 640px; margin: 0 auto 32px;
+}
+.header-title {
+    font-size: 22px; font-weight: 700;
+    background: linear-gradient(135deg, #ff6b35, #e74c3c);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.header-meta { color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 4px; }
+
+/* Form card */
+.form-card {
+    max-width: 640px; margin: 0 auto;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 36px 32px;
+    backdrop-filter: blur(12px);
+}
+
+/* Form groups */
+.form-group { margin-bottom: 24px; }
+.form-label {
+    display: block; font-size: 14px; font-weight: 600;
+    color: rgba(255,255,255,0.8); margin-bottom: 8px;
+}
+.form-label .required { color: #e74c3c; margin-left: 2px; }
+.form-hint {
+    font-size: 12px; color: rgba(255,255,255,0.35);
+    margin-top: 6px; line-height: 1.6;
+}
+
+/* Event name static display */
+.form-input-static {
+    padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7); font-size: 14px;
+}
+
+/* Radio group */
+.radio-group { display: flex; gap: 24px; }
+.radio-item {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.radio-item input[type="radio"] {
+    width: 18px; height: 18px; accent-color: #e74c3c; cursor: pointer;
+}
+.radio-label { font-size: 14px; color: rgba(255,255,255,0.7); cursor: pointer; }
+
+/* Conditional joint field */
+.conditional-field {
+    margin-top: 12px; padding: 16px;
+    background: rgba(255,255,255,0.03); border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Select */
+.form-select {
+    width: 100%; padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; font-size: 14px; font-family: inherit;
+    appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,0.4)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 36px;
+}
+.form-select:focus { outline: none; border-color: #e74c3c; }
+.form-select option { background: #2d0f0f; color: #fff; }
+
+/* Input */
+.form-input {
+    width: 100%; padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s;
+}
+.form-input:focus { outline: none; border-color: #e74c3c; }
+.form-input::placeholder { color: rgba(255,255,255,0.2); }
+
+/* Checkbox */
+.checkbox-row {
+    display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] {
+    width: 18px; height: 18px; accent-color: #e74c3c;
+    margin-top: 2px; cursor: pointer;
+}
+.checkbox-label { font-size: 14px; color: rgba(255,255,255,0.7); cursor: pointer; }
+
+/* File upload */
+.file-upload-area {
+    position: relative; padding: 32px 20px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);
+    text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.file-upload-area:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+.file-upload-area input[type="file"] {
+    position: absolute; opacity: 0; width: 100%; height: 100%;
+    top: 0; left: 0; cursor: pointer;
+}
+.file-upload-text { font-size: 14px; color: rgba(255,255,255,0.5); }
+.file-upload-text strong { color: rgba(255,255,255,0.7); }
+
+/* Textarea */
+.form-textarea {
+    width: 100%; padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; font-size: 14px; font-family: inherit;
+    resize: vertical; min-height: 90px; transition: border-color 0.2s;
+}
+.form-textarea:focus { outline: none; border-color: #e74c3c; }
+.form-textarea::placeholder { color: rgba(255,255,255,0.2); }
+
+/* Submit button */
+.btn-submit {
+    width: 100%; padding: 14px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, #ff6b35, #e74c3c);
+    color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-submit:hover { opacity: 0.9; }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* No club message */
+.no-club-msg {
+    padding: 16px; background: rgba(255,193,7,0.08);
+    border: 1px solid rgba(255,193,7,0.15); border-radius: 10px;
+    color: #ffc107; font-size: 14px; text-align: center;
+}
+.no-club-msg a {
+    color: #ffc107; text-decoration: underline;
+}
+
+/* Error message */
+.error-msg {
+    padding: 12px; background: rgba(231,76,60,0.1);
+    border: 1px solid rgba(231,76,60,0.3); border-radius: 10px;
+    color: #e74c3c; font-size: 14px; margin-bottom: 16px; display: none;
+}
+
+/* Separator */
+.separator {
+    height: 1px; background: rgba(255,255,255,0.06); margin: 28px 0;
+}
+
+/* Club selectors */
+.club-selector-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.club-selector-row .form-select { flex: 1; }
+
+.btn-club-add {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+    padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn-club-add:hover {
+    background: rgba(255,255,255,0.1); color: #fff;
+}
+
+.btn-club-remove {
+    width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
+    border: 1px solid rgba(231,76,60,0.3);
+    background: rgba(231,76,60,0.1);
+    color: #e74c3c; font-size: 14px;
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.btn-club-remove:hover {
+    background: rgba(231,76,60,0.2); border-color: #e74c3c;
+}
+
+/* Image previews */
+.image-preview-container {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+}
+.image-preview-item {
+    position: relative; width: 100px; height: 100px;
+    border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.image-preview-item img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.image-preview-remove {
+    position: absolute; top: 3px; right: 3px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.6);
+    color: #fff; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+}
+.image-preview-remove:hover {
+    background: rgba(231,76,60,0.9);
+}
+
+/* Upload status */
+.upload-status {
+    margin-top: 8px; font-size: 13px; display: none;
+}
+
+/* Loading spinner */
+.loading-text {
+    color: rgba(255,255,255,0.4); font-size: 14px; text-align: center; padding: 20px;
+}
+
+/* 参展展示图预览 */
+.display-preview-item {
+    position:relative; width:200px; border-radius:8px; overflow:hidden;
+    border:2px solid rgba(255,107,53,0.4);
+}
+.display-preview-item img { width:100%; display:block; }
+.display-preview-remove {
+    position:absolute; top:4px; right:4px; width:24px; height:24px;
+    background:rgba(0,0,0,0.6); border:none; border-radius:50%;
+    color:#fff; font-size:14px; cursor:pointer; line-height:24px; text-align:center;
+}
+.display-preview-remove:hover { background:rgba(231,76,60,0.9); }
+.display-preview-label {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(255,107,53,0.8); color:#fff; font-size:11px;
+    text-align:center; padding:2px 0;
+}
+
+/* 展示图裁剪模态框 */
+.crop-modal-overlay {
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.75); align-items:center; justify-content:center;
+}
+.crop-modal-overlay.active { display:flex; }
+.crop-modal-box {
+    background:#1a1a1a; border-radius:16px; padding:24px;
+    width:90%; max-width:640px; max-height:90vh; overflow-y:auto;
+}
+.crop-modal-title { font-size:16px; font-weight:600; margin-bottom:8px; }
+.crop-modal-hint { font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:16px; }
+.crop-modal-image-wrap {
+    max-height:400px; overflow:hidden; border-radius:8px;
+}
+.crop-modal-image-wrap img { max-width:100%; }
+.crop-modal-actions {
+    display:flex; gap:12px; justify-content:flex-end; margin-top:16px;
+}
+.crop-modal-cancel {
+    padding:8px 24px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.15);
+    background:transparent; color:#fff; cursor:pointer; font-size:14px;
+}
+.crop-modal-confirm {
+    padding:8px 24px; border-radius:8px; border:none;
+    background:linear-gradient(135deg,#ff6b35,#e74c3c);
+    color:#fff; cursor:pointer; font-weight:600; font-size:14px;
+}
+
+@media (max-width: 600px) {
+    body { padding: 20px 12px; }
+    .form-card { padding: 24px 16px; }
+    .radio-group { flex-direction: column; gap: 12px; }
+    .club-selector-row { flex-wrap: wrap; }
+    .club-selector-row .form-select { min-width: 0; }
+    .btn-club-remove { width: 28px; height: 28px; min-width: 28px; font-size: 12px; }
+}
+[data-theme="light"] body {
+    background: linear-gradient(135deg, #fdf4ef 0%, #f8e7df 50%, #fdf4ef 100%);
+    color: #3a1d18;
+}
+[data-theme="light"] .back-link { color: rgba(58,29,24,0.45); }
+[data-theme="light"] .back-link:hover { color: rgba(58,29,24,0.75); }
+[data-theme="light"] .header-meta { color: rgba(58,29,24,0.45); }
+[data-theme="light"] .form-card {
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(58,29,24,0.10);
+}
+[data-theme="light"] .form-label { color: rgba(58,29,24,0.82); }
+[data-theme="light"] .form-hint { color: rgba(58,29,24,0.45); }
+[data-theme="light"] .form-input-static {
+    background: rgba(58,29,24,0.04);
+    border: 1px solid rgba(58,29,24,0.08);
+    color: rgba(58,29,24,0.72);
+}
+[data-theme="light"] .radio-label,
+[data-theme="light"] .checkbox-label { color: rgba(58,29,24,0.75); }
+[data-theme="light"] .conditional-field {
+    background: rgba(58,29,24,0.03);
+    border-color: rgba(58,29,24,0.06);
+}
+[data-theme="light"] .form-select,
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-textarea {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(58,29,24,0.12);
+    color: #3a1d18;
+}
+[data-theme="light"] .form-select option { background: #fff; color: #3a1d18; }
+[data-theme="light"] .form-input::placeholder,
+[data-theme="light"] .form-textarea::placeholder { color: rgba(58,29,24,0.35); }
+[data-theme="light"] .file-upload-area {
+    background: rgba(58,29,24,0.03);
+    border-color: rgba(58,29,24,0.18);
+}
+[data-theme="light"] .file-upload-area:hover {
+    border-color: rgba(58,29,24,0.32);
+    background: rgba(58,29,24,0.05);
+}
+[data-theme="light"] .file-upload-text { color: rgba(58,29,24,0.55); }
+[data-theme="light"] .file-upload-text strong { color: rgba(58,29,24,0.75); }
+[data-theme="light"] .btn-club-add {
+    background: rgba(58,29,24,0.06);
+    border-color: rgba(58,29,24,0.15);
+    color: rgba(58,29,24,0.65);
+}
+[data-theme="light"] .btn-club-add:hover {
+    background: rgba(58,29,24,0.10);
+    color: #3a1d18;
+}
+[data-theme="light"] .image-preview-item { border-color: rgba(58,29,24,0.12); }
+[data-theme="light"] .separator { background: rgba(58,29,24,0.08); }
+[data-theme="light"] .loading-text { color: rgba(58,29,24,0.45); }
+[data-theme="light"] .no-club-msg {
+    background: rgba(255,193,7,0.15);
+    border-color: rgba(255,193,7,0.35);
+    color: #8a6d00;
+}
+[data-theme="light"] .no-club-msg a { color: #8a6d00; }
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css">
+<script defer src="../../js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="../../css/button-shapes.css?v=20261002-pill-v1">
+</head>
+<body>
+
+<a class="back-link" href="../galgameonly_list.html">&larr; 返回活动列表</a>
+
+<div class="header">
+    <div class="header-title" id="header-title">申请摊位</div>
+    <div class="header-meta" id="event-name-display">加载中...</div>
+</div>
+
+<div class="form-card">
+
+    <!-- No club / not eligible message -->
+    <div id="no-club-msg" class="no-club-msg" style="display:none">
+        请先加入或创建一个同好会
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading-msg" class="loading-text">加载中...</div>
+
+    <!-- Main form fields -->
+    <div id="form-fields" style="display:none">
+
+        <!-- 活动 (read only) -->
+        <div class="form-group">
+            <label class="form-label">活动</label>
+            <div class="form-input-static" id="event-name-field"></div>
+        </div>
+
+        <!-- 摊位名称 -->
+        <div class="form-group">
+            <label class="form-label">摊位名称 <span class="required">*</span></label>
+            <input class="form-input" type="text" id="booth_name" placeholder="输入你的摊位名称">
+            <div class="form-hint">给你的摊位取一个响亮的名字</div>
+        </div>
+
+        <!-- 是否联合参展 -->
+        <div class="form-group">
+            <label class="form-label">是否联合参展 <span class="required">*</span></label>
+            <div class="radio-group">
+                <label class="radio-item">
+                    <input type="radio" name="is_joint" value="0" checked>
+                    <span class="radio-label">否</span>
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="is_joint" value="1">
+                    <span class="radio-label">是</span>
+                </label>
+            </div>
+            <!-- Joint name (conditional) -->
+            <div class="conditional-field" id="joint-field" style="display:none">
+                <label class="form-label" style="margin-bottom:4px;">联合名称 <span class="required">*</span></label>
+                <input class="form-input" type="text" id="joint_name" placeholder="例如：xx大学Galgame同好会联合">
+                <div class="form-hint">多个同好会联合参展时，请填写联合展位名称</div>
+            </div>
+        </div>
+
+        <!-- 参与同好会 -->
+        <div class="form-group">
+            <label class="form-label">参与同好会 <span class="required">*</span></label>
+            <div id="club-selectors-container"></div>
+            <div id="club-error" class="form-hint" style="color:rgba(231,76,60,0.7); display:none; margin-top:4px;"></div>
+        </div>
+
+        <!-- 是否升摊 -->
+        <div class="form-group">
+            <label class="checkbox-row">
+                <input type="checkbox" id="wants_upgrade">
+                <span>
+                    <span class="checkbox-label">申请升级为大摊位（1.6m x 0.6m）</span>
+                    <div class="form-hint" style="margin-top:4px;">
+                        可花费 100 元将摊位从 0.9m x 0.6m 升级至 1.6m x 0.6m，外赠一张摊主证。升摊后高校摊位依旧在一起，且不占用 24 个免费小摊位。
+                    </div>
+                </span>
+            </label>
+        </div>
+
+        <!-- 制品图片 -->
+        <div class="form-group">
+            <label class="form-label">制品图片 <span class="required">*</span></label>
+            <div class="file-upload-area" id="file-upload-area">
+                <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" multiple required>
+                <div class="file-upload-text" id="file-upload-text">
+                    点击上传制品图片<br>
+                    支持 JPG / PNG / WebP，最大 10MB
+                </div>
+            </div>
+            <div class="form-hint">
+                最好添加摊位菜单图片或效果图，没画好的草图也可以，可以后续更新重新审核。拒绝 AI 与 R18 内容。
+            </div>
+            <div class="upload-status" id="upload-status"></div>
+            <div id="image-preview-container" class="image-preview-container" style="display:none;margin-top:12px;gap:10px;flex-wrap:wrap;"></div>
+        </div>
+
+        <!-- 参展展示图 -->
+        <div class="form-group">
+            <label class="form-label">参展展示图</label>
+            <div class="file-upload-area" id="display-upload-area">
+                <input type="file" id="display-image-input" accept="image/jpeg,image/png,image/webp">
+                <div class="file-upload-text" id="display-upload-text">
+                    点击上传参展展示图<br>
+                    支持 JPG / PNG / WebP，最大 10MB，将裁剪为 16:10
+                </div>
+            </div>
+            <div class="form-hint">
+                此图片将作为海报页的摊位主展示图。如不上传，将自动从第一张制品图片裁剪生成。
+            </div>
+            <div class="upload-status" id="display-upload-status"></div>
+            <div id="display-preview-container" style="display:none;margin-top:12px;"></div>
+        </div>
+
+        <!-- 展示图裁剪模态框 -->
+        <div class="crop-modal-overlay" id="displayCropModal">
+            <div class="crop-modal-box">
+                <div class="crop-modal-title">裁剪参展展示图</div>
+                <div class="crop-modal-hint">拖动调整裁剪区域（16:10 比例）</div>
+                <div class="crop-modal-image-wrap">
+                    <img id="displayCropImage" src="" alt="裁剪预览">
+                </div>
+                <div class="crop-modal-actions">
+                    <button type="button" class="crop-modal-cancel" id="displayCropCancel">取消</button>
+                    <button type="button" class="crop-modal-confirm" id="displayCropConfirm">确认裁剪</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 联系方式 -->
+        <div class="form-group">
+            <label class="form-label">联系方式 <span class="required">*</span></label>
+            <input class="form-input" type="tel" id="contact" placeholder="输入手机号，用于紧急联系">
+            <div class="form-hint">仅审核员和系统管理员可见</div>
+        </div>
+
+        <!-- 备注 -->
+        <div class="form-group">
+            <label class="form-label">备注</label>
+            <textarea class="form-textarea" id="notes" placeholder="其他需要说明的事项（选填）"></textarea>
+        </div>
+
+        <div class="separator"></div>
+
+        <!-- Error message area -->
+        <div class="error-msg" id="error-msg"></div>
+
+        <button class="btn-submit" id="btn-submit">提交申请</button>
+
+        <div style="text-align:center; margin-top: 12px;">
+            <span style="font-size:12px; color:rgba(255,255,255,0.25);">
+                提交即表示同意将以上信息提供给审核团队进行审核
+            </span>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ------------------------------------------------------------
+    // State
+    // ------------------------------------------------------------
+    var userClubs = [];          // [{club_id, country}, ...]
+    var clubNameMap = {};        // "id_country" -> display_name
+    var eventId = 0;
+    var applicationId = 0;
+    var isEditMode = false;
+    var uploadedImagePaths = [];
+    var uploadedDisplayImagePath = '';
+    var cropperDisplayInstance = null;
+    var isJoint = false;
+
+    // ------------------------------------------------------------
+    // DOM refs
+    // ------------------------------------------------------------
+    var $ = function(id) { return document.getElementById(id); };
+
+    // ------------------------------------------------------------
+    // Utilities
+    // ------------------------------------------------------------
+    function showError(msg) {
+        var el = $('error-msg');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function hideError() {
+        $('error-msg').style.display = 'none';
+    }
+
+    function showClubError(msg) {
+        var el = $('club-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function hideClubError() {
+        $('club-error').style.display = 'none';
+    }
+
+    // ------------------------------------------------------------
+    // Get selected clubs from all selectors
+    // ------------------------------------------------------------
+    function getSelectedClubs() {
+        var selects = document.querySelectorAll('.club-select');
+        var clubs = [];
+        for (var i = 0; i < selects.length; i++) {
+            var val = selects[i].value;
+            if (val) {
+                var parts = val.split('|');
+                clubs.push({ club_id: parseInt(parts[0], 10), country: parts[1] });
+            }
+        }
+        return clubs;
+    }
+
+    // ------------------------------------------------------------
+    // Fetch club names from China / Japan APIs
+    // ------------------------------------------------------------
+    function fetchClubNames(country, url) {
+        return fetch(url, { credentials: 'include' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data && data.data) {
+                    for (var i = 0; i < data.data.length; i++) {
+                        var c = data.data[i];
+                        clubNameMap[c.id + '_' + country] = c.display_name || c.name || '未知同好会';
+                    }
+                }
+            })
+            .catch(function() {
+                // Silently fail — names will fall back to "同好会 #ID"
+            });
+    }
+
+    function getClubName(clubId, country) {
+        return clubNameMap[clubId + '_' + country] || ('同好会 #' + clubId);
+    }
+
+    // ------------------------------------------------------------
+    // Club selector management
+    // ------------------------------------------------------------
+    function createClubSelectorRow(selectedValue) {
+        var container = $('club-selectors-container');
+        var row = document.createElement('div');
+        row.className = 'club-selector-row';
+
+        var select = document.createElement('select');
+        select.className = 'form-select club-select';
+
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '请选择参与的同好会';
+        select.appendChild(placeholder);
+
+        for (var i = 0; i < userClubs.length; i++) {
+            var c = userClubs[i];
+            var opt = document.createElement('option');
+            opt.value = c.club_id + '|' + c.country;
+            opt.textContent = getClubName(c.club_id, c.country);
+            select.appendChild(opt);
+        }
+
+        if (selectedValue) {
+            select.value = selectedValue;
+        }
+
+        row.appendChild(select);
+
+        // Remove button (only in joint mode)
+        if (isJoint) {
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-club-remove';
+            removeBtn.textContent = '✕';
+            removeBtn.addEventListener('click', function() {
+                var rows = container.querySelectorAll('.club-selector-row');
+                if (rows.length > 2) {
+                    row.remove();
+                    updateRemoveButtons();
+                }
+            });
+            row.appendChild(removeBtn);
+        }
+
+        // Insert before the add button if it exists
+        var addBtn = container.querySelector('.btn-club-add');
+        if (addBtn) {
+            container.insertBefore(row, addBtn);
+        } else {
+            container.appendChild(row);
+        }
+
+        updateRemoveButtons();
+    }
+
+    function addAddButton() {
+        var container = $('club-selectors-container');
+        var addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn-club-add';
+        addBtn.textContent = '+ 添加同好会';
+        addBtn.addEventListener('click', function() {
+            createClubSelectorRow('');
+            updateRemoveButtons();
+        });
+        container.appendChild(addBtn);
+    }
+
+    function updateRemoveButtons() {
+        if (!isJoint) return;
+        var container = $('club-selectors-container');
+        var rows = container.querySelectorAll('.club-selector-row');
+        for (var i = 0; i < rows.length; i++) {
+            var btn = rows[i].querySelector('.btn-club-remove');
+            if (btn) {
+                btn.style.display = (rows.length <= 2) ? 'none' : 'flex';
+            }
+        }
+    }
+
+    function rebuildClubSelectors(existingClubs) {
+        var prevSelected = getSelectedClubs();
+        // In edit mode, if no clubs selected in DOM yet, use existing clubs from app data
+        if (prevSelected.length === 0 && existingClubs && existingClubs.length > 0) {
+            prevSelected = existingClubs.map(function(c) { return { club_id: parseInt(c.club_id), country: c.club_country || '' }; });
+        }
+        var container = $('club-selectors-container');
+        container.innerHTML = '';
+        hideClubError();
+
+        if (isJoint) {
+            // Joint mode: start with 2 selectors, show add button
+            var val0 = prevSelected.length > 0 ? prevSelected[0].club_id + '|' + prevSelected[0].country : '';
+            createClubSelectorRow(val0);
+            var val1 = prevSelected.length > 1 ? prevSelected[1].club_id + '|' + prevSelected[1].country : '';
+            createClubSelectorRow(val1);
+            addAddButton();
+        } else {
+            // Non-joint: single selector, no add/remove
+            var val = prevSelected.length > 0 ? prevSelected[0].club_id + '|' + prevSelected[0].country : '';
+            createClubSelectorRow(val);
+        }
+        updateRemoveButtons();
+    }
+
+    // ------------------------------------------------------------
+    // Image upload handler
+    // ------------------------------------------------------------
+    function handleImageUpload(e) {
+        var files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        var pending = [];
+        for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            if (allowedTypes.indexOf(f.type) === -1) {
+                showUploadStatus('❌ ' + f.name + ' 格式不支持，仅支持 JPG / PNG / WebP', '#e74c3c');
+                $('image-input').value = '';
+                return;
+            }
+            if (f.size > 10 * 1024 * 1024) {
+                showUploadStatus('❌ ' + f.name + ' 超过 10MB 限制', '#e74c3c');
+                $('image-input').value = '';
+                return;
+            }
+            pending.push(f);
+        }
+
+        var total = pending.length;
+        var completed = 0;
+        showUploadStatus('正在上传 0/' + total + ' ...', 'rgba(255,255,255,0.5)');
+
+        function uploadNext(index) {
+            if (index >= pending.length) {
+                $('image-input').value = '';
+                return;
+            }
+            var file = pending[index];
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('event_id', eventId);
+
+            fetch('../../api/galonly.php?action=upload_image', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    uploadedImagePaths.push(data.path);
+                    completed++;
+                    showUploadStatus('✅ 已上传 ' + completed + '/' + total, '#4caf50');
+                } else {
+                    showUploadStatus('❌ ' + file.name + ' 上传失败: ' + (data.message || ''), '#e74c3c');
+                }
+                renderImagePreviews();
+                uploadNext(index + 1);
+            })
+            .catch(function() {
+                showUploadStatus('❌ ' + file.name + ' 上传失败，请重试', '#e74c3c');
+                renderImagePreviews();
+                uploadNext(index + 1);
+            });
+        }
+
+        uploadNext(0);
+    }
+
+    function showUploadStatus(text, color) {
+        var el = $('upload-status');
+        el.textContent = text;
+        el.style.color = color || 'rgba(255,255,255,0.5)';
+        el.style.display = 'block';
+    }
+
+    function renderImagePreviews() {
+        var container = $('image-preview-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if (uploadedImagePaths.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        for (var i = 0; i < uploadedImagePaths.length; i++) {
+            (function(idx) {
+                var wrapper = document.createElement('div');
+                wrapper.className = 'image-preview-item';
+
+                var img = document.createElement('img');
+                img.src = '../../' + uploadedImagePaths[idx];
+                img.alt = '制品图片 ' + (idx + 1);
+
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'image-preview-remove';
+                delBtn.textContent = '✕';
+                delBtn.addEventListener('click', function() {
+                    uploadedImagePaths.splice(idx, 1);
+                    renderImagePreviews();
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(delBtn);
+                container.appendChild(wrapper);
+            })(i);
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Display image upload + crop
+    // ------------------------------------------------------------
+    function handleDisplayImageUpload(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (allowedTypes.indexOf(file.type) === -1) {
+            showDisplayUploadStatus('❌ 格式不支持，仅支持 JPG / PNG / WebP', '#e74c3c');
+            $('display-image-input').value = '';
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            showDisplayUploadStatus('❌ 文件超过 10MB 限制', '#e74c3c');
+            $('display-image-input').value = '';
+            return;
+        }
+
+        // Reset input value so same file can be re-selected
+        $('display-image-input').value = '';
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            openDisplayCropModal(ev.target.result);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showDisplayUploadStatus(text, color) {
+        var el = $('display-upload-status');
+        el.textContent = text;
+        el.style.color = color || 'rgba(255,255,255,0.5)';
+        el.style.display = 'block';
+    }
+
+    function openDisplayCropModal(src) {
+        if (cropperDisplayInstance) {
+            cropperDisplayInstance.destroy();
+            cropperDisplayInstance = null;
+        }
+        var modal = $('displayCropModal');
+        var img = $('displayCropImage');
+        img.src = src;
+        modal.classList.add('active');
+
+        img.onload = function() {
+            cropperDisplayInstance = new Cropper(img, {
+                aspectRatio: 16 / 10,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                cropBoxMovable: false,
+                cropBoxResizable: false,
+                toggleDragModeOnDblclick: false,
+                background: false,
+            });
+        };
+    }
+
+    function closeDisplayCropModal() {
+        $('displayCropModal').classList.remove('active');
+        if (cropperDisplayInstance) {
+            cropperDisplayInstance.destroy();
+            cropperDisplayInstance = null;
+        }
+    }
+
+    function confirmDisplayCrop() {
+        if (!cropperDisplayInstance) return;
+
+        var canvas = cropperDisplayInstance.getCroppedCanvas({
+            width: 960,
+            height: 600,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+
+        closeDisplayCropModal();
+
+        canvas.toBlob(function(blob) {
+            if (!blob) { showDisplayUploadStatus('❌ 图片裁剪失败，请重试', '#e74c3c'); return; }
+            var formData = new FormData();
+            formData.append('file', blob, 'display_image.webp');
+            formData.append('event_id', eventId);
+
+            showDisplayUploadStatus('⏳ 上传展示图中...', 'rgba(255,255,255,0.5)');
+
+            fetch('../../api/galonly.php?action=upload_image', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    uploadedDisplayImagePath = data.path;
+                    renderDisplayImagePreview();
+                    showDisplayUploadStatus('✅ 展示图上传成功', '#4caf50');
+                } else {
+                    showDisplayUploadStatus('❌ 上传失败: ' + (data.message || ''), '#e74c3c');
+                }
+            })
+            .catch(function() {
+                showDisplayUploadStatus('❌ 上传失败，请重试', '#e74c3c');
+            });
+        }, 'image/webp', 0.82);
+    }
+
+    function renderDisplayImagePreview() {
+        var container = $('display-preview-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if (!uploadedDisplayImagePath) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'display-preview-item';
+
+        var img = document.createElement('img');
+        img.src = '../../' + uploadedDisplayImagePath;
+        img.alt = '参展展示图';
+
+        var label = document.createElement('div');
+        label.className = 'display-preview-label';
+        label.textContent = '参展展示图';
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'display-preview-remove';
+        delBtn.textContent = '✕';
+        delBtn.addEventListener('click', function() {
+            uploadedDisplayImagePath = '';
+            renderDisplayImagePreview();
+        });
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(label);
+        wrapper.appendChild(delBtn);
+        container.appendChild(wrapper);
+    }
+
+    // ------------------------------------------------------------
+    // Form submission
+    // ------------------------------------------------------------
+    function handleSubmit() {
+        hideError();
+        hideClubError();
+
+        // Validate booth name
+        var boothName = $('booth_name').value.trim();
+        if (!boothName) {
+            showError('请输入摊位名称');
+            $('booth_name').focus();
+            return;
+        }
+
+        // Validate clubs
+        var selectedClubs = getSelectedClubs();
+        if (selectedClubs.length === 0) {
+            showClubError('请选择至少一个参与的同好会');
+            return;
+        }
+        if (isJoint && selectedClubs.length < 2) {
+            showClubError('联合参展至少需要选择两个同好会');
+            return;
+        }
+
+        // Validate contact
+        var contact = $('contact').value.trim();
+        if (!contact) {
+            showError('请输入联系方式');
+            $('contact').focus();
+            return;
+        }
+
+        // Validate joint name
+        var jointName = '';
+        if (isJoint) {
+            jointName = $('joint_name').value.trim();
+            if (!jointName) {
+                showError('请输入联合名称');
+                $('joint_name').focus();
+                return;
+            }
+        }
+
+        // Validate images
+        if (uploadedImagePaths.length === 0) {
+            showError('请至少上传一张制品图片');
+            return;
+        }
+
+        // Disable button
+        var btn = $('btn-submit');
+        btn.disabled = true;
+
+        function proceedSubmit(displayPath) {
+            var payload = {
+                event_id: eventId,
+                club_ids: selectedClubs.map(function(c) { return c.club_id; }),
+                club_countries: selectedClubs.map(function(c) { return c.country; }),
+                booth_name: boothName,
+                is_joint: isJoint ? 1 : 0,
+                joint_name: jointName,
+                wants_upgrade: $('wants_upgrade').checked ? 1 : 0,
+                contact: contact,
+                notes: $('notes').value.trim(),
+                image_paths: uploadedImagePaths,
+                display_image: displayPath || null
+            };
+
+            if (isEditMode) {
+                payload.application_id = applicationId;
+                btn.textContent = '保存中...';
+                fetch('../../api/galonly.php?action=update_application', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        window.location.href = '../galgameonly_list.html';
+                    } else {
+                        showError(data.message || '保存失败');
+                        btn.disabled = false;
+                        btn.textContent = '保存修改';
+                    }
+                })
+                .catch(function() {
+                    showError('保存失败，请检查网络连接后重试');
+                    btn.disabled = false;
+                    btn.textContent = '保存修改';
+                });
+            } else {
+                btn.textContent = '提交中...';
+                fetch('../../api/galonly.php?action=submit', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        window.location.href = '../galgameonly_list.html';
+                    } else {
+                        showError(data.message || '提交失败');
+                        btn.disabled = false;
+                        btn.textContent = '提交申请';
+                    }
+                })
+                .catch(function() {
+                    showError('提交失败，请检查网络连接后重试');
+                    btn.disabled = false;
+                    btn.textContent = '提交申请';
+                });
+            }
+        }
+
+        // Auto-crop fallback: if no display image was uploaded, crop from first product image
+        if (!uploadedDisplayImagePath && uploadedImagePaths.length > 0) {
+            showDisplayUploadStatus('⏳ 正在生成展示图...', 'rgba(255,255,255,0.5)');
+
+            var img = new Image();
+            img.src = '../../' + uploadedImagePaths[0];
+
+            img.onload = function() {
+                var canvas = document.createElement('canvas');
+                var w = img.width;
+                var h = img.height;
+                var targetRatio = 16 / 10;
+
+                var cropW, cropH, cropX, cropY;
+                if (w / h > targetRatio) {
+                    cropH = h;
+                    cropW = Math.round(h * targetRatio);
+                    cropX = Math.round((w - cropW) / 2);
+                    cropY = 0;
+                } else {
+                    cropW = w;
+                    cropH = Math.round(w / targetRatio);
+                    cropX = 0;
+                    cropY = Math.round((h - cropH) / 2);
+                }
+
+                canvas.width = 960;
+                canvas.height = 600;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, 960, 600);
+
+                canvas.toBlob(function(blob) {
+                    var fd = new FormData();
+                    fd.append('file', blob, 'auto_display.webp');
+                    fd.append('event_id', eventId);
+
+                    fetch('../../api/galonly.php?action=upload_image', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: fd
+                    })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        var path = data.success ? data.path : '';
+                        proceedSubmit(path);
+                    })
+                    .catch(function() {
+                        proceedSubmit('');
+                    });
+                }, 'image/webp', 0.82);
+            };
+
+            img.onerror = function() {
+                proceedSubmit('');
+            };
+        } else {
+            proceedSubmit(uploadedDisplayImagePath);
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Initialize
+    // ------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse event_id from URL
+        var params = new URLSearchParams(window.location.search);
+        eventId = parseInt(params.get('event_id'), 10);
+        applicationId = parseInt(params.get('application_id') || params.get('app_id'), 10) || 0;
+        isEditMode = applicationId > 0;
+        if (!eventId) {
+            $('loading-msg').textContent = '缺少活动参数';
+            showError('请从活动列表进入申请页面');
+            return;
+        }
+
+        // Fetch event info + eligibility in parallel
+        var eventsPromise = fetch('../../api/galonly.php?action=list_events', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var name = '活动 #' + eventId;
+                if (data.success && data.events) {
+                    for (var i = 0; i < data.events.length; i++) {
+                        if (data.events[i].id == eventId) {
+                            name = data.events[i].name || data.events[i].event_name || name;
+                            break;
+                        }
+                    }
+                }
+                $('event-name-display').textContent = name;
+                $('event-name-field').textContent = name;
+            })
+            .catch(function() { /* ignore */ });
+
+        var eligPromise = fetch('../../api/galonly.php?action=check_eligibility', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.eligible) {
+                    $('loading-msg').style.display = 'none';
+                    $('no-club-msg').style.display = 'block';
+                    return false;
+                }
+                userClubs = data.clubs;
+                return true;
+            })
+            .catch(function() {
+                $('loading-msg').style.display = 'none';
+                $('no-club-msg').style.display = 'block';
+                return false;
+            });
+
+        Promise.all([eventsPromise, eligPromise])
+            .then(function(results) {
+                var eligible = results[1];
+                if (!eligible) return;
+
+                // Now fetch club names from both APIs
+                return Promise.all([
+                    fetchClubNames('china', '../../api/clubs.php'),
+                    fetchClubNames('japan', '../../api/clubs_japan.php')
+                ]);
+            })
+            .then(function() {
+                if (userClubs.length === 0) return;
+
+                // If edit mode, load existing application data; otherwise auto-detect an existing application for this event.
+                var appUrl = isEditMode
+                    ? '../../api/galonly.php?action=get_application&application_id=' + applicationId
+                    : '../../api/galonly.php?action=get_application&event_id=' + eventId;
+
+                return fetch(appUrl, { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success && data.application) {
+                            applicationId = parseInt(data.application.id, 10) || applicationId;
+                            isEditMode = applicationId > 0;
+                            return data.application;
+                        }
+                        if (isEditMode) {
+                            showError('加载申请数据失败');
+                        }
+                        return null;
+                    });
+            })
+            .then(function(appData) {
+                if (userClubs.length === 0) return;
+
+                // Initialize form
+                $('loading-msg').style.display = 'none';
+                $('form-fields').style.display = 'block';
+
+                // Pre-fill in edit mode
+                if (appData) {
+                    $('booth_name').value = appData.booth_name || '';
+                    if (parseInt(appData.is_joint) === 1) {
+                        document.querySelector('input[name="is_joint"][value="1"]').checked = true;
+                        isJoint = true;
+                        $('joint-field').style.display = 'block';
+                        $('joint_name').value = appData.joint_name || '';
+                    }
+                    $('wants_upgrade').checked = parseInt(appData.wants_upgrade) === 1;
+                    $('contact').value = appData.contact || '';
+                    $('notes').value = appData.notes || '';
+                    if (appData.image_paths) {
+                        uploadedImagePaths = appData.image_paths;
+                        renderImagePreviews();
+                    } else if (appData.image_path && appData.image_path.trim()) {
+                        uploadedImagePaths = [appData.image_path.trim()];
+                        renderImagePreviews();
+                    }
+                    if (appData.display_image) {
+                        uploadedDisplayImagePath = appData.display_image;
+                        renderDisplayImagePreview();
+                    }
+                    $('btn-submit').textContent = '保存修改';
+                    $('header-title').textContent = '编辑摊位';
+                    $('event-name-display').textContent = '修改申请信息';
+                }
+
+                // Pass existing clubs for edit mode pre-fill
+                var existingClubs = appData ? appData.clubs : null;
+                rebuildClubSelectors(existingClubs);
+
+                // --- Event listeners ---
+
+                // Joint radio toggle
+                var radios = document.querySelectorAll('input[name="is_joint"]');
+                for (var i = 0; i < radios.length; i++) {
+                    radios[i].addEventListener('change', function() {
+                        isJoint = this.value === '1';
+                        $('joint-field').style.display = isJoint ? 'block' : 'none';
+                        rebuildClubSelectors();
+                    });
+                }
+
+                // Image upload
+                $('image-input').addEventListener('change', handleImageUpload);
+
+                // Submit
+                $('btn-submit').addEventListener('click', handleSubmit);
+
+                // Display image upload
+                $('display-image-input').addEventListener('change', handleDisplayImageUpload);
+                $('displayCropCancel').addEventListener('click', function() {
+                    closeDisplayCropModal();
+                    $('display-image-input').value = '';
+                });
+                $('displayCropConfirm').addEventListener('click', confirmDisplayCrop);
+                $('displayCropModal').addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeDisplayCropModal();
+                        $('display-image-input').value = '';
+                    }
+                });
+            });
+    });
+
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+
+<script src="../../js/page-background.js?v=20260812-centralized-preferences"></script>
+</body>
+</html>
+
+

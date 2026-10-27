@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../../js/page-i18n.js?v=20260813-language"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../../js/theme-runtime.js?v=20260702-theme"></script>
+<title>Staff 招募须知 - GalOnly</title>
+<link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header" />
+<script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes tableRowIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================
+   Design tokens — shared (theme-independent)
+   ============================================================ */
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 100px;
+  --font-display: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+  --font-body: 'Jost', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --transition-theme: background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* ============================================================
+   Design tokens — dark theme
+   ============================================================ */
+[data-theme="dark"] {
+  --bg: oklch(18% 0.035 275);
+  --surface: oklch(24% 0.04 272);
+  --surface-raised: oklch(30% 0.045 270);
+  --fg: oklch(93% 0.003 80);
+  --fg-soft: oklch(84% 0.015 275);
+  --fg-muted: oklch(75% 0.03 270);
+  --fg-dim: oklch(65% 0.04 268);
+  --border: oklch(30% 0.045 270 / 0.35);
+  --border-light: oklch(38% 0.05 268 / 0.35);
+  --accent: oklch(72% 0.07 290);
+  --accent-fill: oklch(58% 0.08 290);
+  --accent-muted: oklch(72% 0.05 290 / 0.15);
+  --accent-ghost: oklch(72% 0.04 290 / 0.08);
+  --shell: oklch(18% 0.035 275 / 0.85);
+  --nav-hover-bg: rgba(236,234,233,0.06);
+  --success: oklch(72% 0.12 155);
+  --success-bg: oklch(72% 0.08 155 / 0.12);
+  --warning: oklch(80% 0.12 85);
+  --warning-bg: oklch(80% 0.08 85 / 0.12);
+  --danger: oklch(70% 0.14 25);
+  --danger-bg: oklch(70% 0.10 25 / 0.12);
+}
+
+/* ============================================================
+   Design tokens — light theme
+   ============================================================ */
+[data-theme="light"] {
+  --bg: oklch(98% 0.005 270);
+  --surface: oklch(100% 0 0);
+  --surface-raised: oklch(97% 0.008 270);
+  --fg: oklch(18% 0.01 270);
+  --fg-soft: oklch(28% 0.015 270);
+  --fg-muted: oklch(43% 0.03 270);
+  --fg-dim: oklch(55% 0.03 270);
+  --border: oklch(88% 0.01 260);
+  --border-light: oklch(92% 0.01 260);
+  --accent: oklch(44% 0.14 42);
+  --accent-fill: oklch(78% 0.1 65);
+  --accent-muted: oklch(44% 0.10 42 / 0.12);
+  --accent-ghost: oklch(44% 0.08 42 / 0.06);
+  --shell: oklch(100% 0 0 / 0.88);
+  --nav-hover-bg: rgba(0,0,0,0.04);
+  --success: oklch(45% 0.12 155);
+  --success-bg: oklch(92% 0.06 155);
+  --warning: oklch(55% 0.12 85);
+  --warning-bg: oklch(95% 0.06 85);
+  --danger: oklch(45% 0.14 25);
+  --danger-bg: oklch(95% 0.04 25);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--bg);transition:var(--transition-theme)}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--fg);
+  min-height:100vh;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  transition:var(--transition-theme);
+}
+a{color:var(--accent);text-decoration:none}
+
+/* ============================================================
+   Header — fixed, glass-morphism
+   ============================================================ */
+.poster-header{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:var(--shell);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  padding:0 36px;
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  transition:var(--transition-theme);
+  animation: slideDown 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.poster-header .header-left{display:flex;align-items:center;gap:0}
+.poster-header .site-title{
+  font-family:var(--font-display);
+  font-weight:700;font-size:18px;
+  color:var(--fg);letter-spacing:0.5px;
+  transition:var(--transition-theme);
+}
+.poster-header .header-divider{
+  width:1px;height:18px;
+  background:var(--border-light);
+  margin:0 14px;
+  transition:var(--transition-theme);
+}
+.poster-header .page-label{
+  font-family:var(--font-body);
+  font-size:13px;font-weight:500;
+  color:var(--fg-muted);
+  letter-spacing:0.02em;
+  transition:var(--transition-theme);
+}
+.poster-header .header-nav{display:flex;align-items:center;gap:4px}
+.poster-header .header-nav a{
+  font-size:12px;font-weight:500;letter-spacing:0.02em;
+  color:var(--fg-dim);
+  padding:7px 18px;border-radius:var(--radius-full);
+  transition:all 0.2s;
+}
+.poster-header .header-nav a:hover{color:var(--fg);background:var(--nav-hover-bg)}
+.poster-header .header-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ============================================================
+   Theme toggle button
+   ============================================================ */
+.theme-toggle{
+  width:32px;height:32px;
+  display:grid;place-items:center;
+  border:1px solid var(--border-light);
+  border-radius:50%;
+  background:transparent;
+  color:var(--fg-dim);
+  font-size:14px;line-height:1;
+  cursor:pointer;
+  transition:all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-left:4px;
+  font-family:inherit;
+}
+.theme-toggle:active{transform:rotate(180deg) scale(0.85)}
+.theme-toggle:hover{
+  color:var(--fg);
+  border-color:var(--fg-dim);
+  background:var(--nav-hover-bg);
+}
+
+/* ============================================================
+   Main container
+   ============================================================ */
+.main-container{
+  max-width:780px;margin:0 auto;
+  padding:80px 24px 48px;
+}
+
+/* ============================================================
+   Back link
+   ============================================================ */
+.back-link{
+  display:inline-block;
+  font-size:13px;
+  color:var(--fg-dim);
+  text-decoration:none;
+  margin-bottom:20px;
+  transition:color 0.2s;
+  animation: slideInLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.back-link:hover{color:var(--accent)}
+
+/* ============================================================
+   Footer logo strip
+   ============================================================ */
+.footer-logo-strip{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  padding:36px 24px 48px;
+  flex-wrap:wrap;
+  opacity:0.55;
+  transition:opacity 0.3s;
+}
+.footer-logo-strip:hover{
+  opacity:0.8;
+}
+.footer-logo-strip img{
+  height:40px;
+  width:auto;
+  object-fit:contain;
+  filter:grayscale(40%);
+  transition:filter 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.footer-logo-strip img:hover{
+  filter:grayscale(0%);
+  transform:scale(1.08);
+}
+[data-theme="light"] .footer-logo-strip img{
+  filter:grayscale(30%) brightness(0.85);
+}
+[data-theme="light"] .footer-logo-strip img:hover{
+  filter:grayscale(0%) brightness(1);
+}
+.footer-logo-divider{
+  width:1px;
+  height:28px;
+  background:var(--border);
+  flex-shrink:0;
+}
+
+/* ============================================================
+   Hero section (compact)
+   ============================================================ */
+.hero-section{
+  margin-bottom:36px;
+  animation: fadeSlideUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+.hero-title{
+  font-family:var(--font-display);
+  font-size:clamp(26px, 4vw, 36px);
+  font-weight:700;
+  color:var(--fg);
+  letter-spacing:-0.02em;
+  margin-bottom:8px;
+  transition:var(--transition-theme);
+}
+.hero-subtitle{
+  font-size:15px;font-weight:400;
+  color:var(--fg-muted);
+  line-height:1.5;
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Content cards (sections)
+   ============================================================ */
+.content-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:28px 32px;
+  margin-bottom:16px;
+  transition:var(--transition-theme);
+  opacity:0;
+  animation:fadeSlideUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.content-card::before{
+  content:'';display:none;
+}
+
+.section-number{
+  font-family:var(--font-display);
+  font-size:12px;font-weight:600;
+  color:var(--accent);
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+  transition:var(--transition-theme);
+}
+.section-title{
+  font-family:var(--font-display);
+  font-size:20px;font-weight:700;
+  color:var(--fg);
+  letter-spacing:-0.01em;
+  margin-bottom:16px;
+  transition:var(--transition-theme);
+}
+
+/* Lists inside cards */
+.content-card ul{
+  list-style:none;
+  padding:0;
+}
+.content-card ul li{
+  position:relative;
+  padding:6px 0 6px 20px;
+  font-size:14px;
+  color:var(--fg-soft);
+  line-height:1.65;
+  transition:var(--transition-theme);
+}
+.content-card ul li::before{
+  content:'';
+  position:absolute;
+  left:2px;top:14px;
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--accent-muted);
+  border:1.5px solid var(--accent);
+  transition:var(--transition-theme);
+}
+
+/* Highlighted info items */
+.content-card .info-highlight{
+  background:var(--accent-ghost);
+  border:1px solid var(--accent-muted);
+  border-radius:var(--radius-sm);
+  padding:12px 16px;
+  margin-top:12px;
+  font-size:13px;
+  color:var(--fg-muted);
+  line-height:1.6;
+  transition:var(--transition-theme);
+}
+.content-card .info-highlight strong{
+  color:var(--fg-soft);
+  font-weight:600;
+}
+
+/* ============================================================
+   Position table
+   ============================================================ */
+.table-wrapper{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  margin-top:4px;
+  border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+  transition:var(--transition-theme);
+}
+.position-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.position-table thead th{
+  background:var(--surface-raised);
+  color:var(--fg-muted);
+  font-weight:600;
+  font-size:11px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  padding:12px 16px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  transition:var(--transition-theme);
+}
+.position-table tbody td{
+  padding:10px 16px;
+  color:var(--fg-soft);
+  border-bottom:1px solid var(--border);
+  transition:var(--transition-theme);
+  vertical-align:top;
+}
+.position-table tbody tr{
+  opacity:0;
+  animation:tableRowIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.position-table tbody tr:last-child td{border-bottom:none}
+.position-table tbody tr:hover{background:var(--accent-ghost)}
+.position-table .col-idx{
+  width:48px;
+  color:var(--fg-dim);
+  font-weight:500;
+  text-align:center;
+}
+.position-table .col-name{
+  font-weight:600;
+  color:var(--fg);
+  white-space:nowrap;
+}
+.position-table .col-desc{
+  color:var(--fg-muted);
+  min-width:180px;
+}
+
+/* ============================================================
+   Contact info card
+   ============================================================ */
+.contact-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:4px;
+}
+.contact-item{
+  background:var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  transition:var(--transition-theme);
+}
+.contact-item:hover{
+  border-color:var(--border-light);
+  background:var(--accent-ghost);
+}
+.contact-label{
+  font-size:11px;
+  font-weight:600;
+  color:var(--fg-dim);
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  margin-bottom:4px;
+  transition:var(--transition-theme);
+}
+.contact-value{
+  font-size:15px;
+  font-weight:600;
+  color:var(--fg);
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Sticky CTA area
+   ============================================================ */
+.cta-area{
+  position:sticky;
+  bottom:0;
+  background:var(--shell);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--border);
+  padding:16px 32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+  z-index:50;
+  transition:var(--transition-theme);
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+}
+.cta-checkbox-row{
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;
+  font-size:14px;
+  color:var(--fg-soft);
+  user-select:none;
+  transition:var(--transition-theme);
+}
+.cta-checkbox-row:hover{color:var(--fg)}
+.cta-checkbox-row input[type="checkbox"]{
+  accent-color:var(--accent-fill);
+  width:18px;height:18px;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.cta-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--accent-fill);
+  color:var(--bg);
+  font-family:inherit;
+  font-size:15px;font-weight:600;
+  padding:12px 32px;
+  border:none;border-radius:var(--radius-full);
+  cursor:pointer;
+  text-decoration:none;
+  letter-spacing:0.02em;
+  transition:
+    var(--transition-theme),
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease,
+    filter 0.25s ease;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.cta-btn:hover:not(.disabled){
+  filter:brightness(1.1);
+  transform:translateY(-2px);
+}
+.cta-btn:active:not(.disabled){
+  transform:scale(0.96) translateY(0);
+  transition:transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cta-btn.disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+  pointer-events:none;
+}
+
+/* ============================================================
+   Transition classes for theme switching
+   ============================================================ */
+html,
+.poster-header,
+.content-card,
+.cta-area,
+.table-wrapper,
+.position-table thead th,
+.position-table tbody td,
+.contact-item,
+.contact-grid,
+.theme-toggle {
+  transition:var(--transition-theme);
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+/* Prevent horizontal overflow on all small screens */
+@media (max-width: 768px) {
+  body { overflow-x: hidden; }
+}
+
+/* ---- Tablet / large mobile (<=768px) ---- */
+@media (max-width: 768px) {
+  /* Header — compact, 50px height */
+  .poster-header {
+    padding: 0 16px;
+    height: 50px;
+  }
+  .poster-header .site-title {
+    font-size: 16px;
+  }
+  .poster-header .header-divider {
+    margin: 0 10px;
+    height: 16px;
+  }
+  .poster-header .page-label {
+    font-size: 12px;
+  }
+  .poster-header .header-nav {
+    gap: 2px;
+  }
+  .poster-header .header-nav a {
+    font-size: 12px;
+    padding: 10px 14px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Theme toggle — touch-friendly 38px */
+  .theme-toggle {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
+    margin-left: 6px;
+  }
+
+  /* Main container — tighter side padding, no max-width */
+  .main-container {
+    max-width: none;
+    padding: 68px 16px 32px;
+  }
+
+  /* Back link — 44px tap target */
+  .back-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Footer logo — smaller on mobile */
+  .footer-logo-strip {
+    gap: 16px;
+    padding: 24px 16px 36px;
+  }
+  .footer-logo-strip img {
+    height: 32px;
+  }
+  .footer-logo-divider {
+    height: 22px;
+  }
+
+  /* Hero */
+  .hero-section {
+    margin-bottom: 28px;
+  }
+  .hero-title {
+    font-size: clamp(22px, 5vw, 28px);
+    margin-bottom: 6px;
+  }
+  .hero-subtitle {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Content cards — reduced padding */
+  .content-card {
+    padding: 20px 16px;
+    margin-bottom: 12px;
+  }
+  .section-number {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  .content-card ul li {
+    font-size: 14px;
+    padding: 5px 0 5px 18px;
+    line-height: 1.6;
+  }
+  .content-card ul li::before {
+    top: 13px;
+    width: 5px;
+    height: 5px;
+  }
+  .content-card .info-highlight {
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  /* Table — card layout on tablets and phones */
+  .table-wrapper {
+    position: relative;
+    overflow: visible;
+    margin-top: 2px;
+    border: 0;
+  }
+  .table-wrapper::after {
+    display: none;
+  }
+  .position-table {
+    display: block;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .position-table thead {
+    display: none;
+  }
+  .position-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .position-table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+  }
+  .position-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .position-table tbody tr:hover {
+    background: var(--surface-raised);
+  }
+  .position-table tbody td {
+    padding: 0;
+    border-bottom: 0;
+    font-size: 13px;
+  }
+  .position-table .col-idx {
+    width: auto;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--accent-ghost);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .position-table .col-name {
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.45;
+    align-self: center;
+  }
+  .position-table .col-desc {
+    grid-column: 1 / -1;
+    min-width: 0;
+    line-height: 1.65;
+  }
+
+  /* Contact grid — single column */
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .contact-item {
+    padding: 12px 14px;
+  }
+  .contact-value {
+    font-size: 14px;
+  }
+
+  /* CTA area — stacked layout */
+  .cta-area {
+    padding: 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .cta-checkbox-row {
+    font-size: 14px;
+    gap: 10px;
+    justify-content: center;
+    padding: 4px 0;
+    min-height: 44px;
+  }
+  .cta-checkbox-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+  .cta-btn {
+    width: 100%;
+    padding: 14px 24px;
+    min-height: 48px;
+    font-size: 15px;
+  }
+}
+
+/* ---- Mobile (<=480px) ---- */
+@media (max-width: 480px) {
+  /* Header — hide page-label, compact nav */
+  .poster-header {
+    padding: 0 12px;
+    height: 48px;
+  }
+  .poster-header .site-title {
+    font-size: 15px;
+    letter-spacing: 0.3px;
+  }
+  .poster-header .header-divider {
+    margin: 0 6px;
+    height: 14px;
+  }
+  .poster-header .page-label {
+    display: none;
+  }
+  .poster-header .header-nav {
+    gap: 0;
+  }
+  .poster-header .header-nav a {
+    font-size: 11px;
+    padding: 10px 10px;
+    letter-spacing: 0;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    margin-left: 4px;
+  }
+
+  /* Main container */
+  .main-container {
+    padding: 62px 12px 24px;
+  }
+
+  /* Back link */
+  .back-link {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  /* Hero */
+  .hero-section {
+    margin-bottom: 24px;
+  }
+  .hero-title {
+    font-size: clamp(20px, 5.5vw, 24px);
+    margin-bottom: 5px;
+  }
+  .hero-subtitle {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Content cards */
+  .content-card {
+    padding: 16px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+  }
+  .section-number {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .section-title {
+    font-size: 17px;
+    margin-bottom: 10px;
+  }
+  .content-card ul li {
+    font-size: 13.5px;
+    padding: 4px 0 4px 16px;
+    line-height: 1.55;
+  }
+  .content-card ul li::before {
+    left: 1px;
+    top: 12px;
+    width: 5px;
+    height: 5px;
+  }
+  .content-card .info-highlight {
+    padding: 10px 12px;
+    font-size: 12.5px;
+    border-radius: 6px;
+  }
+
+  /* Table cards */
+  .position-table {
+    font-size: 12.5px;
+  }
+  .position-table tbody {
+    gap: 9px;
+  }
+  .position-table tbody tr {
+    padding: 11px;
+    gap: 7px 9px;
+  }
+  .position-table .col-idx {
+    min-width: 26px;
+    height: 23px;
+    font-size: 11.5px;
+  }
+  .position-table .col-name {
+    font-size: 13px;
+  }
+  .position-table .col-desc {
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+
+  /* Contact */
+  .contact-item {
+    padding: 11px 12px;
+  }
+  .contact-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .contact-value {
+    font-size: 14px;
+  }
+
+  /* CTA */
+  .cta-area {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+  .cta-checkbox-row {
+    font-size: 13px;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .cta-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+    min-height: 48px;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ---- Small mobile (<=375px) ---- */
+@media (max-width: 375px) {
+  /* Header */
+  .poster-header {
+    padding: 0 10px;
+    height: 48px;
+  }
+  .poster-header .site-title {
+    font-size: 14px;
+  }
+  .poster-header .header-divider {
+    margin: 0 4px;
+    height: 12px;
+  }
+  .poster-header .header-nav a {
+    font-size: 10px;
+    padding: 10px 8px;
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  /* Main container */
+  .main-container {
+    padding: 58px 10px 20px;
+  }
+
+  /* Hero */
+  .hero-title {
+    font-size: 21px;
+  }
+  .hero-subtitle {
+    font-size: 12.5px;
+  }
+
+  /* Content cards */
+  .content-card {
+    padding: 14px 12px;
+    margin-bottom: 8px;
+  }
+  .section-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .section-number {
+    font-size: 10px;
+  }
+  .content-card ul li {
+    font-size: 13px;
+    padding: 3px 0 3px 15px;
+  }
+  .content-card .info-highlight {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* Table */
+  .position-table {
+    font-size: 12px;
+  }
+  .position-table tbody {
+    gap: 8px;
+  }
+  .position-table tbody tr {
+    padding: 10px;
+  }
+  .position-table .col-idx {
+    min-width: 24px;
+    height: 22px;
+    font-size: 11px;
+  }
+  .position-table .col-name {
+    font-size: 12.5px;
+  }
+  .position-table .col-desc {
+    font-size: 12px;
+  }
+
+  /* Contact */
+  .contact-item {
+    padding: 10px 10px;
+  }
+  .contact-value {
+    font-size: 13px;
+  }
+  .contact-label {
+    font-size: 9px;
+  }
+
+  /* CTA */
+  .cta-area {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .cta-checkbox-row {
+    font-size: 12.5px;
+    gap: 6px;
+  }
+  .cta-checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+  }
+  .cta-btn {
+    padding: 13px 16px;
+    font-size: 13.5px;
+  }
+}
+</style>
+<script defer src="../../js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="../../css/button-shapes.css?v=20261002-pill-v1">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="poster-header" role="banner">
+  <div class="header-left">
+    <span class="site-title">GalOnly</span>
+    <span class="header-divider"></span>
+    <span class="page-label">招募须知</span>
+  </div>
+  <nav class="header-nav" role="navigation" aria-label="主导航">
+    <a href="../galgameonly_list.html">活动列表</a>
+    <button class="theme-toggle" id="themeToggle" title="切换主题"></button>
+  </nav>
+</header>
+
+<!-- MAIN -->
+<main class="main-container" role="main">
+
+  <a class="back-link" href="../galgameonly_list.html">&larr; 返回活动列表</a>
+
+  <!-- Hero -->
+  <div class="hero-section">
+    <h1 class="hero-title">Staff 招募须知</h1>
+    <p class="hero-subtitle">请仔细阅读以下内容后，再进行报名</p>
+  </div>
+
+  <!-- Section 1: 招募对象 -->
+  <div class="content-card" style="animation-delay: 0.15s">
+    <div class="section-number">01</div>
+    <h2 class="section-title">招募对象</h2>
+    <ul>
+      <li>热爱视觉小说文化、有责任心、沟通能力强、身体健康</li>
+      <li>年龄原则上要求18周岁及以上</li>
+      <li>大学生及vnf会员优先</li>
+    </ul>
+    <div class="info-highlight">
+      <strong>总则：</strong><br>
+      招募岗位分为票务组、物料与后勤组、搭建与机动组，组长由主办人员担任，负责与场内志愿者的沟通。<br>
+      无论是什么岗位，必要时候需要接受组织方的指挥完成提出的职责，当所在的岗位暂时空闲的时候，可以正常游玩参展，具体依据后续排班表划分，以及现场负责人指挥。
+    </div>
+  </div>
+
+  <!-- Section 2: 岗位一览 -->
+  <div class="content-card" style="animation-delay: 0.25s">
+    <div class="section-number">02</div>
+    <h2 class="section-title">岗位一览</h2>
+    <div class="table-wrapper">
+      <table class="position-table">
+        <thead>
+          <tr>
+            <th class="col-idx">序号</th>
+            <th class="col-name">岗位名称</th>
+            <th class="col-desc">主要职责</th>
+          </tr>
+        </thead>
+        <tbody id="positionTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 3: 工作时间与地点 -->
+  <div class="content-card" style="animation-delay: 0.35s">
+    <div class="section-number">03</div>
+    <h2 class="section-title">工作时间与地点</h2>
+    <ul>
+      <li>地点：上海浦东新区AMP美达商业广场宴会厅</li>
+      <li>布展日：7月24日，14:00 - 18:00</li>
+      <li>开展日：7月25-26日，09:00 - 18:00（同一批人轮岗，分早/午/晚班）</li>
+      <li>两天全天服务，岗位为两天同一批人</li>
+      <li>布展日除了搭建工作，也会对人员进行培训，要求全员尽可能到场</li>
+    </ul>
+  </div>
+
+  <!-- Section 4: 待遇与福利 -->
+  <div class="content-card" style="animation-delay: 0.45s">
+    <div class="section-number">04</div>
+    <h2 class="section-title">待遇与福利</h2>
+    <ul>
+      <li>午餐补贴</li>
+      <li>公共交通费用补贴 + 高温补贴（室外岗）</li>
+      <li>免费提供统一的工作痛衣和工牌</li>
+      <li>饮用水及零食补给</li>
+      <li>活动纪念品/周边一份</li>
+      <li>免费双日联票（工作半天自由游玩半天），优先招募三日都参与的报名者</li>
+    </ul>
+  </div>
+
+  <!-- Section 5: 注意事项 -->
+  <div class="content-card" style="animation-delay: 0.55s">
+    <div class="section-number">05</div>
+    <h2 class="section-title">注意事项</h2>
+    <ul>
+      <li>报名信息须真实有效</li>
+      <li>录用后须按时参加岗前培训及线上会议</li>
+      <li>工作期间严格遵守主办方规定</li>
+      <li>报名截止：2026年7月15日</li>
+    </ul>
+    <div class="info-highlight">
+      <strong>提醒：</strong>报名截止后不再接受新的申请，请确保在规定时间内完成报名。
+    </div>
+  </div>
+
+  <!-- Section 6: 联系方式 -->
+  <div class="content-card" style="animation-delay: 0.65s">
+    <div class="section-number">06</div>
+    <h2 class="section-title">联系方式</h2>
+    <div class="contact-grid">
+      <div class="contact-item">
+        <div class="contact-label">咨询QQ群</div>
+        <div class="contact-value">1097885812</div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-label">联系人</div>
+        <div class="contact-value">阜文</div>
+      </div>
+      <div class="contact-item" style="grid-column:1/-1">
+        <div class="contact-label">联系人QQ</div>
+        <div class="contact-value">1178526797</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-logo-strip">
+    <img src="logo_lingxia.png" alt="铃夏学园">
+    <span class="footer-logo-divider"></span>
+    <img src="logo_shanghai_only.png" alt="上海视觉小说 Only">
+    <span class="footer-logo-divider"></span>
+    <img src="../shared/assets/logo_vnfest.png" alt="VNFest">
+  </div>
+
+</main>
+
+<!-- Sticky CTA -->
+<div class="cta-area" id="ctaArea">
+  <label class="cta-checkbox-row">
+    <input type="checkbox" id="agreeCheckbox">
+    <span>我已阅读并理解以上招募须知</span>
+  </label>
+  <a class="cta-btn disabled" id="ctaBtn" href="#" aria-disabled="true">我已阅读，前往报名</a>
+</div>
+
+<script src="../../js/page-background.js?v=20260812-centralized-preferences"></script>
+<script>
+(function() {
+  'use strict';
+
+  /* ========== THEME（与主站 themePreference 同步） ========== */
+  function updateToggleIcon(theme) {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+    btn.setAttribute('aria-label', theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式');
+  }
+  var toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      if (window.VNFTheme && typeof window.VNFTheme.toggle === 'function') {
+        window.VNFTheme.toggle();
+      }
+    });
+  }
+  if (window.VNFTheme && typeof window.VNFTheme.subscribe === 'function') {
+    window.VNFTheme.subscribe(function(detail) {
+      updateToggleIcon(detail.theme);
+    });
+  }
+
+  /* ========== URL PARAMS ========== */
+  var urlParams = new URLSearchParams(window.location.search);
+  var eventId = urlParams.get('event_id');
+
+  /* ========== CTA BUTTON ========== */
+  var checkbox = document.getElementById('agreeCheckbox');
+  var ctaBtn = document.getElementById('ctaBtn');
+
+  // Build the form URL
+  var formUrl = 'galonly_staff_submit.html';
+  if (eventId) {
+    formUrl += '?event_id=' + encodeURIComponent(eventId);
+  }
+
+  function updateCtaState() {
+    if (checkbox.checked) {
+      ctaBtn.classList.remove('disabled');
+      ctaBtn.setAttribute('aria-disabled', 'false');
+      ctaBtn.href = formUrl;
+    } else {
+      ctaBtn.classList.add('disabled');
+      ctaBtn.setAttribute('aria-disabled', 'true');
+      ctaBtn.href = '#';
+    }
+  }
+
+  checkbox.addEventListener('change', updateCtaState);
+
+  ctaBtn.addEventListener('click', function(e) {
+    if (ctaBtn.classList.contains('disabled')) {
+      e.preventDefault();
+    }
+  });
+
+  /* ========== TABLE DATA ========== */
+  var positions = [
+    { idx: 1,  name: '检票发票人员 (布展日)',           desc: '负责布展期间各类证件（普票、V票、千岛早鸟票、社团票、参观证、摊主证）的核验与发放；维持入口秩序。' },
+    { idx: 2,  name: '检票发票人员 (开展日)',           desc: '负责开展期间各类门票的核验、发票开具（如需）、手环/贴纸发放；引导观众入场；处理票务相关问题。' },
+    { idx: 3,  name: '场馆搭建搬货人员 (布展日)',       desc: '协助参展商搬运展品、物资；配合搭建团队进行场地布置、展架组装等工作。备注：优先选三日都到齐的人' },
+    { idx: 4,  name: '搭建协助人员 (开展当天)',         desc: '开展首日协助未完成搭建的展位进行收尾工作；应对突发搭建需求。' },
+    { idx: 5,  name: '物料发放人员 (游客)',             desc: '负责向观众发放活动手册、纪念品、抽奖券等物料；解答观众关于物料的咨询。' },
+    { idx: 6,  name: '物料发放人员 (摊主)',             desc: '负责将特定物料（如宣传单、合作赠品等）逐一配送至各参展摊位，并与摊主确认签收。' },
+    { idx: 7,  name: '食品发放与看管人员',              desc: '负责指定区域（如休息区、VIP区）食品的发放、补充；看管食品，防止浪费或非授权取用。' },
+    { idx: 8,  name: '巡场人员 (安保/应急)',            desc: '全场巡逻，维护现场秩序；及时发现并处理安全隐患、突发状况（如纠纷、物品遗失、医疗小状况等）；协助引导人流。可能需要特别培训，如中暑对策等。' },
+    { idx: 9,  name: '巡场检查人员 (内容合规)',         desc: '重点巡查展区，对R18内容、AI制品等进行警示和制止，确保内容符合展会规定及法律法规。' },
+    { idx: 10, name: '舞台管理人员',                   desc: '负责舞台区域的流程把控、演员上下场引导、道具管理、音响灯光协调（或与技术人员配合）、观众互动环节组织。最好有舞台经验' },
+    { idx: 11, name: '问询处人员',                     desc: '在咨询台负责解答观众关于展会日程、活动安排、场馆设施、周边交通等方面的咨询。' },
+    { idx: 12, name: '痛车区域管理人员',                desc: '负责痛车展示区域的车辆引导、秩序维护、观众参观引导、安全提示。室外岗，会提供高温补贴和防暑物资。' },
+    { idx: 13, name: '交通指引人员 (地铁站/大巴下车点)', desc: '在指定地铁站出口、大巴下车点设置指引点，引导参展商和观众前往展馆。室外岗，会提供高温补贴和防暑物资。' },
+    { idx: 14, name: 'VIP室服务人员 (二楼)',            desc: '负责VIP室的使用和监管，在有人使用该房间的时候需要进行监督和引导。' },
+    { idx: 15, name: '活动摊位负责人员',                desc: '包括官方活动摊位，b站活动摊位物料发放，自由活动摊位，集章奖品兑换处等' },
+    { idx: 16, name: '副屏幕控制',                     desc: '在副屏开放时间协助使用，与电脑控制。' }
+  ];
+
+  var tbody = document.getElementById('positionTableBody');
+  if (tbody) {
+    positions.forEach(function(pos, i) {
+      var tr = document.createElement('tr');
+      tr.style.animationDelay = (0.3 + i * 0.04) + 's';
+      tr.innerHTML =
+        '<td class="col-idx">' + pos.idx + '</td>' +
+        '<td class="col-name">' + pos.name + '</td>' +
+        '<td class="col-desc">' + pos.desc + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

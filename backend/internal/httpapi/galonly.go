@@ -127,13 +127,15 @@ func (s *Server) galonlyListParticipants(w http.ResponseWriter, r *http.Request)
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "活动不存在"})
 		return
 	}
-	applications, err := s.queryMaps(r.Context(), "SELECT * FROM galonly_applications WHERE event_id=? AND status IN ('approved','confirmed','shared') ORDER BY created_at ASC,id ASC", eventID)
+	// Only public display fields belong in the anonymous catalog. Application
+	// contacts, attachments and review feedback remain in authenticated APIs.
+	applications, err := s.queryMaps(r.Context(), "SELECT id,event_id,event_number,booth_name,is_joint,joint_name,image_path,display_image,created_at,booth_type,status FROM galonly_applications WHERE event_id=? AND status IN ('approved','confirmed','shared') ORDER BY created_at ASC,id ASC", eventID)
 	if err != nil {
 		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "读取参展名单失败"})
 		return
 	}
 	for _, app := range applications {
-		s.galonlyNormalizeApplication(app)
+		app["image_paths"] = decodeJSONList(app["image_path"])
 		app["clubs"], _ = s.queryMaps(r.Context(), "SELECT club_id,club_country FROM galonly_application_clubs WHERE application_id=?", integerValue(app["id"]))
 		var votes int64
 		_ = s.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM galonly_public_votes WHERE application_id=?", integerValue(app["id"])).Scan(&votes)
@@ -1087,6 +1089,10 @@ func (s *Server) galonlyUpload(w http.ResponseWriter, r *http.Request, action st
 		methodNotAllowed(w, http.MethodPost)
 		return
 	}
+	if !sameOrigin(r) {
+		writeJSONStatus(w, 403, map[string]any{"success": false, "message": "请求来源无效"})
+		return
+	}
 	if _, ok := s.clubCodeUserResponse(w, r); !ok {
 		return
 	}
@@ -1094,10 +1100,12 @@ func (s *Server) galonlyUpload(w http.ResponseWriter, r *http.Request, action st
 	if action == "upload_image" {
 		limit = 10 << 20
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit+1<<20)
 	if err := r.ParseMultipartForm(limit + 1<<20); err != nil {
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "文件上传失败"})
 		return
 	}
+	defer r.MultipartForm.RemoveAll()
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "文件上传失败"})
@@ -1116,10 +1124,9 @@ func (s *Server) galonlyUpload(w http.ResponseWriter, r *http.Request, action st
 		return
 	}
 	if ext == "" {
-		ext = filepath.Ext(header.Filename)
-		ext = strings.TrimPrefix(strings.ToLower(ext), ".")
-		if ext == "" || len(ext) > 8 {
-			writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "不支持的文件类型"})
+		ext = safeDocumentExtension(header.Filename, data)
+		if ext == "" {
+			writeJSONStatus(w, 400, map[string]any{"success": false, "message": "仅支持有效的 PDF、Word、Excel 文档或图片"})
 			return
 		}
 	}

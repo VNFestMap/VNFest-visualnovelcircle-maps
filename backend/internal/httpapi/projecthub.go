@@ -79,68 +79,7 @@ func projectHubEffectiveMethod(r *http.Request, input map[string]any) string {
 	return method
 }
 
-func (s *Server) projectHubGet(w http.ResponseWriter, r *http.Request) {
-	switch strings.TrimPrefix(r.URL.Path, "/api/") {
-	case "projects.php":
-		data := s.projectHubReadMap(r.Context(), "projects.json", map[string]any{"projects": []any{}})
-		projects := mapSlice(data["projects"])
-		if r.URL.Query().Get("include_deleted") != "1" {
-			projects = filterProjectRows(projects, false)
-		}
-		typ := cleanProjectText(r.URL.Query().Get("type"), 30)
-		status := cleanProjectText(r.URL.Query().Get("status"), 30)
-		projects = filterProjectField(projects, "project_type", typ)
-		projects = filterProjectField(projects, "status", status)
-		writeJSON(w, map[string]any{"success": true, "projects": projects})
-	case "project_items.php":
-		data := s.projectHubReadMap(r.Context(), "project_items.json", map[string]any{"items": []any{}})
-		items := mapSlice(data["items"])
-		if r.URL.Query().Get("include_deleted") != "1" {
-			items = filterProjectRows(items, false)
-		}
-		if projectID := parsePositiveInt(r.URL.Query().Get("project_id")); projectID > 0 {
-			filtered := make([]map[string]any, 0, len(items))
-			for _, item := range items {
-				if integerValue(item["project_id"]) == projectID {
-					filtered = append(filtered, item)
-				}
-			}
-			items = filtered
-		}
-		writeJSON(w, map[string]any{"success": true, "items": items})
-	case "project_participations.php":
-		data := s.projectHubReadMap(r.Context(), "project_participations.json", map[string]any{"participations": []any{}})
-		rows := mapSlice(data["participations"])
-		if r.URL.Query().Get("include_withdrawn") != "1" {
-			filtered := rows[:0]
-			for _, row := range rows {
-				if stringValue(row["status"]) != "withdrawn" {
-					filtered = append(filtered, row)
-				}
-			}
-			rows = filtered
-		}
-		if projectID := parsePositiveInt(r.URL.Query().Get("project_id")); projectID > 0 {
-			filtered := make([]map[string]any, 0, len(rows))
-			for _, row := range rows {
-				if integerValue(row["project_id"]) == projectID {
-					filtered = append(filtered, row)
-				}
-			}
-			rows = filtered
-		}
-		if itemID := cleanProjectText(r.URL.Query().Get("item_id"), 60); itemID != "" {
-			filtered := make([]map[string]any, 0, len(rows))
-			for _, row := range rows {
-				if stringValue(row["item_id"]) == itemID {
-					filtered = append(filtered, row)
-				}
-			}
-			rows = filtered
-		}
-		writeJSON(w, map[string]any{"success": true, "participations": rows})
-	}
-}
+func (s *Server) projectHubGet(w http.ResponseWriter, r *http.Request) { s.projectHubGetSecure(w, r) }
 
 func (s *Server) projectHubProjectsWrite(w http.ResponseWriter, r *http.Request, method string, input map[string]any, user *user) {
 	data := s.projectHubReadMap(r.Context(), "projects.json", map[string]any{"projects": []any{}, "migrated_at": nil})
@@ -378,6 +317,10 @@ func (s *Server) projectHubParticipationsWrite(w http.ResponseWriter, r *http.Re
 			writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "无权代表该同好会参与"})
 			return
 		}
+		if !s.validateParticipationFiles(r, input["attachments"], user.ID, projectID) {
+			writeJSONStatus(w, 403, map[string]any{"success": false, "message": "附件不属于当前用户或企划"})
+			return
+		}
 		row := map[string]any{"id": nextProjectID(rows), "project_id": projectID, "item_id": itemID, "participant_type": participantType, "user_id": user.ID, "club_id": nullablePositive(clubValue(club, "id")), "club_country": stringValue(clubValue(club, "country")), "display_name": cleanProjectText(firstNonEmpty(stringValue(input["display_name"]), firstNonEmpty(user.Nickname, user.Username)), 80), "contact": cleanProjectText(input["contact"], 200), "content": content, "attachments": input["attachments"], "status": "submitted", "created_at": projectHubNow(), "updated_at": projectHubNow()}
 		rows = append(rows, row)
 		data["participations"] = rows
@@ -523,7 +466,10 @@ func normalizeProjectClub(value any) map[string]any {
 	if !ok {
 		return nil
 	}
-	id := integerValue(firstNonNil(row["id"], row["club_id"]))
+	id := integerValue(row["id"])
+	if id <= 0 {
+		id = integerValue(row["club_id"])
+	}
 	if id <= 0 {
 		return nil
 	}

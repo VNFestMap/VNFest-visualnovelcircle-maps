@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func (s *Server) galonlyStaff(w http.ResponseWriter, r *http.Request) {
@@ -87,17 +88,40 @@ func (s *Server) galonlyStaffSubmit(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "请选择活动"})
 		return
 	}
-	var open, staffOnly int64
-	if err := s.db.QueryRowContext(r.Context(), "SELECT staff_registration_open,staff_only FROM galonly_events WHERE id=?", eventID).Scan(&open, &staffOnly); err == sql.ErrNoRows {
+	var open, maxApplicants int64
+	var deadline sql.NullString
+	if err := s.db.QueryRowContext(r.Context(), "SELECT staff_registration_open,staff_deadline,COALESCE(staff_max_applicants,0) FROM galonly_events WHERE id=?", eventID).Scan(&open, &deadline, &maxApplicants); err == sql.ErrNoRows {
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "活动不存在"})
 		return
 	} else if err != nil {
 		writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "读取活动失败"})
 		return
 	}
-	if open != 1 && staffOnly == 1 {
+	if open != 1 {
 		writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Staff 报名尚未开放"})
 		return
+	}
+	if deadline.Valid && strings.TrimSpace(deadline.String) != "" {
+		cutoff, valid := galonlyStaffDeadline(deadline.String)
+		if !valid {
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "Staff 截止时间配置无效，请联系管理员"})
+			return
+		}
+		if time.Now().After(cutoff) {
+			writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Staff 报名已截止"})
+			return
+		}
+	}
+	if maxApplicants > 0 {
+		var count int64
+		if err := s.db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM galonly_staff_applications WHERE event_id=? AND status IN ('pending','pooled')", eventID).Scan(&count); err != nil {
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]any{"success": false, "message": "读取 Staff 报名人数失败"})
+			return
+		}
+		if count >= maxApplicants {
+			writeJSONStatus(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Staff 报名人数已满"})
+			return
+		}
 	}
 	positions := jsonStringOrEmpty(input["positions"])
 	result, err := s.db.ExecContext(r.Context(), `INSERT INTO galonly_staff_applications(event_id,user_id,cn_name,qq_number,phone_number,email,club_id,club_country,positions,confirm_schedule,is_cosplay,three_day_available,self_intro,gender,staff_experience,skills,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`, eventID, user.ID, stringValue(input["cn_name"]), stringValue(input["qq_number"]), stringValue(input["phone_number"]), stringValue(input["email"]), voteProjectID(input["club_id"]), firstNonEmpty(stringValue(input["club_country"]), "china"), positions, boolInt(boolValue(input["confirm_schedule"])), boolInt(boolValue(input["is_cosplay"])), boolInt(boolValue(input["three_day_available"])), stringValue(input["self_intro"]), stringValue(input["gender"]), boolInt(boolValue(input["staff_experience"])), jsonStringOrEmpty(input["skills"]))
@@ -107,6 +131,21 @@ func (s *Server) galonlyStaffSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, _ := result.LastInsertId()
 	writeJSON(w, map[string]any{"success": true, "application_id": id, "message": "Staff 申请已提交"})
+}
+
+func galonlyStaffDeadline(value string) (time.Time, bool) {
+	value = strings.TrimSpace(value)
+	if parsed, err := time.Parse(time.RFC3339Nano, value); err == nil {
+		return parsed, true
+	}
+	// DATETIME values from the legacy tables use the site's Shanghai timezone.
+	zone := time.FixedZone("Asia/Shanghai", 8*60*60)
+	for _, layout := range []string{"2006-01-02 15:04:05", "2006-01-02T15:04:05", "2006-01-02"} {
+		if parsed, err := time.ParseInLocation(layout, value, zone); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func (s *Server) galonlyStaffList(w http.ResponseWriter, r *http.Request) {

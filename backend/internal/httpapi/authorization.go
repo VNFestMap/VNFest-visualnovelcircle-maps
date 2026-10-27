@@ -1,35 +1,25 @@
 package httpapi
 
-import (
-	"crypto/subtle"
-	"net/http"
-	"strings"
-)
+import "net/http"
 
 func (s *Server) adminUserID(r *http.Request) (int64, bool) {
-	userID, role := s.optionalSessionUser(r)
-	if userID != nil {
-		if role == "super_admin" || role == "manager" || role == "representative" {
-			return *userID, true
-		}
-		if s.db != nil {
-			var exists int
-			err := s.db.QueryRowContext(r.Context(), `SELECT 1 FROM club_memberships
-                WHERE user_id = ? AND role IN ('manager', 'representative') AND status = 'active' LIMIT 1`, *userID).Scan(&exists)
-			if err == nil {
-				return *userID, true
-			}
-		}
-	}
-	if s.cfg.LegacyAuthEnabled && s.cfg.AdminToken != "" {
-		token := strings.TrimSpace(r.Header.Get("X-Admin-Token"))
-		if token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(s.cfg.AdminToken)) == 1 {
-			return 0, true
-		}
+	id, role := s.optionalSessionUser(r)
+	if id != nil && role == "super_admin" {
+		return *id, true
 	}
 	return 0, false
 }
-
 func requireAdminResponse(w http.ResponseWriter) {
-	writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "未授权访问"})
+	writeJSONStatus(w, http.StatusForbidden, map[string]any{"success": false, "message": "需要超级管理员权限"})
+}
+
+func (s *Server) adminDenied(w http.ResponseWriter, r *http.Request) {
+	id, _ := s.optionalSessionUser(r)
+	status := http.StatusForbidden
+	message := "需要超级管理员权限"
+	if id == nil {
+		status = http.StatusUnauthorized
+		message = "请先登录"
+	}
+	writeJSONStatus(w, status, map[string]any{"success": false, "message": message})
 }

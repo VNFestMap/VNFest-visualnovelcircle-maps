@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="../../js/language-runtime.js?v=20260813-language"></script>
+  <script src="../../js/language-catalog.js?v=20260813-language"></script>
+  <script src="../../js/language-static-ja.js?v=20260813-account-language"></script>
+  <script defer src="../../js/page-i18n.js?v=20260813-language"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="../../js/theme-runtime.js?v=20260702-theme"></script>
+<title>工作人员申请 - 上海GalGameOnly</title>
+<link rel="stylesheet" href="../../css/site-header.css?v=20260827-site-header" />
+<script defer src="../../js/site-header.js?v=20260827-site-header"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Noto Sans SC', 'Segoe UI', sans-serif;
+    background: #0C0C0E;
+    min-height: 100vh;
+    color: #fff;
+    padding: 40px 20px;
+}
+.back-link {
+    display: inline-block;
+    color: rgba(255,255,255,0.45);
+    text-decoration: none;
+    font-size: 13px;
+    margin-bottom: 16px;
+    transition: color 0.2s;
+}
+.back-link:hover { color: rgba(255,255,255,0.78); }
+.header {
+    max-width: 680px;
+    margin: 0 auto 28px;
+}
+.header-kicker {
+    color: #98CBEA;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.header-title {
+    font-size: 24px;
+    font-weight: 700;
+}
+.header-meta {
+    color: rgba(255,255,255,0.45);
+    font-size: 13px;
+    margin-top: 4px;
+}
+.form-card {
+    max-width: 680px;
+    margin: 0 auto;
+    background: #161618;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 34px 30px;
+}
+.form-group { margin-bottom: 22px; }
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.82);
+    margin-bottom: 8px;
+}
+.required { color: #98CBEA; margin-left: 2px; }
+.form-hint {
+    color: rgba(255,255,255,0.38);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 6px;
+}
+.form-input-static,
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 14px;
+    font-family: inherit;
+}
+.form-input-static { color: rgba(255,255,255,0.68); }
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: #98CBEA;
+}
+.form-input::placeholder,
+.form-textarea::placeholder { color: rgba(255,255,255,0.22); }
+.form-textarea {
+    min-height: 94px;
+    resize: vertical;
+}
+.role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+.role-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    min-height: 54px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.09);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+}
+.role-item input {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: #98CBEA;
+}
+.role-item strong {
+    display: block;
+    color: rgba(255,255,255,0.82);
+    font-size: 13px;
+}
+.role-item span {
+    display: block;
+    color: rgba(255,255,255,0.38);
+    font-size: 12px;
+    line-height: 1.45;
+}
+.status-panel,
+.error-msg,
+.success-msg {
+    display: none;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+.status-panel {
+    display: none;
+    color: rgba(255,255,255,0.72);
+    background: rgba(152,203,234,0.1);
+    border: 1px solid rgba(152,203,234,0.22);
+}
+.error-msg {
+    color: #ff6f6f;
+    background: rgba(244,67,54,0.1);
+    border: 1px solid rgba(244,67,54,0.28);
+}
+.success-msg {
+    color: #83d18f;
+    background: rgba(76,175,80,0.11);
+    border: 1px solid rgba(76,175,80,0.24);
+}
+.loading-text {
+    color: rgba(255,255,255,0.45);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px;
+}
+.btn-submit {
+    width: 100%;
+    min-height: 46px;
+    border: none;
+    border-radius: 8px;
+    background: #98CBEA;
+    color: #0C0C0E;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-submit:hover { opacity: 0.9; }
+.btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+.footer-note {
+    color: rgba(255,255,255,0.32);
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+    margin-top: 12px;
+}
+@media (max-width: 600px) {
+    body { padding: 24px 14px; }
+    .form-card { padding: 24px 16px; }
+    .role-grid { grid-template-columns: 1fr; }
+    .header-title { font-size: 22px; }
+}
+[data-theme="light"] body {
+    background: #f4f6f8;
+    color: #1b1c1f;
+}
+[data-theme="light"] .back-link { color: rgba(27,28,31,0.5); }
+[data-theme="light"] .back-link:hover { color: rgba(27,28,31,0.8); }
+[data-theme="light"] .header-meta { color: rgba(27,28,31,0.5); }
+[data-theme="light"] .header-kicker,
+[data-theme="light"] .required { color: #2a6f9c; }
+[data-theme="light"] .form-card {
+    background: #ffffff;
+    border-color: #dfe3e8;
+}
+[data-theme="light"] .form-label { color: rgba(27,28,31,0.85); }
+[data-theme="light"] .form-hint { color: rgba(27,28,31,0.42); }
+[data-theme="light"] .form-input-static,
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-textarea {
+    background: #ffffff;
+    border-color: #d5dae0;
+    color: #1b1c1f;
+}
+[data-theme="light"] .form-input-static { color: rgba(27,28,31,0.70); }
+[data-theme="light"] .form-input:focus,
+[data-theme="light"] .form-textarea:focus { border-color: #2a6f9c; }
+[data-theme="light"] .form-input::placeholder,
+[data-theme="light"] .form-textarea::placeholder { color: rgba(27,28,31,0.35); }
+[data-theme="light"] .role-item {
+    border-color: rgba(27,28,31,0.10);
+    background: rgba(27,28,31,0.03);
+}
+[data-theme="light"] .role-item strong { color: rgba(27,28,31,0.85); }
+[data-theme="light"] .role-item span { color: rgba(27,28,31,0.42); }
+[data-theme="light"] .status-panel {
+    color: rgba(27,28,31,0.75);
+    background: rgba(42,111,156,0.08);
+    border-color: rgba(42,111,156,0.22);
+}
+[data-theme="light"] .loading-text { color: rgba(27,28,31,0.45); }
+[data-theme="light"] .footer-note { color: rgba(27,28,31,0.35); }
+</style>
+<script defer src="../../js/analytics.js?v=20260905-analytics"></script>
+  <link rel="stylesheet" href="../../css/button-shapes.css?v=20261002-pill-v1">
+</head>
+<body>
+
+<a class="back-link" href="../galgameonly_list.html">&larr; 返回活动列表</a>
+
+<div class="header">
+    <div class="header-kicker">Shanghai GalGameOnly Staff</div>
+    <div class="header-title">工作人员申请</div>
+    <div class="header-meta" id="eventNameDisplay">加载中...</div>
+</div>
+
+<div class="form-card">
+    <div id="loadingMsg" class="loading-text">加载中...</div>
+
+    <div id="formFields" style="display:none">
+        <div id="statusPanel" class="status-panel"></div>
+        <div id="errorMsg" class="error-msg"></div>
+        <div id="successMsg" class="success-msg"></div>
+
+        <div class="form-group">
+            <label class="form-label">活动</label>
+            <div class="form-input-static" id="eventNameField"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="realName">姓名或称呼 <span class="required">*</span></label>
+            <input class="form-input" id="realName" type="text" maxlength="120" placeholder="例如：小明 / 明明">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="contact">联系方式 <span class="required">*</span></label>
+            <input class="form-input" id="contact" type="text" maxlength="255" placeholder="手机号 / QQ / 微信，至少填写一种">
+            <div class="form-hint">仅 GalOnly 审核和活动组织团队可见。</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">可协助岗位 <span class="required">*</span></label>
+            <div class="role-grid" id="roleGrid">
+                <label class="role-item">
+                    <input type="checkbox" value="checkin">
+                    <span><strong>入场签到</strong><span>检票、摊主签到、证件发放</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="guide">
+                    <span><strong>现场引导</strong><span>路线指引、咨询、动线维护</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="queue">
+                    <span><strong>排队秩序</strong><span>热门摊位队列与等候区协助</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="booth">
+                    <span><strong>摊位协助</strong><span>布撤展、物资搬运、摊主对接</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="stage">
+                    <span><strong>舞台活动</strong><span>流程提醒、控场、嘉宾协助</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="media">
+                    <span><strong>摄影记录</strong><span>现场拍摄、素材整理、社媒协助</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="logistics">
+                    <span><strong>后勤机动</strong><span>物资、餐饮、突发事务支援</span></span>
+                </label>
+                <label class="role-item">
+                    <input type="checkbox" value="other">
+                    <span><strong>其他岗位</strong><span>可在备注里说明擅长方向</span></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="availability">可协助时间 <span class="required">*</span></label>
+            <textarea class="form-textarea" id="availability" placeholder="例如：布展日下午、活动当天 9:00-17:00、撤展后半小时都可以"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="experience">相关经验</label>
+            <textarea class="form-textarea" id="experience" placeholder="参加过的展会、社团活动、志愿者经历等，没有也可以写无"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="notes">备注</label>
+            <textarea class="form-textarea" id="notes" placeholder="其他需要组织方知道的信息"></textarea>
+        </div>
+
+        <button class="btn-submit" id="submitBtn" type="button">提交工作人员申请</button>
+        <div class="footer-note">提交后可再次进入本页修改；若申请已被拒绝，重新提交会回到待审核。</div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var eventId = 0;
+    var existingApplication = null;
+
+    function showError(message) {
+        $('errorMsg').textContent = message;
+        $('errorMsg').style.display = 'block';
+        $('successMsg').style.display = 'none';
+    }
+
+    function showSuccess(message) {
+        $('successMsg').textContent = message;
+        $('successMsg').style.display = 'block';
+        $('errorMsg').style.display = 'none';
+    }
+
+    function statusText(status) {
+        if (status === 'approved') return '已通过';
+        if (status === 'rejected') return '已拒绝';
+        if (status === 'pending') return '审核中';
+        return '未提交';
+    }
+
+    function renderStatus(app) {
+        var panel = $('statusPanel');
+        if (!app) {
+            panel.style.display = 'none';
+            return;
+        }
+        panel.textContent = '当前工作人员申请状态：' + statusText(app.status);
+        if (app.reviewer_notes) {
+            panel.textContent += '。审核备注：' + app.reviewer_notes;
+        }
+        panel.style.display = 'block';
+    }
+
+    function selectedRoles() {
+        var roles = [];
+        var inputs = document.querySelectorAll('#roleGrid input[type="checkbox"]');
+        for (var i = 0; i < inputs.length; i++) {
+            if (inputs[i].checked) roles.push(inputs[i].value);
+        }
+        return roles;
+    }
+
+    function setSelectedRoles(roles) {
+        var set = {};
+        (roles || []).forEach(function (role) { set[role] = true; });
+        var inputs = document.querySelectorAll('#roleGrid input[type="checkbox"]');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].checked = !!set[inputs[i].value];
+        }
+    }
+
+    function fillApplication(app) {
+        existingApplication = app;
+        if (!app) return;
+
+        $('realName').value = app.real_name || '';
+        $('contact').value = app.contact || '';
+        setSelectedRoles(app.preferred_roles || []);
+        $('availability').value = app.availability || '';
+        $('experience').value = app.experience || '';
+        $('notes').value = app.notes || '';
+        $('submitBtn').textContent = '更新工作人员申请';
+        renderStatus(app);
+    }
+
+    function loadData() {
+        var params = new URLSearchParams(window.location.search);
+        eventId = parseInt(params.get('event_id'), 10) || 0;
+        if (!eventId) {
+            $('loadingMsg').textContent = '缺少活动参数，请从活动列表进入';
+            return;
+        }
+
+        var authPromise = fetch('../../api/auth.php?action=me', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .catch(function () { return { logged_in: false }; });
+
+        var eventsPromise = fetch('../../api/galonly.php?action=list_events', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .catch(function () { return { success: false, events: [] }; });
+
+        Promise.all([authPromise, eventsPromise]).then(function (results) {
+            var authData = results[0];
+            var eventsData = results[1];
+            if (!authData.logged_in) {
+                alert('请先登录后再申请工作人员');
+                window.location.href = '../../login.html';
+                return null;
+            }
+
+            var eventName = '活动 #' + eventId;
+            if (eventsData.success && eventsData.events) {
+                for (var i = 0; i < eventsData.events.length; i++) {
+                    if (parseInt(eventsData.events[i].id, 10) === eventId) {
+                        eventName = eventsData.events[i].name || eventName;
+                        break;
+                    }
+                }
+            }
+            $('eventNameDisplay').textContent = eventName;
+            $('eventNameField').textContent = eventName;
+
+            return fetch('../../api/galonly_staff.php?action=get_my&event_id=' + encodeURIComponent(eventId), {
+                credentials: 'same-origin'
+            }).then(function (r) { return r.json(); });
+        }).then(function (staffData) {
+            if (!staffData) return;
+            $('loadingMsg').style.display = 'none';
+            $('formFields').style.display = 'block';
+            if (staffData.success && staffData.application) {
+                fillApplication(staffData.application);
+            }
+        }).catch(function () {
+            $('loadingMsg').style.display = 'none';
+            $('formFields').style.display = 'block';
+            showError('加载申请信息失败，请稍后重试');
+        });
+    }
+
+    function submitApplication() {
+        $('errorMsg').style.display = 'none';
+        $('successMsg').style.display = 'none';
+
+        var payload = {
+            event_id: eventId,
+            real_name: $('realName').value.trim(),
+            contact: $('contact').value.trim(),
+            preferred_roles: selectedRoles(),
+            availability: $('availability').value.trim(),
+            experience: $('experience').value.trim(),
+            notes: $('notes').value.trim()
+        };
+
+        if (!payload.real_name) {
+            showError('请填写姓名或称呼');
+            $('realName').focus();
+            return;
+        }
+        if (!payload.contact) {
+            showError('请填写联系方式');
+            $('contact').focus();
+            return;
+        }
+        if (!payload.preferred_roles.length) {
+            showError('请至少选择一个可协助岗位');
+            return;
+        }
+        if (!payload.availability) {
+            showError('请填写可协助时间');
+            $('availability').focus();
+            return;
+        }
+
+        var btn = $('submitBtn');
+        var originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = existingApplication ? '更新中...' : '提交中...';
+
+        fetch('../../api/galonly_staff.php?action=submit', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.success) {
+                showError(data.message || '提交失败');
+                return;
+            }
+            showSuccess(data.message || '工作人员申请已提交');
+            return fetch('../../api/galonly_staff.php?action=get_my&event_id=' + encodeURIComponent(eventId), {
+                credentials: 'same-origin'
+            }).then(function (r) { return r.json(); }).then(function (fresh) {
+                if (fresh.success) fillApplication(fresh.application);
+            });
+        })
+        .catch(function () {
+            showError('提交失败，请检查网络连接后重试');
+        })
+        .finally(function () {
+            btn.disabled = false;
+            btn.textContent = existingApplication ? '更新工作人员申请' : originalText;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        $('submitBtn').addEventListener('click', submitApplication);
+        loadData();
+    });
+})();
+</script>
+<script src="../../js/page-background.js?v=20260812-centralized-preferences"></script>
+</body>
+</html>

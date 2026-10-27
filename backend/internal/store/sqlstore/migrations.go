@@ -1222,6 +1222,7 @@ func Migrations(db *DB) []Migration {
 				return nil
 			},
 		},
+		securityMigration(db),
 	}
 }
 

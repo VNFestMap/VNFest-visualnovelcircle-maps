@@ -71,10 +71,16 @@ func (s *Server) recognitionCredentialsMine(w http.ResponseWriter, r *http.Reque
 			clubs[fmt.Sprintf("%d:%s", credential.IssuerClubID, credential.IssuerCountry)] = true
 		}
 	}
+	result := make([]map[string]any, 0, len(credentials))
+	for _, credential := range credentials {
+		item := credential.publicMap(false)
+		item["club_name"] = s.recognitionClubName(r.Context(), credential.IssuerClubID, credential.IssuerCountry)
+		result = append(result, item)
+	}
 	writeJSON(w, map[string]any{
 		"success":     true,
 		"summary":     map[string]any{"total": len(credentials), "active": active, "club_count": len(clubs)},
-		"credentials": credentials,
+		"credentials": result,
 	})
 }
 
@@ -444,12 +450,12 @@ func (s *Server) issueRecognitionCredential(ctx context.Context, args recognitio
 	}
 	var badgeName string
 	var badgeVersion int64
-	if err := s.db.QueryRowContext(ctx, "SELECT name,version FROM recognition_badges WHERE id=?", args.BadgeID).Scan(&badgeName, &badgeVersion); err != nil {
+	if err := s.db.QueryRowContext(ctx, "SELECT name,version FROM recognition_badges WHERE id=? AND club_id=? AND country=?", args.BadgeID, args.IssuerClubID, args.IssuerCountry).Scan(&badgeName, &badgeVersion); err != nil {
 		return nil, false, errors.New("徽章定义不存在")
 	}
 	var maxIssuance, ttl int64
 	var programTitle string
-	if err := s.db.QueryRowContext(ctx, "SELECT max_issuance,credential_ttl_days,title FROM recognition_programs WHERE id=?", args.ProgramID).Scan(&maxIssuance, &ttl, &programTitle); err != nil {
+	if err := s.db.QueryRowContext(ctx, "SELECT p.max_issuance,p.credential_ttl_days,p.title FROM recognition_programs p JOIN recognition_program_versions v ON v.program_id=p.id WHERE p.id=? AND p.club_id=? AND p.country=? AND v.id=?", args.ProgramID, args.IssuerClubID, args.IssuerCountry, args.ProgramVersionID).Scan(&maxIssuance, &ttl, &programTitle); err != nil {
 		return nil, false, errors.New("认可项目不存在")
 	}
 	if maxIssuance > 0 {

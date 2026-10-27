@@ -52,12 +52,6 @@ func (s *Server) announcementSuperAdmin(w http.ResponseWriter, r *http.Request) 
 	if userID != nil && role == "super_admin" {
 		return true
 	}
-	// Preserve the existing transition-only X-Admin-Token behavior. The
-	// legacy PHP implementation treats a valid token as a super administrator
-	// even though it has no users.id to attach to the row.
-	if _, ok := s.adminUserID(r); ok && userID == nil && s.cfg.LegacyAuthEnabled && strings.TrimSpace(r.Header.Get("X-Admin-Token")) != "" {
-		return true
-	}
 	if userID == nil {
 		writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "请先登录"})
 	} else {
@@ -88,7 +82,7 @@ func (s *Server) announcementList(w http.ResponseWriter, r *http.Request, active
 			if err := rows.Scan(&id, &title, &content, &typ, &persistent, &created, &published); err != nil {
 				continue
 			}
-			items = append(items, map[string]any{"id": id, "title": title, "content": content, "type": typ, "is_persistent": persistent, "created_at": databaseValueString(created), "published_at": databaseValueString(published)})
+			items = append(items, map[string]any{"id": id, "title": databaseValueString(title), "content": databaseValueString(content), "type": databaseValueString(typ), "is_persistent": persistent, "created_at": databaseValueString(created), "published_at": databaseValueString(published)})
 			continue
 		}
 		var id, persistent, createdBy any
@@ -97,7 +91,7 @@ func (s *Server) announcementList(w http.ResponseWriter, r *http.Request, active
 		if err := rows.Scan(&id, &title, &content, &typ, &status, &persistent, &createdBy, &created, &published); err != nil {
 			continue
 		}
-		items = append(items, map[string]any{"id": id, "title": title, "content": content, "type": typ, "status": status, "is_persistent": persistent, "created_by": createdBy, "created_at": databaseValueString(created), "published_at": databaseValueString(published)})
+		items = append(items, map[string]any{"id": id, "title": databaseValueString(title), "content": databaseValueString(content), "type": databaseValueString(typ), "status": databaseValueString(status), "is_persistent": persistent, "created_by": createdBy, "created_at": databaseValueString(created), "published_at": databaseValueString(published)})
 	}
 	if err := rows.Err(); err != nil {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "无法读取公告"})

@@ -66,22 +66,32 @@ func (s *Server) recognitionStart(w http.ResponseWriter, r *http.Request) {
 	}
 	content, _ := version["content"].(map[string]any)
 	quiz, _ := content["quiz"].(map[string]any)
-	if len(anySlice(quiz["questions"])) == 0 {
-		writeJSON(w, map[string]any{"success": false, "message": "该项目不是答题类考核"})
-		return
-	}
 	versionID := integerValue(version["id"])
-	var ongoingID int64
+	var ongoingID, ongoingVersionID int64
 	var savedAnswers, startedAt sql.NullString
-	if err := s.db.QueryRowContext(r.Context(), `SELECT id,answers,started_at FROM recognition_attempts WHERE program_version_id=? AND user_id=? AND status='in_progress' ORDER BY id DESC LIMIT 1`, versionID, user.ID).Scan(&ongoingID, &savedAnswers, &startedAt); err == nil {
+	if err := s.db.QueryRowContext(r.Context(), `SELECT a.id,a.program_version_id,a.answers,a.started_at FROM recognition_attempts a JOIN recognition_program_versions v ON v.id=a.program_version_id WHERE v.program_id=? AND a.user_id=? AND a.status='in_progress' ORDER BY a.id DESC LIMIT 1`, programID, user.ID).Scan(&ongoingID, &ongoingVersionID, &savedAnswers, &startedAt); err == nil {
+		if ongoingVersionID != versionID {
+			oldVersion, err := s.recognitionVersionByID(r.Context(), ongoingVersionID)
+			if err != nil || !containsString([]string{"published", "superseded"}, stringValue(oldVersion["status"])) {
+				writeJSON(w, map[string]any{"success": false, "message": "原考核版本不可用，无法恢复作答"})
+				return
+			}
+			content, _ = oldVersion["content"].(map[string]any)
+			quiz, _ = content["quiz"].(map[string]any)
+		}
 		saved := map[string]any{}
 		_ = json.Unmarshal([]byte(savedAnswers.String), &saved)
 		paper := anySlice(saved["quiz_paper"])
-		if len(paper) == 0 {
-			paper = recognitionBuildPaper(content)
+		if _, valid := recognitionPaperQuestions(content, paper); !valid {
+			writeJSON(w, map[string]any{"success": false, "message": "试卷快照缺失或损坏，无法恢复作答"})
+			return
 		}
 		settings := recognitionQuizSettings(quiz)
-		writeJSON(w, map[string]any{"success": true, "attempt_id": ongoingID, "questions": paper, "settings": settings, "deadline": recognitionQuizDeadline(settings, startedAt.String), "saved_answers": anyMapSlice(saved["answers"]), "resumed": true})
+		writeJSON(w, map[string]any{"success": true, "attempt_id": ongoingID, "questions": recognitionStripPaperAnswers(paper), "settings": settings, "deadline": recognitionQuizDeadline(settings, startedAt.String), "saved_answers": anyMapSlice(saved["answers"]), "resumed": true})
+		return
+	}
+	if len(anySlice(quiz["questions"])) == 0 {
+		writeJSON(w, map[string]any{"success": false, "message": "该项目不是答题类考核"})
 		return
 	}
 	var used int64
@@ -153,7 +163,7 @@ func (s *Server) recognitionTempSave(w http.ResponseWriter, r *http.Request) {
 	}
 	attemptID := integerValue(input["attempt_id"])
 	answers := input["answers"]
-	if len(anySlice(answers)) > 500 {
+	if len(anySlice(answers)) > 500 || len(anyMapSlice(answers)) > 500 {
 		writeJSON(w, map[string]any{"success": false, "message": "暂存内容非法"})
 		return
 	}
@@ -208,7 +218,7 @@ func (s *Server) recognitionSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	version, err := s.recognitionVersionByID(r.Context(), versionID)
-	if err != nil || version == nil || stringValue(version["status"]) != "published" {
+	if err != nil || version == nil || !containsString([]string{"published", "superseded"}, stringValue(version["status"])) {
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "项目版本不存在"})
 		return
 	}
@@ -218,22 +228,26 @@ func (s *Server) recognitionSubmit(w http.ResponseWriter, r *http.Request) {
 	saved := map[string]any{}
 	_ = json.Unmarshal([]byte(savedText), &saved)
 	paperSnapshot := anySlice(saved["quiz_paper"])
-	questions := anySlice(quiz["questions"])
-	if len(paperSnapshot) > 0 {
-		picked := []any{}
-		for _, item := range paperSnapshot {
-			row, _ := item.(map[string]any)
-			orig := int(integerValue(row["orig"]))
-			if orig >= 0 && orig < len(questions) {
-				picked = append(picked, questions[orig])
-			}
-		}
-		if len(picked) > 0 {
-			questions = picked
-		}
+	questions, valid := recognitionPaperQuestions(content, paperSnapshot)
+	if !valid {
+		writeJSON(w, map[string]any{"success": false, "message": "试卷快照缺失或损坏，无法判分"})
+		return
 	}
-	originalAnswers := recognitionOriginalAnswers(input["answers"], input["paper"])
-	grade := recognitionGradeQuestions(questions, originalAnswers, settings)
+	// The client supplies answers by sequence. Only the persisted server paper
+	// determines their original question indexes; input.paper is not trusted.
+	originalAnswers := recognitionOriginalAnswers(input["answers"], paperSnapshot)
+	orderedAnswers := map[string]any{}
+	for i, raw := range paperSnapshot {
+		row, _ := raw.(map[string]any)
+		orderedAnswers[fmt.Sprint(i)] = originalAnswers[strconvInt(integerValue(row["orig"]))]
+	}
+	grade := recognitionGradeQuestions(questions, orderedAnswers, settings)
+	details := map[string]any{}
+	for i, raw := range paperSnapshot {
+		row, _ := raw.(map[string]any)
+		details[strconvInt(integerValue(row["orig"]))] = anySlice(grade["detail"])[i]
+	}
+	grade["detail"] = details
 	deadline := recognitionQuizDeadline(settings, startedAt)
 	overdue := deadline > 0 && time.Now().Unix() > deadline+60
 	tx, err := s.db.BeginTx(r.Context(), nil)
@@ -241,9 +255,15 @@ func (s *Server) recognitionSubmit(w http.ResponseWriter, r *http.Request) {
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "提交失败"})
 		return
 	}
-	if _, err = tx.ExecContext(r.Context(), "UPDATE recognition_attempts SET status='submitted',score=?,answers=?,finished_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress'", grade["score"], jsonString(originalAnswers), attemptID); err != nil {
+	changed, err := tx.ExecContext(r.Context(), "UPDATE recognition_attempts SET status='submitted',score=?,answers=?,finished_at=CURRENT_TIMESTAMP WHERE id=? AND status='in_progress'", grade["score"], jsonString(originalAnswers), attemptID)
+	if err != nil {
 		_ = tx.Rollback()
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "提交失败"})
+		return
+	}
+	if count, err := changed.RowsAffected(); err != nil || count != 1 {
+		_ = tx.Rollback()
+		writeJSON(w, map[string]any{"success": false, "message": "该次答题已结束"})
 		return
 	}
 	if _, err = recordRecognitionEventExec(r.Context(), tx, map[string]any{"type": "assessment.completed", "idempotency_key": "attempt_done_" + strconvInt(attemptID), "user_id": user.ID, "program_id": integerValue(version["program_id"]), "program_version_id": versionID, "data": map[string]any{"score": grade["score"], "attempt_id": attemptID}, "source_verified": true}); err != nil {
@@ -558,6 +578,18 @@ func recognitionBuildPaper(content map[string]any) []any {
 		for _, index := range optionIndexes {
 			orderedOptions = append(orderedOptions, options[index])
 		}
+		if kind == "order" && len(orderedOptions) > 1 {
+			identity := true
+			for i, raw := range orderedOptions {
+				row, _ := raw.(map[string]any)
+				if integerValue(row["oi"]) != int64(i) {
+					identity = false
+				}
+			}
+			if identity {
+				orderedOptions[0], orderedOptions[len(orderedOptions)-1] = orderedOptions[len(orderedOptions)-1], orderedOptions[0]
+			}
+		}
 		item := map[string]any{"seq": sequence, "orig": original, "type": kind, "question": stringValue(question["question"]), "options": orderedOptions, "points": maxInt64(integerValue(question["points"]), 1), "explanation": stringValue(question["explanation"])}
 		if image := stringValue(question["image"]); image != "" {
 			item["image"] = image
@@ -584,15 +616,15 @@ func recognitionOriginalAnswers(value, paperValue any) map[string]any {
 			answers[fmt.Sprint(index)] = answer
 		}
 	}
+	original := map[string]any{}
 	for _, item := range anySlice(paperValue) {
 		row, _ := item.(map[string]any)
 		orig, seq := strconvInt(integerValue(row["orig"])), fmt.Sprint(integerValue(row["seq"]))
 		if answer, exists := answers[seq]; exists {
-			answers[orig] = answer
-			delete(answers, seq)
+			original[orig] = answer
 		}
 	}
-	return answers
+	return original
 }
 
 func recognitionGradeQuestions(questions []any, answers map[string]any, settings map[string]any) map[string]any {
@@ -604,9 +636,7 @@ func recognitionGradeQuestions(questions []any, answers map[string]any, settings
 		points := int(maxInt64(integerValue(question["points"]), 1))
 		total += points
 		given := answers[fmt.Sprint(index)]
-		if given == nil {
-			given = answers[fmt.Sprint(index)]
-		}
+
 		correct, earned := false, 0.0
 		switch stringValue(question["type"]) {
 		case "single", "judge":
@@ -617,7 +647,7 @@ func recognitionGradeQuestions(questions []any, answers map[string]any, settings
 			}
 		case "multiple":
 			expected := intList(question["answer"])
-			givenList := intList(given)
+			givenList := recognitionUniqueInts(intList(given))
 			if len(expected) > 0 {
 				if boolValue(settings["multiple_partial"]) {
 					hit, miss := intersectionCount(givenList, expected), differenceCount(givenList, expected)
@@ -674,7 +704,7 @@ func recognitionGradeQuestions(questions []any, answers map[string]any, settings
 func (s *Server) recognitionEvaluateAndAward(ctx context.Context, versionID, userID int64, values map[string]any) map[string]any {
 	result := map[string]any{"passed": false, "issued": false, "duplicate": false, "credential": nil, "reasons": []string{}, "error": nil}
 	version, err := s.recognitionVersionByID(ctx, versionID)
-	if err != nil || version == nil || stringValue(version["status"]) != "published" {
+	if err != nil || version == nil || !containsString([]string{"published", "superseded"}, stringValue(version["status"])) {
 		result["error"] = "项目版本不存在或未发布"
 		return result
 	}

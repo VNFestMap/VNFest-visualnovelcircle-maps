@@ -18,19 +18,28 @@ func (s *Server) manuscripts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("action")))
+	userID, loggedIn := s.loggedInUserID(r)
 	if r.Method == http.MethodGet && action == "list_by_publication" {
-		publicationID := parsePositiveInt(r.URL.Query().Get("publication_id"))
-		rows := s.loadManuscripts(r)
-		result := make([]map[string]any, 0)
-		for _, row := range rows {
-			if integerValue(row["publication_id"]) == publicationID {
-				result = append(result, row)
+		if !loggedIn {
+			writeJSONStatus(w, 401, map[string]any{"success": false, "message": "请先登录"})
+			return
+		}
+		current, e := s.findUser(r.Context(), userID)
+		if e != nil || current == nil {
+			writeJSONStatus(w, 401, map[string]any{"success": false})
+			return
+		}
+		result := []map[string]any{}
+		pid := parsePositiveInt(r.URL.Query().Get("publication_id"))
+		for _, row := range s.loadManuscripts(r) {
+			if integerValue(row["publication_id"]) == pid && s.canReadManuscript(r, current, row) {
+				result = append(result, publicManuscript(row))
 			}
 		}
 		writeJSON(w, map[string]any{"success": true, "manuscripts": result})
 		return
 	}
-	userID, loggedIn := s.loggedInUserID(r)
+
 	if r.Method == http.MethodGet && action == "list_by_club" {
 		if !loggedIn {
 			writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "请先登录"})
@@ -51,8 +60,8 @@ func (s *Server) manuscripts(w http.ResponseWriter, r *http.Request) {
 		for _, row := range s.loadManuscripts(r) {
 			for _, rawClub := range anySlice(row["club_ids"]) {
 				club := normalizeProjectClub(rawClub)
-				if club != nil && integerValue(club["id"]) == clubID && stringValue(club["country"]) == country {
-					result = append(result, row)
+				if club != nil && integerValue(club["id"]) == clubID && stringValue(club["country"]) == country && s.canReadManuscript(r, user, row) {
+					result = append(result, publicManuscript(row))
 					break
 				}
 			}
@@ -154,7 +163,7 @@ func (s *Server) manuscriptUpload(w http.ResponseWriter, r *http.Request, user *
 		writeJSONStatus(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "文件保存失败"})
 		return
 	}
-	writeJSON(w, map[string]any{"success": true, "message": "上传成功", "manuscript": row})
+	writeJSON(w, map[string]any{"success": true, "message": "上传成功", "manuscript": publicManuscript(row)})
 }
 
 func (s *Server) manuscriptDelete(w http.ResponseWriter, r *http.Request, user *user, rows []map[string]any) {
@@ -217,6 +226,12 @@ func (s *Server) manuscriptDownload(w http.ResponseWriter, r *http.Request, rows
 		writeJSONStatus(w, http.StatusUnauthorized, map[string]any{"success": false, "message": "请先登录"})
 		return
 	}
+	userID, _ := s.loggedInUserID(r)
+	current, e := s.findUser(r.Context(), userID)
+	if e != nil || !s.canReadManuscript(r, current, row) {
+		writeJSONStatus(w, 403, map[string]any{"success": false, "message": "无权下载该稿件"})
+		return
+	}
 	path := stringValue(row["file_path"])
 	if !strings.HasPrefix(path, "data/") || strings.Contains(path, "..") {
 		writeJSONStatus(w, http.StatusNotFound, map[string]any{"success": false, "message": "文件不存在"})
@@ -253,4 +268,37 @@ func sanitizeManuscriptName(value string) string {
 		}
 	}
 	return out.String()
+}
+
+func publicManuscript(row map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range row {
+		if k != "file_path" {
+			out[k] = v
+		}
+	}
+	return out
+}
+func (s *Server) canReadManuscript(r *http.Request, u *user, row map[string]any) bool {
+	if u == nil {
+		return false
+	}
+	if u.Role == "super_admin" {
+		return true
+	}
+	if integerValue(row["submitter_id"]) == u.ID {
+		return true
+	}
+	pid := integerValue(row["publication_id"])
+	for _, pub := range s.projectHubRows(r.Context(), "publications.json", "publications") {
+		if integerValue(pub["id"]) != pid {
+			continue
+		}
+		for _, club := range normalizeProjectClubs(pub["club_ids"]) {
+			if s.publicationCanManage(r.Context(), u, integerValue(club["id"]), firstNonEmpty(stringValue(club["country"]), "china")) {
+				return true
+			}
+		}
+	}
+	return false
 }
